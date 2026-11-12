@@ -1,0 +1,10 @@
+# Personal state and backups never belong in this repository.
+.local/
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+*.log
+WTF/
+SavedVariables/

@@ -1,0 +1,89 @@
+# XPForever Changelog
+
+## 1.0.1
+
+### Fixed
+- Searching in the game options no longer causes repeated "XPForever has been blocked from an action only available to the Blizzard UI" errors.
+
+## 1.0.0
+
+First stable release for the launch of WoW Forever. Same features as 0.8.0-beta.
+
+## 0.8.0-beta
+
+### New
+- Bartender4 support (beta): with Bartender's Status Tracking Bar turned on, the experience bar follows it – position, width, scale and fading are set in Bartender. If that bar is turned off, the experience bar is hidden too. A one-time chat message explains this when Bartender is installed.
+- The info text also makes room for Bartender's action bars above the experience bar.
+
+## 0.7.0-beta
+
+### New
+- A one-time hint points at the stats above your action bars and shows how to move them (Shift-drag) and put them back (Shift-right-click). New players see it right after choosing their style.
+
+## 0.6.3-beta
+
+### New
+- XPForever is now also available on Wago Addons.
+
+## 0.6.2-beta
+
+### Changed
+- Holding Shift only highlights the info text while your mouse is over it, instead of anywhere on the screen.
+
+## 0.6.1-beta
+
+### Fixed
+- Classic style: the start of the experience bar no longer turns dark as you gain XP. The XP fill is now drawn in your XP color.
+
+## 0.6.0-beta
+
+### New
+- Option to turn off the glow while resting and keep only the “Zzz” (Bar → Glow while resting).
+
+### Changed
+- XP per hour pauses while you're idle: time without movement, combat or XP gains (3 minutes or more, e.g. AFK) no longer lowers the rate. The session time in the tooltip counts active time only.
+- The kill estimate takes rested XP into account: kills give double XP until your rested XP runs out, so fewer kills are needed while you're rested.
+- Session statistics start fresh once after this update.
+- The golden glow while resting is softer in both styles.
+
+## 0.5.1-beta
+
+### Changed
+- The Modern bar is now 16 pixels high by default. Your current height stays as it is.
+- The style window shows how to open the settings.
+
+## 0.5.0-beta
+
+### New
+- Classic style: an experience bar that looks like Blizzard's own, with all XPForever features. Switch between Modern and Classic in the settings. Colors you choose in the settings apply to the Classic bar, too.
+- On first start, a small window lets you pick Modern or Classic and shows the result right away. Players updating from an earlier version see it once, too. Open it again with /xpf style.
+
+## 0.4.1-beta
+
+### Changed
+- Cleaned up the release notes. No changes to the addon itself.
+
+## 0.4.0-beta
+
+### New
+- Click the experience bar to show or hide the info text.
+- Hold Shift and drag the info text to place it anywhere. Shift-right-click puts it back above your action bars.
+- Tooltips show mouse icons for clicks.
+
+### Changed
+- The "Lock position" option for the info text is gone – it can no longer be moved by accident.
+
+## 0.3.0-beta
+
+First public release.
+
+- A thicker experience bar in the Forever style, placed where Blizzard's bar sits and following it in Edit Mode.
+- Previews for quest XP from completed quests and for rested XP, with adjustable colors and opacity.
+- Percentage in the middle of the bar, more details on mouseover.
+- Info text above your action bars: XP per hour, time to level, kills to level and more – each value can be turned on or off.
+- Kills to level, estimated from your recent kills with quest turn-ins left out.
+- A golden glow and "Zzz" while you rest in an inn or a city.
+- Smooth animations when you gain XP or level up.
+- Works with tracked reputations.
+- Minimap button and an entry in the addon menu at the minimap.
+- Settings in Options → AddOns → XPForever, English and German.

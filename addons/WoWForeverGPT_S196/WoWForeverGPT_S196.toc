@@ -1,0 +1,7 @@
+## Interface: 16001
+## Title: 와우 AI 응답 슬롯 196
+## Notes: 와우 AI 답변 수신에 사용합니다. 활성화 상태로 두세요.
+## LoadOnDemand: 1
+## Dependencies: WoWForeverGPT
+
+Inbox.lua

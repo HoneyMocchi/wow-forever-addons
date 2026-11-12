@@ -1,0 +1,16 @@
+package-as: BetterVendorPrice
+
+ignore:
+    - install.bat
+    - luaformat.cfg
+    - BetterVendorPrice.png
+    - sample.png
+    - README.md
+    - .github
+    - BetterVendorPrice/.luacheckrc
+    - BetterVendorPrice/locale/genlocale.sh
+
+move-folders:
+  BetterVendorPrice/BetterVendorPrice: BetterVendorPrice
+
+enable-nolib-creation: no

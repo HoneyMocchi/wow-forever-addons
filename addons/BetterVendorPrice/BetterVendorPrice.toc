@@ -1,0 +1,21 @@
+## Interface: 16001, 120105
+## Title: Better Vendor Price
+## Notes: Vendor price per item and full stack in tooltips (|cFF99E5FF/bvp|r)
+## Notes: WoW Forever edition
+## Author: MooreaTV moorea@ymail.com
+## Version: v2.1.3
+## DefaultState: Enabled
+## LoadOnDemand: 0
+## SavedVariables: betterVendorPriceSaved
+## X-OpenSource-License: LGPLv3
+## X-OpenSource-Releases: https://github.com/mooreatv/BetterVendorPrice/releases
+## X-Curse-Project-ID: 332558
+## X-WoWI-ID: 25078
+## X-Wago-ID: rkGrpX6y
+## IconTexture: Interface\AddOns\BetterVendorPrice\BetterVendorPriceIcon.png
+Localization.koKR.LocalPatch.lua
+BetterVendorPrice.lua
+locale\locale.xml
+Bags.lua
+Restack.lua
+Options.lua

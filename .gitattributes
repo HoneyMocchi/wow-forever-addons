@@ -1,0 +1,10 @@
+# Installed addon bytes are hashed in the lock file. Preserve line endings exactly.
+* text=auto eol=lf
+addons/** -text
+upstream/** -text
+*.blp binary
+*.tga binary
+*.ogg binary
+*.mp3 binary
+*.ttf binary
+*.otf binary

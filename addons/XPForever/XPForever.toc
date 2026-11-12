@@ -1,0 +1,28 @@
+## Interface: 16001
+## Title: XPForever |cff9966ffby Palanim|r
+## Notes-koKR: 퀘스트·휴식 경험치와 레벨업 예상 시간을 표시합니다. /xpf로 설정합니다.
+## Notes: Improved experience bar with rested XP, quest XP and level-up forecast.
+## Notes-deDE: Verbesserte XP-Leiste mit Erholungs-XP, Quest-XP und Levelprognose.
+## Author: Palanim
+## Category: Quests
+## Category-deDE: Quests
+## IconTexture: Interface\AddOns\XPForever\Media\icon
+## Version: v1.0.1
+## X-Curse-Project-ID: 1729338
+## X-Wago-ID: L6Jb2R6v
+## X-Website: https://github.com/palanimForever/XPForever
+## SavedVariables: XPForeverDB
+## SavedVariablesPerCharacter: XPForeverCharDB
+## OptionalDeps: LibDBIcon-1.0
+
+embeds.xml
+
+Locale.lua
+Core.lua
+Stats.lua
+Text.lua
+Bartender.lua
+Bar.lua
+InfoText.lua
+MinimapButton.lua
+Options.lua
