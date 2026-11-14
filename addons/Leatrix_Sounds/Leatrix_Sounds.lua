@@ -1,6 +1,6 @@
 ﻿
 	----------------------------------------------------------------------
-	-- Leatrix Sounds 1.60.27 (5th November 2026)
+	-- Leatrix Sounds 1.60.30 (11th November 2026)
 	----------------------------------------------------------------------
 
 	--  Create global table
@@ -10,7 +10,7 @@
 	local LeaSoundsLC, LeaSoundsCB = {}, {}
 
 	-- Version
-	LeaSoundsLC["AddonVer"] = "1.60.27"
+	LeaSoundsLC["AddonVer"] = "1.60.30"
 
 	-- Get locale table
 	local void, Leatrix_Sounds = ...
@@ -45,7 +45,6 @@
 	end
 
 	-- Set bindings translations
-	_G.BINDING_NAME_LEATRIX_SOUNDS_GLOBAL_TOGGLE = L["Toggle panel"]
 
 	-- if WOW_PROJECT_ID == WOW_PROJECT_MAINLINE then LeaSoundsLC.GameVersion = L["The War Within"]
 	-- elseif WOW_PROJECT_ID == WOW_PROJECT_CATACLYSM_CLASSIC then LeaSoundsLC.GameVersion = L["Cataclysm"]
@@ -1673,10 +1672,148 @@
 
 		-- The setting can't be used if this game version has no mob sound data
 		if type(Leatrix_Sounds["CREATURE_ROLES"]) == "string" and type(Leatrix_Sounds["CREATURE_SETS"]) == "string" and type(Leatrix_Sounds["CREATURE_MODELS"]) == "string" then
-			mobBox.desc:SetText(L["If checked, right-clicking the target frame of a mob, NPC, pet or player shows a Show target sounds option which lists the sounds they make, including what NPCs say, the emotes players make and the mount a player is riding.  Mounts in the mount journal get a Show mount sounds option too, and pets in the pet journal get a Show pet sounds option."])
+			mobBox.desc:SetText(L["If checked, right-clicking the target frame of a mob, NPC, pet or player, or a mount or pet in the journals, shows an option to list the sounds they make.  The option is not shown in combat or while addons are restricted (such as during instanced encounters)."])
 		else
 			mobBox.desc:SetText(L["Target sound data is not available for this game version."])
 			LeaSoundsLC:LockItem(mobBox, true)
+		end
+
+		----------------------------------------------------------------------
+		-- Toggle panel key (the key is bound in the addon code so the game keybindings menu is not tainted)
+		----------------------------------------------------------------------
+
+		local keyDesc -- Description below the key button (the set defaults button goes below it)
+
+		-- (in a do block so its locals don't count towards the limit for the rest of this function)
+		do
+
+			local keyLabel = settingsChild:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+			keyLabel:SetPoint("TOPLEFT", mobBox.desc, "BOTTOMLEFT", 0, -14)
+			keyLabel:SetText(L["Toggle panel key"])
+
+			local keyBtn = LeaSoundsLC:CreateButton("ToggleKeyButton", settingsChild, "None", "TOPLEFT", 0, 0, 196, 22)
+			keyBtn:ClearAllPoints()
+			keyBtn:SetPoint("TOPLEFT", keyLabel, "BOTTOMLEFT", 0, -6)
+			keyBtn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+
+			keyDesc = settingsChild:CreateFontString(nil, "ARTWORK", "GameFontDisable")
+			keyDesc:SetPoint("TOPLEFT", keyBtn, "BOTTOMLEFT", 0, -4)
+			keyDesc:SetWidth(settingsInner)
+			keyDesc:SetJustifyH("LEFT")
+			keyDesc:SetJustifyV("TOP")
+			keyDesc:SetSpacing(2)
+			keyDesc:SetText(L["Open or close the Leatrix Sounds panel with a key.  Click the button, then press a key (you can include Shift, Ctrl or Alt).  Press Escape to cancel or right-click to remove the key."])
+
+			-- Hidden button that the key clicks
+			local toggleBtn = CreateFrame("Button", "LeaSoundsGlobalKeyToggle", UIParent)
+			toggleBtn:Hide()
+			toggleBtn:RegisterForClicks("AnyDown")
+			toggleBtn:SetScript("OnClick", function() SlashCmdList["Leatrix_Sounds"]("") end)
+
+			local function KeyName(key)
+				return GetBindingText and GetBindingText(key) or key
+			end
+
+			local listening = false
+			local applyPending = false
+
+			-- Apply the key
+			local function ApplyKey()
+				if InCombatLockdown() then
+					applyPending = true
+					return
+				end
+				applyPending = false
+				ClearOverrideBindings(keyBtn)
+				if LeaSoundsLC["ToggleKey"] ~= "" then
+					SetOverrideBindingClick(keyBtn, false, LeaSoundsLC["ToggleKey"], "LeaSoundsGlobalKeyToggle", "LeftButton")
+				end
+			end
+
+			-- Show the key
+			local function Refresh()
+				if listening then
+					keyBtn:SetText(L["Press a key"])
+				elseif LeaSoundsLC["ToggleKey"] ~= "" then
+					keyBtn:SetText("|cff00ff00" .. KeyName(LeaSoundsLC["ToggleKey"]) .. "|r")
+				else
+					keyBtn:SetText("|cff808080" .. L["None"] .. "|r")
+				end
+			end
+
+			local function StopListening()
+				if listening then
+					keyBtn:EnableKeyboard(false)
+					listening = false
+				end
+				Refresh()
+			end
+
+			local modifierKeys = {LSHIFT = true, RSHIFT = true, LCTRL = true, RCTRL = true, LALT = true, RALT = true, LMETA = true, RMETA = true}
+
+			-- Capture the next key pressed
+			keyBtn:SetScript("OnKeyDown", function(self, key)
+				if not listening then return end
+				if modifierKeys[key] then return end
+				if key == "ESCAPE" then
+					StopListening()
+					return
+				end
+				if InCombatLockdown() then
+					StopListening()
+					LeaSoundsLC:Print("You cannot do that in combat.")
+					return
+				end
+				LeaSoundsLC["ToggleKey"] = (IsAltKeyDown() and "ALT-" or "") .. (IsControlKeyDown() and "CTRL-" or "") .. (IsShiftKeyDown() and "SHIFT-" or "") .. (IsMetaKeyDown and IsMetaKeyDown() and "META-" or "") .. key
+				ApplyKey()
+				StopListening()
+			end)
+
+			-- Setting a key script turns keyboard input on by itself, so turn it off until the button is clicked
+			keyBtn:EnableKeyboard(false)
+
+			keyBtn:SetScript("OnClick", function(self, mouseButton)
+				if InCombatLockdown() then
+					StopListening()
+					LeaSoundsLC:Print("You cannot do that in combat.")
+					return
+				end
+				if mouseButton == "RightButton" then
+					-- Remove the key
+					StopListening()
+					LeaSoundsLC["ToggleKey"] = ""
+					ApplyKey()
+					Refresh()
+					return
+				end
+				if listening then
+					StopListening()
+				else
+					listening = true
+					keyBtn:EnableKeyboard(true)
+					keyBtn:SetPropagateKeyboardInput(false)
+					Refresh()
+				end
+			end)
+
+			keyBtn:HookScript("OnShow", Refresh)
+			keyBtn:HookScript("OnHide", StopListening)
+			keyBtn:RegisterEvent("PLAYER_REGEN_DISABLED")
+			keyBtn:RegisterEvent("PLAYER_REGEN_ENABLED")
+			keyBtn:SetScript("OnEvent", function(self, event)
+				if event == "PLAYER_REGEN_DISABLED" then
+					-- Entering combat, stop listening so key presses reach the game
+					if listening then StopListening() end
+				elseif event == "PLAYER_REGEN_ENABLED" then
+					-- Set the key if it could not be set during combat
+					if applyPending then ApplyKey() end
+				end
+			end)
+
+			-- Set the key now
+			ApplyKey()
+			Refresh()
+
 		end
 
 		----------------------------------------------------------------------
@@ -1686,7 +1823,7 @@
 
 		local defaultsBtn = LeaSoundsLC:CreateButton("SetDefaultsButton", settingsChild, "Set defaults", "TOPLEFT", 0, 0, 0, 22)
 		defaultsBtn:ClearAllPoints()
-		defaultsBtn:SetPoint("TOPLEFT", mobBox.desc, "BOTTOMLEFT", 0, -14)
+		defaultsBtn:SetPoint("TOPLEFT", keyDesc, "BOTTOMLEFT", 0, -14)
 		AddButtonIcon(defaultsBtn, 0, "reset")
 
 		-- Confirmation shown in place of the button
@@ -1727,7 +1864,7 @@
 		defaultsBtn.desc:SetJustifyH("LEFT")
 		defaultsBtn.desc:SetJustifyV("TOP")
 		defaultsBtn.desc:SetSpacing(2)
-		defaultsBtn.desc:SetText(L["Set all settings back to their defaults, including the menu categories and the panel size and position.  The language and muted sounds are not changed."])
+		defaultsBtn.desc:SetText(L["Set all settings back to their defaults, including the menu categories and the panel size and position.  The language, muted sounds and toggle panel key are not changed."])
 
 		-- Fit the scroll area to the settings (done when the settings are shown, once the text has been laid out)
 		local function SetSettingsHeight()
@@ -1863,6 +2000,7 @@
 			end
 			confirm:SetWidth(inner)
 			defaultsBtn.desc:SetWidth(inner)
+			keyDesc:SetWidth(inner)
 			-- Dividing line between the columns
 			settingsFrame.divider:ClearAllPoints()
 			settingsFrame.divider:SetPoint("TOPLEFT", settingsWidth + columnGap / 2, -4)
@@ -2377,7 +2515,8 @@
 		end)
 		backBtn:SetScript("OnClick", CloseSettings)
 		-- Close settings properly if the settings frame is hidden (such as when the panel is closed)
-		settingsFrame:SetScript("OnHide", CloseSettings)
+		-- (hooked so it does not replace the earlier hide handlers, such as the one that cancels Are you sure?)
+		settingsFrame:HookScript("OnHide", CloseSettings)
 		-- Close settings when the panel is closed so the listing shows next time
 		PageF:HookScript("OnHide", CloseSettings)
 
@@ -2426,7 +2565,7 @@
 				return item
 			end
 
-			-- Make the contents of a tab (what the tab is for, the journal OR a target's portrait, then the note shown if Show target sounds is turned off)
+			-- Make the contents of a tab (what the tab is for, the journal OR a target's portrait, a note about restrictions, then the note shown if Show target sounds is turned off)
 			-- (Show target sounds also turns the journal options on and off)
 			local function MakeTabPage(intro, journalHeading, journalLine, journalIcon, targetHeading, targetLine)
 				local tp = CreateFrame("Frame", nil, page)
@@ -2443,8 +2582,13 @@
 				tp.orText:SetPoint("TOPLEFT", journal, "BOTTOMLEFT", 6, -18)
 				tp.orText:SetText(L["OR..."])
 				tp.target = MakeItem(tp, journal, -60, targetHeading, targetLine)
+				tp.note = tp:CreateFontString(nil, "ARTWORK", "GameFontDisable")
+				tp.note:SetPoint("TOPLEFT", tp.target, "BOTTOMLEFT", 0, -24)
+				tp.note:SetPoint("RIGHT", tp, "RIGHT", -10, 0)
+				tp.note:SetJustifyH("LEFT") -- (wraps if the panel is too narrow for it)
+				tp.note:SetText(L["These options are not shown in combat or while addons are restricted (such as during instanced encounters)."])
 				tp.warning = tp:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
-				tp.warning:SetPoint("TOPLEFT", tp.target, "BOTTOMLEFT", 0, -24)
+				tp.warning:SetPoint("TOPLEFT", tp.note, "BOTTOMLEFT", 0, -14)
 				tp.warning:SetTextColor(1.0, 0.38, 0.38)
 				tp.warning:SetText(L["Show target sounds is turned off.  You can turn it on in the settings."])
 				return tp
@@ -2454,13 +2598,13 @@
 			local tabPages = {}
 			tabPages.mounts = MakeTabPage(L["To listen to and mute the sounds a mount makes, either..."],
 				L["Use the mount journal"], L["Open it, right-click any mount (even ones you haven't collected) and choose Show mount sounds."], "Interface\\Icons\\MountJournalPortrait",
-				L["Target a player riding a mount"], L["Right-click their portrait and choose Show target sounds (not in combat or inside instances)."])
+				L["Target a player riding a mount"], L["Right-click their portrait and choose Show target sounds."])
 
 			-- Pets tab (the pet journal OR a pet, such as a companion pet or a hunter's pet, with a pet carrier icon)
 			if hasPets then
 				tabPages.pets = MakeTabPage(L["To listen to and mute the sounds a pet makes, either..."],
 					L["Use the pet journal"], L["Open it, right-click any pet (even ones you haven't collected) and choose Show pet sounds."], "Interface\\Icons\\PetJournalPortrait",
-					L["Target a pet"], L["Right-click its portrait and choose Show target sounds (not in combat or inside instances)."])
+					L["Target a pet"], L["Right-click its portrait and choose Show target sounds."])
 				tabPages.pets.target.icon:SetTexture("Interface\\Icons\\INV_Box_PetCarrier_01")
 				tabPages.pets.target.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 			end
@@ -4160,11 +4304,41 @@
 				return false
 			end
 
-			-- Check the mob and mount sounds menu options should stay out of the menus (in combat or while the game is hiding a unit's details, such as in restricted instances)
+			-- Check the mob and mount sounds menu options should stay out of the menus (in combat, while any of the game's addon restrictions are in place,
+			-- or while the game is hiding a unit's details, such as in restricted instances)
 			-- Nothing about the unit is read and the menu isn't changed then (changing the menu taints it and the game's own menu code errors when it reads the hidden values)
+			-- The restrictions apply to every unit, including your own character (your own details are never hidden but changing the menu still taints it)
 			-- (it's kept in LeaSoundsLC so it doesn't count towards the limit for locals in this function)
 			LeaSoundsLC.MenuRestricted = function(unit, needAuras)
+				if LeaSoundsLC.MenusRestricted() then return true end
+				return LeaSoundsLC.UnitHidden(unit, needAuras)
+			end
+
+			-- Check every menu option should stay out of the menus, whatever the menu is for (also used by the mount and pet journal menus)
+			-- (in combat, while any of the game's addon restrictions are in place or while the game is hiding auras)
+			LeaSoundsLC.MenusRestricted = function()
 				if InCombatLockdown() then return true end
+				-- Any addon restriction the game has in place (such as during instanced encounters)
+				if C_RestrictedActions and C_RestrictedActions.IsAddOnRestrictionActive and Enum and Enum.AddOnRestrictionType then
+					local ok, active = pcall(function()
+						for void, restriction in pairs(Enum.AddOnRestrictionType) do
+							if C_RestrictedActions.IsAddOnRestrictionActive(restriction) then return true end
+						end
+						return false
+					end)
+					if not ok or active then return true end
+				end
+				-- Auras being hidden applies to every unit
+				if C_Secrets and C_Secrets.ShouldAurasBeSecret then
+					local ok, hidden = pcall(C_Secrets.ShouldAurasBeSecret)
+					if not ok or hidden then return true end
+				end
+				return false
+			end
+
+			-- Check the game is hiding a unit's details (such as in or just after leaving a restricted instance), or its auras too if needAuras is set
+			-- (the menus check combat as well, see MenuRestricted, but other addons asking for sounds don't change a menu so combat doesn't matter for them)
+			LeaSoundsLC.UnitHidden = function(unit, needAuras)
 				if C_Secrets then
 					local ok, hidden = pcall(function()
 						if C_Secrets.ShouldUnitIdentityBeSecret and C_Secrets.ShouldUnitIdentityBeSecret(unit) then return true end
@@ -4373,21 +4547,29 @@
 				if LeaSoundsLC.MenuRestricted(unit) or not IsTargetMob(unit) then return end
 				-- The menu is left completely alone if the game won't say which model the mob uses (such as in restricted instances)
 				-- Changing the menu then taints it and the game's own menu code errors when it reads the mob's hidden values
-				local modelID = GetTargetModelID(unit)
-				if not modelID then return end
+				local open = LeaSoundsLC.MobOpener(unit)
+				if not open then return end
 				-- The game holds back section headings (such as Other Options) until something is added after them
 				-- Throw away any that are still held back so an empty heading isn't shown above ours
 				if rootDescription.ClearQueuedDescriptions then rootDescription:ClearQueuedDescriptions() end
 				rootDescription:CreateDivider()
 				rootDescription:CreateTitle(L["Leatrix Sounds"])
-				-- The name is read now as the target may change before the button is clicked
-				local name = UnitName(unit)
-				if IsSecret(name) or type(name) ~= "string" or name == "" then name = nil end
+				rootDescription:CreateButton(L["Show target sounds"], function() open() end)
+			end
+
+			-- Get a function which opens the panel with a mob's sounds (nil if the game won't say which model the mob uses)
+			-- The model, name, creature ID and battle pet species are read now as the unit may change before the function is called,
+			-- and the mob's display is found when it's called (its model can take a few frames to load)
+			-- (it's kept in LeaSoundsLC so it doesn't count towards the limit for locals in this function)
+			LeaSoundsLC.MobOpener = function(unit)
+				local modelID = GetTargetModelID(unit)
+				if not modelID then return end
+				local ok, name = pcall(UnitName, unit)
+				if not ok or IsSecret(name) or type(name) ~= "string" or name == "" then name = nil end
 				if name then name = gsub(name, "|", "||") end
-				-- The creature ID (and battle pet species) is read now too, and its display is found when the button is clicked (its model can take a few frames to load)
 				local creatureID = GetTargetCreatureID(unit)
 				local speciesID = battlePet.GetSpecies(unit)
-				rootDescription:CreateButton(L["Show target sounds"], function()
+				return function()
 					local function FromCreature()
 						FindCreatureDisplay(creatureID, modelID, function(displayID) OpenMobSounds(modelID, name, nil, displayID) end)
 					end
@@ -4399,7 +4581,51 @@
 					else
 						FromCreature()
 					end
+				end
+			end
+
+			-- Get the model file a creature display uses, or a creature uses if isCreature is set (the model may take a few frames to load so it's tried again a few times)
+			-- callback gets the model file ID (or nil if it can't be found)
+			LeaSoundsLC.FindModelFile = function(id, isCreature, callback, tries)
+				local ok, modelID = pcall(function()
+					if isCreature then targetModel:SetCreature(id) else targetModel:SetDisplayInfo(id) end
+					local modelID = targetModel:GetModelFileID()
+					targetModel:ClearModel()
+					if IsSecret(modelID) or type(modelID) ~= "number" or modelID <= 0 then return end
+					return modelID
 				end)
+				if not ok then pcall(targetModel.ClearModel, targetModel) callback(nil) return end
+				if modelID then
+					callback(modelID)
+				elseif (tries or 0) < 10 then
+					C_Timer.After(0.05, function() LeaSoundsLC.FindModelFile(id, isCreature, callback, (tries or 0) + 1) end)
+				else
+					callback(nil)
+				end
+			end
+
+			-- Get a function which opens the panel with a creature's sounds when there's no unit for it (such as a boss on a dungeon map)
+			-- displayID gives the creature's exact sounds, otherwise its display is found from the creature ID (nil if there's neither)
+			LeaSoundsLC.CreatureOpener = function(creatureID, displayID, name)
+				if IsSecret(creatureID) or type(creatureID) ~= "number" or creatureID <= 0 then creatureID = nil end
+				if IsSecret(displayID) or type(displayID) ~= "number" or displayID <= 0 then displayID = nil end
+				if not creatureID and not displayID then return end
+				if not displayID and not targetModel.SetCreature then return end
+				if IsSecret(name) or type(name) ~= "string" or name == "" then name = nil end
+				if name then name = gsub(name, "|", "||") end
+				return function()
+					local function NotFound() LeaSoundsLC:Print(L["Target sounds are not available for this target."]) end
+					if displayID then
+						LeaSoundsLC.FindModelFile(displayID, false, function(modelID)
+							if modelID then OpenMobSounds(modelID, name, nil, displayID) else NotFound() end
+						end)
+					else
+						LeaSoundsLC.FindModelFile(creatureID, true, function(modelID)
+							if not modelID then NotFound() return end
+							FindCreatureDisplay(creatureID, modelID, function(display) OpenMobSounds(modelID, name, nil, display) end)
+						end)
+					end
+				end
 			end
 
 			for void, tag in ipairs({"MENU_UNIT_TARGET", "MENU_UNIT_PET", "MENU_UNIT_OTHERPET", "MENU_UNIT_BATTLEPET", "MENU_UNIT_OTHERBATTLEPET"}) do
@@ -4458,21 +4684,29 @@
 				if LeaSoundsLC["MobSoundsMenu"] ~= "On" then return end
 				local unit = contextData and contextData.unit or "target"
 				if IsSecret(unit) or type(unit) ~= "string" or LeaSoundsLC.MenuRestricted(unit) or not IsPlayerUnit(unit) then return end
-				-- The player's sounds and mount are read now as the target may change before the button is clicked
-				-- (the mount is found from their buffs, so it's left out while the game is hiding auras)
+				local open = LeaSoundsLC.PlayerOpener(unit)
+				if not open then return end
+				-- The game holds back section headings until something is added after them, so throw away any that are still held back
+				if rootDescription.ClearQueuedDescriptions then rootDescription:ClearQueuedDescriptions() end
+				rootDescription:CreateDivider()
+				rootDescription:CreateTitle(L["Leatrix Sounds"])
+				rootDescription:CreateButton(L["Show target sounds"], function() open() end)
+			end
+
+			-- Get a function which opens the panel with a player's sounds and the mount they're riding (nil if there are no sounds for them)
+			-- The player's sounds and mount are read now as the unit may change before the function is called
+			-- (the mount is found from their buffs, so it's left out while the game is hiding auras)
+			-- (it's kept in LeaSoundsLC so it doesn't count towards the limit for locals in this function)
+			LeaSoundsLC.PlayerOpener = function(unit)
 				local player, modelID = GetPlayerSounds(unit)
-				local mount = not LeaSoundsLC.MenuRestricted(unit, true) and LeaSoundsLC.GetUnitMountInfo and LeaSoundsLC.GetUnitMountInfo(unit)
+				local mount = not LeaSoundsLC.UnitHidden(unit, true) and LeaSoundsLC.GetUnitMountInfo and LeaSoundsLC.GetUnitMountInfo(unit)
 				if not player and not mount then return end
 				-- (a player who isn't in the data still gets their model's sounds, but never the voices mobs with that model have)
 				player = player or {nil, nil, {}}
 				local ok, name = pcall(UnitName, unit)
 				if not ok or IsSecret(name) or type(name) ~= "string" or name == "" then name = L["This target"] end
 				name = gsub(name, "|", "||")
-				-- The game holds back section headings until something is added after them, so throw away any that are still held back
-				if rootDescription.ClearQueuedDescriptions then rootDescription:ClearQueuedDescriptions() end
-				rootDescription:CreateDivider()
-				rootDescription:CreateTitle(L["Leatrix Sounds"])
-				rootDescription:CreateButton(L["Show target sounds"], function()
+				return function()
 					-- Prevent panel from showing if Blizzard Store is showing
 					if StoreFrame and StoreFrame:GetAttribute("isshown") then return end
 					local function Show(mountSounds)
@@ -4491,7 +4725,14 @@
 					else
 						Show(nil)
 					end
-				end)
+				end
+			end
+
+			-- Get a function which opens the panel with a unit's sounds (a player, mob or pet), or nil if there are none or the game is hiding the unit
+			LeaSoundsLC.UnitOpener = function(unit)
+				if IsSecret(unit) or type(unit) ~= "string" or LeaSoundsLC.UnitHidden(unit) then return end
+				if IsPlayerUnit(unit) then return LeaSoundsLC.PlayerOpener(unit) end
+				if IsTargetMob(unit) then return LeaSoundsLC.MobOpener(unit) end
 			end
 
 			for void, tag in ipairs({"MENU_UNIT_SELF", "MENU_UNIT_PLAYER", "MENU_UNIT_ENEMY_PLAYER", "MENU_UNIT_PARTY", "MENU_UNIT_RAID_PLAYER", "MENU_UNIT_TARGET"}) do
@@ -4668,6 +4909,36 @@
 					end)
 				end
 
+				-- Get a function which opens the panel with a mount's sounds from the mount's spell or buff (nil if it isn't a mount spell)
+				-- (it's kept in LeaSoundsLC so it doesn't count towards the limit for locals in this function)
+				LeaSoundsLC.MountSpellOpener = function(spellID)
+					if IsSecret(spellID) or type(spellID) ~= "number" or spellID <= 0 then return end
+					local mountID, fid, creature = FindMountSpell(spellID)
+					if not mountID and hasJournal then
+						mountID = C_MountJournal.GetMountFromSpell(spellID)
+						if IsSecret(mountID) or type(mountID) ~= "number" or mountID <= 0 then mountID = nil end
+					end
+					if not mountID then return end
+					-- The mount journal name is used if there is one, otherwise the spell name
+					local name = hasJournal and C_MountJournal.GetMountInfoByID and C_MountJournal.GetMountInfoByID(mountID)
+					if IsSecret(name) or type(name) ~= "string" or name == "" then
+						name = (C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(spellID)) or (GetSpellInfo and GetSpellInfo(spellID))
+					end
+					if IsSecret(name) or type(name) ~= "string" or name == "" then name = L["This mount"] end
+					name = gsub(name, "|", "||")
+					return function() OpenMountSounds(mountID, name, fid, creature) end
+				end
+
+				-- Get a function which opens the panel with a mount's sounds from an item which teaches the mount (nil if it doesn't teach one or the game can't say)
+				LeaSoundsLC.MountItemOpener = function(itemID)
+					if not hasJournal or not C_MountJournal.GetMountFromItem or not C_MountJournal.GetMountInfoByID then return end
+					if IsSecret(itemID) or type(itemID) ~= "number" or itemID <= 0 then return end
+					local mountID = C_MountJournal.GetMountFromItem(itemID)
+					if IsSecret(mountID) or type(mountID) ~= "number" or mountID <= 0 then return end
+					local void, spellID = C_MountJournal.GetMountInfoByID(mountID)
+					return LeaSoundsLC.MountSpellOpener(spellID)
+				end
+
 				-- Check a unit is a mounted player (anything the game won't say is treated as not)
 				local function IsUnitPlayer(unit)
 					if not unit then return false end
@@ -4722,6 +4993,8 @@
 				-- Collected mounts have a menu already (the owner is the mount's button or its icon)
 				Menu.ModifyMenu("MENU_MOUNT_COLLECTION_MOUNT", function(owner, rootDescription)
 					if LeaSoundsLC["MobSoundsMenu"] ~= "On" or not owner then return end
+					-- The menu is left alone in combat or while the game's restrictions are in place (changing it then taints it)
+					if LeaSoundsLC.MenusRestricted() then return end
 					local mountID = owner.mountID
 					if not mountID and owner.GetParent and owner:GetParent() then mountID = owner:GetParent().mountID end
 					AddJournalMenu(rootDescription, mountID)
@@ -4840,6 +5113,16 @@
 				end
 			end
 
+			-- Get a function which opens the panel with a pet's sounds from an item which teaches the pet (nil if it doesn't teach one or the game can't say)
+			-- (it's kept in LeaSoundsLC so it doesn't count towards the limit for locals in this function)
+			LeaSoundsLC.PetItemOpener = function(itemID)
+				if not C_PetJournal.GetPetInfoByItemID then return end
+				if IsSecret(itemID) or type(itemID) ~= "number" or itemID <= 0 then return end
+				local speciesID = select(13, C_PetJournal.GetPetInfoByItemID(itemID))
+				if IsSecret(speciesID) or type(speciesID) ~= "number" or speciesID <= 0 then return end
+				return function() OpenPetSounds(nil, speciesID) end
+			end
+
 			-- Add the option to a pet journal menu (or show it in a right-click list of its own if onlyOption is set)
 			local function AddPetMenu(rootDescription, petID, speciesID, onlyOption, owner)
 				if onlyOption then
@@ -4854,6 +5137,8 @@
 			-- Collected pets have a menu already (the owner is the pet's button, its icon, a loadout slot or the pet card, which all have the pet ID on them or their parent)
 			Menu.ModifyMenu("MENU_PET_COLLECTION_PET", function(owner, rootDescription)
 				if LeaSoundsLC["MobSoundsMenu"] ~= "On" or not owner then return end
+				-- The menu is left alone in combat or while the game's restrictions are in place (changing it then taints it)
+				if LeaSoundsLC.MenusRestricted() then return end
 				local petID = owner.petID
 				if not petID and owner.GetParent and owner:GetParent() then petID = owner:GetParent().petID end
 				if not petID or IsSecret(petID) then return end
@@ -4913,6 +5198,29 @@
 
 			end
 			SetupPetSounds()
+
+			----------------------------------------------------------------------
+			-- Sounds for other addons (such as the Leatrix Plus info cards)
+			----------------------------------------------------------------------
+
+			-- Get a function which opens the panel with the sounds for something (nil if there are no sounds for it)
+			-- what is a table with any of: unit (a player, mob or pet), npcID and displayID (a creature with no unit, such as a boss on a dungeon map),
+			-- name (used with npcID), spellID (a mount spell or buff) and itemID (an item which teaches a mount or pet)
+			-- Everything is read straight away (the unit may change before the function is called), so call this when the thing is shown, not when it's clicked
+			-- Nothing is changed until the returned function is called, so it can be called at any time, including in combat
+			-- It never errors into the addon asking (the game can hide values from addons, and anything missed by the checks means no sounds rather than an error)
+			_G.LeaSoundsGlobalGetSounds = function(what)
+				if type(what) ~= "table" then return end
+				local ok, open = pcall(function()
+					local open = what.unit and LeaSoundsLC.UnitOpener(what.unit)
+					if not open and what.npcID then open = LeaSoundsLC.CreatureOpener(tonumber(what.npcID), tonumber(what.displayID), what.name) end
+					if not open and what.spellID and LeaSoundsLC.MountSpellOpener then open = LeaSoundsLC.MountSpellOpener(what.spellID) end
+					if not open and what.itemID and LeaSoundsLC.MountItemOpener then open = LeaSoundsLC.MountItemOpener(what.itemID) end
+					if not open and what.itemID and LeaSoundsLC.PetItemOpener then open = LeaSoundsLC.PetItemOpener(what.itemID) end
+					return open
+				end)
+				if ok and type(open) == "function" then return open end
+			end
 
 		end
 		end
@@ -5439,6 +5747,11 @@
 			LeaSoundsLC:LoadVarChk("AutoPlayNext", "Off")
 			LeaSoundsLC:LoadVarChk("PlayInBackground", "On")
 			LeaSoundsLC:LoadVarChk("MobSoundsMenu", "On")
+			if type(LeaSoundsDB["ToggleKey"]) == "string" then
+				LeaSoundsLC["ToggleKey"] = LeaSoundsDB["ToggleKey"]
+			else
+				LeaSoundsLC["ToggleKey"] = ""
+			end
 
 			-- Load the unchecked music and effects categories (category key = true), saved in LeaSoundsDB
 			-- (collapsed target sounds headings are saved the same way, heading key = true)
@@ -5483,6 +5796,7 @@
 			LeaSoundsDB["AutoPlayNext"] = LeaSoundsLC["AutoPlayNext"]
 			LeaSoundsDB["PlayInBackground"] = LeaSoundsLC["PlayInBackground"]
 			LeaSoundsDB["MobSoundsMenu"] = LeaSoundsLC["MobSoundsMenu"]
+			LeaSoundsDB["ToggleKey"] = LeaSoundsLC["ToggleKey"]
 			-- (the mount sounds setting was merged into the target sounds setting)
 			LeaSoundsDB["MountSoundsMenu"] = nil
 
@@ -5517,7 +5831,22 @@
 				LeaSoundsLC["PageF"]:SetPoint(LeaSoundsLC["MainPanelA"], UIParent, LeaSoundsLC["MainPanelR"], LeaSoundsLC["MainPanelX"], LeaSoundsLC["MainPanelY"])
 				if LeaSoundsLC.SetPanelSize then LeaSoundsLC:SetPanelSize(800, 616) end
 				return
-			elseif str == "wipe" then
+			elseif str == "wipe" or strfind(str, "^wipe%s+all%s*$") then
+				-- Keep the toggle panel key unless wipe all is used
+				local keepKey
+				if str == "wipe" then keepKey = LeaSoundsLC["ToggleKey"] end
+				-- Unmute any sounds muted by the addon
+				if LeaSoundsLC["MutedSounds"] and UnmuteSoundFile then
+					for id in pairs(LeaSoundsLC["MutedSounds"]) do UnmuteSoundFile(id) end
+				end
+				-- Wipe settings
+				wipe(LeaSoundsDB)
+				-- Put back the toggle panel key
+				if keepKey then LeaSoundsDB["ToggleKey"] = keepKey end
+				eventFrame:UnregisterAllEvents()
+				ReloadUI()
+			elseif str == "admin" then
+				-- Preset profile (reload required)
 				-- Unmute any sounds muted by the addon
 				if LeaSoundsLC["MutedSounds"] and UnmuteSoundFile then
 					for id in pairs(LeaSoundsLC["MutedSounds"]) do UnmuteSoundFile(id) end
@@ -5525,6 +5854,8 @@
 				-- Wipe settings
 				wipe(LeaSoundsDB)
 				eventFrame:UnregisterAllEvents()
+				-- Settings
+				LeaSoundsDB["ToggleKey"] = "CTRL-F"
 				ReloadUI()
 			else
 				-- Invalid command entered

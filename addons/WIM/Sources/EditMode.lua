@@ -1,3 +1,4 @@
+-- Local compatibility: preserve the standalone editor; never mutate Blizzard EditModeManager.
 --imports
 local WIM = WIM;
 local _G = _G;

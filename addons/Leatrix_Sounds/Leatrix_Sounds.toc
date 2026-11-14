@@ -3,7 +3,7 @@
 ## Title: Leatrix Sounds
 ## Notes: curseforge.com/wow/addons/leatrix-sounds
 
-## Version: 1.60.27
+## Version: 1.60.30
 ## Author: Leatrix
 ## SavedVariables: LeaSoundsDB
 ## LoadSavedVariablesFirst: true

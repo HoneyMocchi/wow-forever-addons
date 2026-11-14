@@ -1,0 +1,57 @@
+{
+  "checked_at": "2026-11-14 Asia/Seoul",
+  "candidate_version": "2026.11.14.1",
+  "updated_folders": [
+    "Attune",
+    "QuestieDB",
+    "Clique",
+    "BlizzMove",
+    "BlizzMove_Debug",
+    "idTip",
+    "Myslot",
+    "Questie",
+    "Prat-3.0",
+    "WIM",
+    "TomTom",
+    "Leatrix_Plus",
+    "Leatrix_Sounds",
+    "Leatrix_Maps",
+    "ForeverAuras",
+    "ForeverAurasArchive",
+    "ForeverAurasModelPaths",
+    "ForeverAurasOptions",
+    "ForeverAurasTemplates",
+    "ForeverDungeonJournal",
+    "BetterFishing",
+    "ForeverThreat"
+  ],
+  "held": {
+    "ForeverLootSparkles": "1.3.1 유지: 최신 2.0.0은 약초/광맥/시체 반짝임 삭제"
+  },
+  "unchanged_latest": [
+    "!BugGrabber",
+    "BugSack",
+    "BetterVendorPrice",
+    "HidingBar",
+    "HidingBar_Options",
+    "Immersion",
+    "MacroToolkit",
+    "MacroToolkitIcons",
+    "XPForever"
+  ],
+  "excluded_optional_bundle": [
+    "QuestieTrace (사용자가 설치하지 않은 별도 데이터 수집 애드온)"
+  ],
+  "game_validation": "not performed; requires restart and in-game validation",
+  "release_tag": "not created; candidate PR only",
+  "ai_runtime": "not copied; no Inbox, signals, transcripts, credentials or bridge configuration included",
+  "validation": {
+    "manifest_folders": 234,
+    "lua51_files": 1645,
+    "sync_tests_passed": 4,
+    "dungeon_journal_missing_ui_keys": 0,
+    "dungeon_journal_missing_quest_titles": 0,
+    "fishing_swap_regressions_passed": 14,
+    "game_tested": false
+  }
+}

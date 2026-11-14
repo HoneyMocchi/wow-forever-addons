@@ -904,6 +904,45 @@ function ui.SoundRow(category, name, tooltip, dbTree, flagKey, flagDefault, soun
     return { setting = flagSetting, soundSetting = soundSetting, init = init };
 end
 
+-- A slider row, consisting of a checkbox to enable/disable and a slider to adjust a value.
+function ui.SliderRow(category, name, tooltip, dbTree, enableKey, default, sliderName, sliderTooltip, sliderDbTree, sliderKey, sliderDefault, min, max, onChange)
+	local useSlider, sliderValue;
+	useSlider = Settings.RegisterProxySetting(category, nextVariable(),
+        Settings.VarType.Boolean, name, default and true or false,
+        function() return resolveTree(dbTree)[enableKey] and true or false; end,
+        function(value)
+            value = value and true or false;
+            resolveTree(dbTree)[enableKey] = value;
+            options.DebugSetting("modern", enableKey, value);
+			if (onChange) then onChange(value); end
+        end);
+    table.insert(allSettings, useSlider);
+
+    sliderValue = Settings.RegisterProxySetting(category, nextVariable(),
+        Settings.VarType.Number, sliderName, sliderDefault,
+        function() return resolveTree(sliderDbTree)[sliderKey]; end,
+        function(value)
+            resolveTree(sliderDbTree)[sliderKey] = value;
+            options.DebugSetting("modern", sliderKey, value);
+            if (onChange) then onChange(value); end
+        end);
+    table.insert(allSettings, sliderValue);
+
+	local minValue, maxValue, step = min or 0, max or 100, 1;
+	local options = Settings.CreateSliderOptions(minValue, maxValue, step);
+	options:SetLabelFormatter(_G.MinimalSliderWithSteppersMixin.Label.Right, FormatPercentageRounded)
+
+	local initializer = _G.CreateSettingsCheckboxSliderInitializer(
+		useSlider, name, tooltip,
+		sliderValue, options, sliderName, sliderTooltip);
+	local layout = layoutForCategory(category);
+	if (layout) then
+		layout:AddInitializer(initializer);
+	end;
+
+    return { useSlider = useSlider, sliderValue = sliderValue, init = initializer };
+end
+
 -- A multiselect dropdown, the way the game's own options render
 -- bitfield settings: a standard dropdown whose menu rows are checkboxes
 -- and whose button text lists the selection. items is an ordered array
@@ -1204,40 +1243,7 @@ local function ensureBugReportHolder()
         link:SetPoint("BOTTOM", 0, inset - 4);
         link:SetText(L["Show GitHub Link"]);
         link:SetScript("OnClick", function()
-            _G.StaticPopupDialogs["WIM_BUGREPORT_URL"] = {
-                preferredIndex = _G.STATICPOPUP_NUMDIALOGS,
-                text = L["Press Ctrl+C to copy the link, then open it in your browser."],
-                button1 = _G.CLOSE,
-                hasEditBox = 1,
-                hasWideEditBox = 1,
-                editBoxWidth = 350,
-				showAlert = true,
-                OnShow = function(self)
-                    local name = self:GetName();
-                    local editBox = self.EditBox or self.editBox
-                        or (name and _G[name.."EditBox"]);
-                    if (editBox) then
-                        editBox:SetText(BUG_REPORT_URL);
-                        editBox:HighlightText();
-                        editBox:SetFocus();
-                    end
-
-					local alertIcon = _G.getglobal(self:GetName().."AlertIcon") or self.AlertIcon;
-                	alertIcon:Hide();  -- HACK : we hide the false AlertIcon
-                end,
-                EditBoxOnTextChanged = function(self)
-                    if (self:GetText() ~= BUG_REPORT_URL) then
-                        self:SetText(BUG_REPORT_URL);
-                        self:HighlightText();
-                    end
-                end,
-                EditBoxOnEscapePressed = function(self) self:GetParent():Hide(); end,
-                EditBoxOnEnterPressed = function(self) self:GetParent():Hide(); end,
-                timeout = 0,
-                whileDead = 1,
-                hideOnEscape = 1,
-            };
-            WIM.dialog.create("WIM_BUGREPORT_URL");
+			WIM.utils.dialog.copy(BUG_REPORT_URL, L["Press Ctrl+C to copy the link, then open it in your browser."]);
         end);
         link:SetScript("OnEnter", function(self)
             _G.GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
@@ -1460,10 +1466,15 @@ local function registerCategory()
             function(value) EnableModule("AddonCompartment", value); end);
     end
 
-    ui.Header(layout, L["Tooltips"]);
-    ui.Checkbox(category, L["Show WIM Tooltips"], true,
+    ui.Header(layout, L["Miscellaneous"]);
+    ui.Checkbox(category, L["Show WIM Tooltips"], db_defaults.showToolTips,
         db, "showToolTips",
         L["Shows help tooltips on WIM's windows, lists, and the custom rows of these options."]);
+	ui.Checkbox(category, L["Streaming Mode"], db_defaults.streamMode,
+        db, "streamMode",
+        L["Protect the privacy of players you chat with by hiding their full name and BattleTag."],
+		WIM.RefreshBNetWindows
+	);
 
     ui.Header(layout, L["Report a Bug"]);
     ui.Custom(layout, "WIM3SettingsBugReportTemplate",

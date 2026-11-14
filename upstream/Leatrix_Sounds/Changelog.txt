@@ -1,0 +1,49 @@
+﻿1.60.30 - 11th November 2026
+- Added support for the 'Show info card' sounds button in the latest release of Leatrix Plus.
+- Added a new option 'Set keybindings' which replaces the previous way of setting addon related keybindings.
+- The 'Show sounds' context menu option will now never appear during combat or while addon restrictions are in place (such as during instanced encounters).
+- Sounds updated to 1.60.1.70888 (Nov  9 2026) (16001).
+
+1.60.27 - 5th November 2026
+- Added a 'Show mount sounds' feature.  Right-click a mount in the mount journal and click 'Show mount sounds'.  Then you can listen to and mute any of the sounds.
+- The 'Show mob sounds' setting is now 'Show target sounds'.  Target any mob, NPC or player and click 'Show target sounds' from the target menu to see what sounds the target makes, including what NPCs say and the emotes players make.  If you target a player riding a mount, it will show the sounds of their mount too.  You can also target any pet, such as a hunter's pet, and see its sounds the same way.
+- If 'Show target sounds' is enabled in the settings, you can right-click any pet in the pet journal to hear and mute its sounds.
+- The sounds for targets are now grouped under headings such as Combat and Voice.  The headings can be collapsed and the collapse state is saved between sessions.
+- Sounds updated to 1.60.1.70790 (Nov 3 2026) (16001).
+
+1.60.26 - 28th October 2026
+- Added a 'Show mobs sounds' feature.  Target any creature and click 'Show mob sounds' from the target menu.  You can mute any of them in the usual way.
+
+1.60.25 - 21st October 2026
+- You can now right-click any playable sound to see what sound kits contain that sound.
+
+1.60.05 - 18th October 2026
+- Added a mute sound ability.  Right-click any sound to open a popup menu with a mute option.  Muted sounds continue to play in the addon while being muted in the game so you can hear what you have muted without having to unmute first.
+- Added sound categories such as spells, creatures, characters and more so you can filter the sounds shown in the listing.
+- Added multiple sound selection.  Hold control and click to select multiple sounds.  Hold shift and click to select a range of sounds.
+- Added a context menu to sounds.  Right-click any sound to open the context menu for that sound.  This lets you play the sound, mute or unmute the sound or print the sound details in chat.  If multiple sounds are selected. actions in the context menu apply to all the selected sounds.
+- Added previous and next buttons to play the previous or next sound to the one currently selected.  The keyboard shortcuts have been removed so now you can continue to play the game while navigating the panel.
+- Added a menu button to the panel.  You can use it to choose sound categories, see which sounds you have muted and open the settings panel.
+- Added a settings panel.  You can choose whether clicking tracks plays them or selects them, whether the next track should be played automatically and whether sounds should continue playing in the background after the panel is closed.  There is also a defaults button which resets your settings (language and muted sound list are not reset).
+- Added locale support.  You can choose the addon language in the settings menu.
+- Added a clear text button to the search box.
+- Added resize ability for the panel.  Drag the resize handle in the bottom-right corner.
+- The stop button will now only be clickable while a sound is playing.  Clicking it will no longer clear the track selection.
+- You can now hold shift while you scroll to jump a page at a time.
+- Unplayable sounds now have their own category in the menu (unchecked by default).  Unplayable sounds are either encrypted (and your game client doesn't have the key), missing from your game client or have no audio.
+- Improved loading times and reduced memory usage significantly.  Loading time is now negligible and very little memory is used until you open the main panel.
+- Addon file size is now much smaller making downloads and updates significantly faster.
+- Searching and changing sound categories is now faster.
+- Sounds updated to 1.60.1.70450 (Oct 15 2026) (16001).
+
+1.60.04 - 14th October 2026
+- Sounds updated to 1.60.1.70374 (Oct 12 2026) (16001).
+
+1.60.03 - 10th October 2026
+- Sounds updated to 1.60.1.70338 (Oct 9 2026) (16001).
+
+1.60.02 - 27th September 2026
+- Sounds updated to 1.60.1.70009 (Sep 23 2026) (16001).
+
+1.60.01 - 17th September 2026
+- Welcome to Forever Beta!
