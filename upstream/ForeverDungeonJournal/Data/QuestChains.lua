@@ -153,10 +153,11 @@ FDJ.QUEST_PREREQ_CHAINS = {
     },
 
     -- Excavation Site: Wetlands (Alliance): Horrors in the Highland only
-    -- becomes available after completing Rethiel the Greenwarden's full
-    -- Wetlands chain, beginning with First Mate Fitzsimmons in Menethil Harbor.
+    -- becomes available after completing Rethiel the Greenwarden's Wetlands
+    -- chain. 2.0.38: The Greenwarden (463, First Mate Fitzsimmons in Menethil
+    -- Harbor) is only a breadcrumb to Rethiel and no longer a required step:
+    -- the chain starts with Tramping Paws at Rethiel himself.
     [95646] = {
-        { id = 463, name = "The Greenwarden" },
         { id = 276, name = "Tramping Paws" },
         { id = 277, name = "Fire Taboo" },
         { id = 275, name = "Blisters on The Land" },
@@ -1388,7 +1389,7 @@ FDJ.QUEST_PREREQ_DETAILS = {
         objective = "Speak with Eitrigg in Orgrimmar. When you have discussed matters with Eitrigg, seek council from Thrall. You recall having seen Eitrigg in Thrall's chamber.",
         pickup = "Warlord Goretooth, Badlands",
         turnin = "Thrall, Orgrimmar",
-        map = { mapID = 1418, x = 0.030, y = 0.476, label = "Warlord Goretooth — Badlands", targetName = "Warlord Goretooth" },
+        map = { mapID = 1418, x = 0.058, y = 0.474, label = "Warlord Goretooth — Badlands", targetName = "Warlord Goretooth" },
     },
     [4974] = {
         level = 60, requires = 55,
@@ -1866,7 +1867,7 @@ FDJ.QUEST_PREREQ_DETAILS = {
         objective = "Find Rethiel the Greenwarden in the Wetlands.",
         pickup = "First Mate Fitzsimmons, Menethil Harbor, Wetlands",
         turnin = "Rethiel the Greenwarden, The Green Belt, Wetlands",
-        description = "First required step before Horrors in the Highland.",
+        description = "Optional breadcrumb to Rethiel; not required for Horrors in the Highland.",
         map = { mapID = 1437, x = 0.108, y = 0.596, label = "First Mate Fitzsimmons — Menethil Harbor", detail = "Start The Greenwarden here" },
     },
     [276] = {
@@ -1874,7 +1875,7 @@ FDJ.QUEST_PREREQ_DETAILS = {
         objective = "Kill 15 Mosshide Gnolls and 10 Mosshide Mongrels, then return to Rethiel the Greenwarden.",
         pickup = "Rethiel the Greenwarden, The Green Belt, Wetlands",
         turnin = "Rethiel the Greenwarden, The Green Belt, Wetlands",
-        description = "Second required step before Horrors in the Highland.",
+        description = "First required step before Horrors in the Highland.",
         map = { mapID = 1437, x = 0.562, y = 0.406, label = "Rethiel the Greenwarden — Wetlands", detail = "Continue with Tramping Paws here" },
     },
     [277] = {
@@ -1882,7 +1883,7 @@ FDJ.QUEST_PREREQ_DETAILS = {
         objective = "Bring Rethiel the Greenwarden 9 Crude Flints.",
         pickup = "Rethiel the Greenwarden, The Green Belt, Wetlands",
         turnin = "Rethiel the Greenwarden, The Green Belt, Wetlands",
-        description = "Third required step before Horrors in the Highland.",
+        description = "Second required step before Horrors in the Highland.",
         map = { mapID = 1437, x = 0.562, y = 0.406, label = "Rethiel the Greenwarden — Wetlands", detail = "Continue with Fire Taboo here" },
     },
     [275] = {
@@ -1935,12 +1936,14 @@ FDJ.QUEST_PREREQ_DETAILS = {
     },
 
     -- Gnomeregan prerequisite steps.
-    [2926] = { level = 27, requires = 20, objective = "Use the Empty Leaden Collection Phial on a living Irradiated Invader or Irradiated Pillager, then return the full phial to Ozzie Togglevolt.", pickup = "Ozzie Togglevolt, Kharanos, Dun Morogh", turnin = "Ozzie Togglevolt, Kharanos, Dun Morogh", description = "Required before The Only Cure is More Green Glow.", map = { mapID = 1426, x = 0.450, y = 0.490, label = "Ozzie Togglevolt — Kharanos", detail = "Start Gnogaine here" } },
+    [2926] = { level = 27, requires = 20, objective = "Use the Empty Leaden Collection Phial on a living Irradiated Invader or Irradiated Pillager, then return the full phial to Ozzie Togglevolt.", pickup = "Ozzie Togglevolt, Kharanos, Dun Morogh", turnin = "Ozzie Togglevolt, Kharanos, Dun Morogh", description = "Required before The Only Cure is More Green Glow.", map = { mapID = 1426, x = 0.450, y = 0.490, label = "Ozzie Togglevolt — Kharanos", detail = "Start Gnogaine here" }, requiredItems = { {9284, "Full Leaden Collection Phial", 1, "Use the Vial on an Irradiated Invader just outside the instance", map = { mapID = 1426, x = 0.243, y = 0.398, label = "Irradiated Invaders — outside Gnomeregan", detail = "Use the Vial on an Irradiated Invader just outside the instance" }} } },
     [2841] = { level = 35, requires = 25, objective = "Accept Rig Wars from Nogg. You do not need to complete it before continuing to Chief Engineer Scooty.", pickup = "Nogg, Valley of Honor, Orgrimmar", turnin = "Nogg, Orgrimmar", description = "Rig Wars must be in progress to unlock the transporter chain in Forever.", note = "Accept Rig Wars first; completion is not required for Chief Engineer Scooty.", warning = "Accept Rig Wars before Chief Engineer Scooty. If Rig Wars disappears, abandon Chief Engineer Scooty and it will reappear.", map = { mapID = 1454, x = 0.760, y = 0.250, label = "Nogg — Valley of Honor, Orgrimmar", detail = "Accept Rig Wars here" } },
     [2842] = { level = 35, requires = 20, objective = "Speak with Scooty in Booty Bay.", pickup = "Sovik, Valley of Honor, Orgrimmar", turnin = "Scooty, Booty Bay, Stranglethorn Vale", description = "Required before Gnomer-gooooone!", map = { mapID = 1454, x = 0.756, y = 0.252, label = "Sovik — Valley of Honor, Orgrimmar", detail = "Start Chief Engineer Scooty here" } },
 
     -- Razorfen Kraul / Scarlet Monastery prerequisite steps.
-    [1100] = { level = 27, requires = 23, objective = "Read Henrig Lonebrow's Journal and take it to Falfindel Waywarder in Thalanaar.", pickup = "Henrig Lonebrow's Journal beside his corpse at the bottom of the Great Lift", turnin = "Falfindel Waywarder, Thalanaar, Feralas", description = "Required before The Crone of the Kraul.", map = { mapID = 1441, x = 0.300, y = 0.240, label = "Henrig Lonebrow — bottom of the Great Lift", detail = "Loot Lonebrow's Journal here" } },
+    [1100] = { level = 27, requires = 23, objective = "Read Henrig Lonebrow's Journal and take it to Falfindel Waywarder in Thalanaar.", pickup = "Henrig Lonebrow's Journal beside his corpse at the bottom of the Great Lift", turnin = "Falfindel Waywarder, Thalanaar, Feralas", description = "Required before The Crone of the Kraul.", map = { mapID = 1441, x = 0.307, y = 0.244, label = "Henrig Lonebrow — bottom of the Great Lift", detail = "Loot Lonebrow's Journal here",
+        },
+    },
     [1109] = { level = 33, requires = 30, objective = "Bring 1 pile of Kraul Guano to Master Apothecary Faranell in the Undercity.", pickup = "Master Apothecary Faranell, Apothecarium, Undercity", turnin = "Master Apothecary Faranell, Apothecarium, Undercity", description = "Required before Hearts of Zeal.", map = { mapID = 1458, x = 0.480, y = 0.690, label = "Master Apothecary Faranell — Apothecarium", detail = "Start Going, Going, Guano! here" } },
     [96391] = { level = 15, requires = 9, objective = "Deliver the Dark Iron Map to Earthseer Farsen in Dun Morogh.", pickup = "Dark Iron Map, dropped by Dark Iron Spies at Ironband's Compound, Dun Morogh", turnin = "Earthseer Farsen, Dun Morogh", description = "The Dark Iron Map starts this quest and leads directly into Old Ironforge Incursion.", map = { mapID = 1426, x = 0.770, y = 0.600, label = "Dark Iron Spies — Ironband's Compound", detail = "Farm Dark Iron Spies here for the Dark Iron Map" } },
 

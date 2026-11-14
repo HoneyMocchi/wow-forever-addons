@@ -974,44 +974,51 @@ end
 ---@param event string
 ---@param unit UnitToken
 ---@param ... any
+-- ForeverAuras: the dispatch of a unit event to a list of listeners
+-- (loaded_unit_events[unit][event], or a part of it: LoadDisplays delivers an
+-- owed unit event to one display), factored out of ScanUnitEvents unchanged.
+function Private.ScanUnitEventsInternal(event_list, event, unit, ...)
+  local inRaid = IsInRaid()
+  for id, triggers in pairs(event_list) do
+    Private.StartProfileAura(id);
+    Private.ActivateAuraEnvironment(id);
+    local updateTriggerState = false;
+    for triggernum, data in pairs(triggers) do
+      if inRaid and Private.multiUnitUnits.party[unit]
+      and events[id][triggernum].ignorePartyUnitsInRaid
+      and events[id][triggernum].ignorePartyUnitsInRaid[event]
+      then
+        -- If the unit is a group unit, we don't want to run the trigger for every party member
+      else
+        local delay = GenericTrigger.GetDelay(data)
+        if delay == 0 then
+          local allStates = WeakAuras.GetTriggerStateForTrigger(id, triggernum);
+          if (RunTriggerFunc(allStates, data, id, triggernum, event, unit, ...)) then
+            updateTriggerState = true;
+          end
+        else
+          Private.RunTriggerFuncWithDelay(delay, id, triggernum, data, event, unit, ...)
+        end
+      end
+    end
+    if (updateTriggerState) then
+      Private.UpdatedTriggerState(id);
+    end
+    Private.StopProfileAura(id);
+    Private.ActivateAuraEnvironment(nil);
+  end
+end
+
 function Private.ScanUnitEvents(event, unit, ...)
   -- All CDM triggers in one synchronous dispatch share catalog/frame discovery.
   -- Restore the outer snapshot for nested scans; later events always get fresh frames.
   local previousCDMBatch = BeginCDMBatch()
   Private.StartProfileSystem("generictrigger " .. event .. " " .. unit)
   local unit_list = loaded_unit_events[unit]
-  local inRaid = IsInRaid()
   if unit_list then
     local event_list = unit_list[event]
     if event_list then
-      for id, triggers in pairs(event_list) do
-        Private.StartProfileAura(id);
-        Private.ActivateAuraEnvironment(id);
-        local updateTriggerState = false;
-        for triggernum, data in pairs(triggers) do
-          if inRaid and Private.multiUnitUnits.party[unit]
-          and events[id][triggernum].ignorePartyUnitsInRaid
-          and events[id][triggernum].ignorePartyUnitsInRaid[event]
-          then
-            -- If the unit is a group unit, we don't want to run the trigger for every party member
-          else
-            local delay = GenericTrigger.GetDelay(data)
-            if delay == 0 then
-              local allStates = WeakAuras.GetTriggerStateForTrigger(id, triggernum);
-              if (RunTriggerFunc(allStates, data, id, triggernum, event, unit, ...)) then
-                updateTriggerState = true;
-              end
-            else
-              Private.RunTriggerFuncWithDelay(delay, id, triggernum, data, event, unit, ...)
-            end
-          end
-        end
-        if (updateTriggerState) then
-          Private.UpdatedTriggerState(id);
-        end
-        Private.StopProfileAura(id);
-        Private.ActivateAuraEnvironment(nil);
-      end
+      Private.ScanUnitEventsInternal(event_list, event, unit, ...)
     end
   end
   Private.StopProfileSystem("generictrigger " .. event .. " " .. unit)
@@ -1587,8 +1594,25 @@ function LoadEvent(id, triggernum, data)
   end
 
   if (data.loadFunc) then
-    data.loadFunc(data.trigger);
+    -- ForeverAuras (Astra's dev.8 review, item 1): the display and trigger
+    -- number are passed too, so a trigger whose spell is not known yet can
+    -- ask for its registration to be renewed (Private.ReloadTriggerEvents).
+    data.loadFunc(data.trigger, id, triggernum);
   end
+end
+
+-- ForeverAuras (Astra's dev.8 review, item 1): renews one loaded trigger's
+-- event registration and load function, as LoadEvent did when its display
+-- loaded. A CDM Cooldown trigger naming a spell the character did not know
+-- at load uses it once the spell is learned (SPELLS_CHANGED), so the spell
+-- is watched and its cooldown events listened for; a trigger table that is
+-- no longer the loaded one (re-added display) is left alone. Registering an
+-- event twice is harmless: the listener tables are keyed by display.
+function Private.ReloadTriggerEvents(id, triggernum, trigger)
+  local data = loaded_auras[id] and events[id] and events[id][triggernum]
+  if not data or data.trigger ~= trigger then return false end
+  LoadEvent(id, triggernum, data)
+  return true
 end
 
 local function trueFunction()
@@ -1668,6 +1692,50 @@ function GenericTrigger.LoadDisplays(toLoad, loadEvent, ...)
   local loadUnit = ...
   if loadUnit and unitEventsToRegister[loadUnit] and unitEventsToRegister[loadUnit][loadEvent] then
     Private.ScanUnitEvents(loadEvent, ...);
+  end
+
+  -- ForeverAuras: a display whose load was paced (ForeverAuras.lua,
+  -- Private.pacedLoads) is owed the events that made it loadable or reached
+  -- it while it waited, which passed before it loaded, whichever scan loads
+  -- it now. Each owed event is delivered once, with its arguments, to that
+  -- display's own listeners for it; other listeners received the real event.
+  -- One is not delivered when this scan is for the same event, since the
+  -- replay above or the event's own dispatch covers the display then as in
+  -- 1.3.0; a paced batch is the exception, as its event has long passed,
+  -- unless this batch registered the event just now and the replay above
+  -- already reached it. An owed event whose first argument is a unit the
+  -- display listens to (loaded_unit_events) is delivered to that listener
+  -- set as well, as ScanUnitEvents would, under the same rule.
+  local paced = Private.pacedLoads
+  if paced and next(paced.owed) then
+    local owedListeners = {}
+    for id in pairs(toLoad) do
+      local owedList = paced.owed[id]
+      if owedList then
+        paced.owed[id] = nil
+        for _, owed in ipairs(owedList) do
+          local event, unit = owed[1], owed[2]
+          local sameScan = event == loadEvent
+          local deliver = not sameScan or (paced.running and not eventsToRegister[loadEvent])
+          local listeners = deliver and loaded_events[event]
+          if listeners and listeners[id] then
+            wipe(owedListeners)
+            owedListeners[id] = listeners[id]
+            Private.ScanEventsInternal(owedListeners, unpack(owed, 1, owed.n))
+          end
+          local unitListeners = type(unit) == "string" and loaded_unit_events[unit] and loaded_unit_events[unit][event]
+          if unitListeners and unitListeners[id] then
+            local sameUnitScan = sameScan and unit == loadUnit
+            local registeredNow = unitEventsToRegister[unit] and unitEventsToRegister[unit][event]
+            if not sameUnitScan or (paced.running and not registeredNow) then
+              wipe(owedListeners)
+              owedListeners[id] = unitListeners[id]
+              Private.ScanUnitEventsInternal(owedListeners, unpack(owed, 1, owed.n))
+            end
+          end
+        end
+      end
+    end
   end
 
   wipe(eventsToRegister);
@@ -2601,7 +2669,11 @@ do
     CheckSpellCooldowns = function(self, runeDuration, budget, maxSpells)
       local pending = self.pendingIds
       if not pending or not (budget or maxSpells) then
-        pending = {}
+        -- ForeverAuras (1.3.6-dev.18, Dan's allocation profile: "cd tracking" 5.8 KB a run): the
+        -- list of watched spells is one kept table refilled per full pass, not a new one each time.
+        pending = self.pendingScratch
+        if not pending then pending = {}; self.pendingScratch = pending end
+        wipe(pending)
         for id in pairs(self.data) do pending[#pending + 1] = id end
         self.pendingIds, self.pendingIndex = pending, 1
         -- Whether this pass is a quiet one (see HandleEvent): a louder request
@@ -2808,6 +2880,10 @@ do
 
     SendEventsForSpell = function(self, effectiveSpellId, event, ...)
       local watchedSpells = self.data[effectiveSpellId] and self.data[effectiveSpellId].watched
+      -- ForeverAuras (1.3.6-dev.18, Astra's allocation question): the triggers' reaction to a
+      -- cooldown change, timed and measured apart from the checks themselves inside
+      -- "generictrigger cd tracking" (/fa pprint); a no-op unless profiling runs.
+      Private.StartProfileSystem("generictrigger cd tracking: trigger events")
       Private.ScanEventsByID(event, effectiveSpellId, ...)
       if watchedSpells then
         for userSpellId in pairs(watchedSpells) do
@@ -2816,6 +2892,7 @@ do
           end
         end
       end
+      Private.StopProfileSystem("generictrigger cd tracking: trigger events")
     end,
 
     GetSpellCharges = function(self, effectiveSpellId, ignoreSpellKnown)
@@ -3065,6 +3142,9 @@ do
         SpellDetails.quietSecretCheck = nil
       elseif(event == "SPELLS_CHANGED") then
         SpellDetails:CheckSpellKnown()
+        -- ForeverAuras (Astra's dev.8 review, item 1): CDM Cooldown triggers
+        -- naming a spell that was unknown when they loaded register now.
+        if Private.CDMStandardSpellsChanged then Private.CDMStandardSpellsChanged() end
         -- ForeverAuras (dev.107, Astra's dev.105 hitch candidate): share the queued cooldown pass while
         -- keeping spell remapping immediate (the event ran a full sweep here AND the queued one: twice
         -- the visits in the frame of a spell change).

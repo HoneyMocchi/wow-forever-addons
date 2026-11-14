@@ -4,7 +4,7 @@
 ## Notes-koKR: 던전 우두머리, 전리품, 퀘스트와 지도를 확인합니다. /dj로 엽니다.
 ## Notes: Boss, loot and quest journal for WoW Classic dungeons.
 ## Author: Exehn
-## Version: 2.0.3
+## Version: 2.0.5
 ## IconTexture: Interface\Icons\INV_Misc_Book_09
 ## AddonCompartmentFunc: ForeverDungeonJournal_OnAddonCompartmentClick
 ## AddonCompartmentFuncOnEnter: ForeverDungeonJournal_OnAddonCompartmentEnter
@@ -14,6 +14,7 @@
 
 
 Core\Bootstrap.lua
+Core\Fonts.lua
 Localization\Localization.lua
 Localization\Locale_frFR.lua
 Localization\Locale_esES.lua
@@ -40,6 +41,7 @@ Data\DungeonEntrances.lua
 Data\DungeonRoutes.lua
 Data\Bosses.lua
 Data\QuestMaps.lua
+Data\ArrowNpcIds.lua
 Data\QuestChains.lua
 Data\QuestRewards.lua
 Data\QuestShareability.lua
@@ -77,6 +79,7 @@ Systems\DoneTickTooltip.lua
 Systems\HomeBottomBand.lua
 Systems\LFGButton.lua
 Systems\QuestText.lua
+Systems\OnyxiaAttunement.lua
 Systems\MapBossSize.lua
 Systems\WorldMapOverlay.lua
 Systems\Resize.lua
@@ -84,3 +87,4 @@ Systems\OptionsPanel.lua
 Libs\LibDeflate\LibDeflate.lua
 Systems\CharacterSnapshot.lua
 Systems\CharacterExport.lua
+Systems\ProgressTransfer.lua

@@ -85,8 +85,8 @@ FDJ.QUEST_START_MAPS = {
     [2950] = { mapID = 1454, x = 0.760, y = 0.250, label = "Nogg — Valley of Honor, Orgrimmar", targetName = "Nogg" },
 
     -- Razorfen Kraul quest givers.
-    [1221] = { mapID = 1413, x = 0.620, y = 0.370, label = "Mebok Mizzyrix — Ratchet", targetName = "Mebok Mizzyrix" },
-    [1101] = { mapID = 1444, x = 0.890, y = 0.460, label = "Falfindel Waywarder — Thalanaar", targetName = "Falfindel Waywarder" },
+    [1221] = { mapID = 1413, x = 0.624, y = 0.376, label = "Mebok Mizzyrix — Ratchet", targetName = "Mebok Mizzyrix" },
+    [1101] = { mapID = 1444, x = 0.896, y = 0.466, label = "Falfindel Waywarder — Thalanaar", targetName = "Falfindel Waywarder" },
     [1102] = { mapID = 1456, x = 0.360, y = 0.590, label = "Auld Stonespire — Thunder Bluff", targetName = "Auld Stonespire" },
     [1109] = { mapID = 1458, x = 0.480, y = 0.690, label = "Master Apothecary Faranell — Apothecarium", targetName = "Master Apothecary Faranell" },
 
@@ -139,7 +139,7 @@ FDJ.QUEST_START_MAPS = {
     [4082] = { mapID = 1418, x = 0.040, y = 0.468, label = "KILL ON SIGHT poster — Kargath, Badlands", targetName = "KILL ON SIGHT" },
     [4123] = { mapID = 1428, x = 0.652, y = 0.238, label = "Maxwort Uberglint — Burning Steppes", targetName = "Maxwort Uberglint" },
     [4126] = { mapID = 1426, x = 0.468, y = 0.524, label = "Ragnar Thunderbrew — Dun Morogh", targetName = "Ragnar Thunderbrew" },
-    [4132] = { mapID = 1418, x = 0.030, y = 0.476, label = "Warlord Goretooth — Badlands", targetName = "Warlord Goretooth" },
+    [4132] = { mapID = 1418, x = 0.058, y = 0.474, label = "Warlord Goretooth — Badlands", targetName = "Warlord Goretooth" },
     [4134] = { mapID = 1418, x = 0.030, y = 0.476, label = "Shadowmage Vivian Lagrave — Badlands", targetName = "Shadowmage Vivian Lagrave" },
     [4136] = { mapID = 1428, x = 0.660, y = 0.220, label = "Yuka Screwspigot — Burning Steppes", targetName = "Yuka Screwspigot" },
     [4241] = { mapID = 1428, x = 0.846, y = 0.688, label = "Marshal Maxwell — Burning Steppes", targetName = "Marshal Maxwell" },
@@ -153,7 +153,7 @@ FDJ.QUEST_START_MAPS = {
     [4771] = { mapID = 1423, x = 0.737, y = 0.505, label = "Betina Bigglezink — Eastern Plaguelands", targetName = "Betina Bigglezink" },
     [4862] = { mapID = 1428, x = 0.658, y = 0.220, label = "Kibler — Burning Steppes", targetName = "Kibler" },
     [4866] = { mapID = 1428, x = 0.650, y = 0.236, label = "Ragged John — Burning Steppes", targetName = "Ragged John" },
-    [4903] = { mapID = 1418, x = 0.030, y = 0.476, label = "Warlord Goretooth — Badlands", targetName = "Warlord Goretooth" },
+    [4903] = { mapID = 1418, x = 0.058, y = 0.474, label = "Warlord Goretooth — Badlands", targetName = "Warlord Goretooth" },
     [4974] = { mapID = 1454, x = 0.320, y = 0.378, label = "Thrall — Orgrimmar", targetName = "Thrall" },
     [5081] = { mapID = 1428, x = 0.846, y = 0.688, label = "Marshal Maxwell — Burning Steppes", targetName = "Marshal Maxwell" },
     [5102] = { mapID = 1428, x = 0.846, y = 0.688, label = "Marshal Maxwell — Burning Steppes", targetName = "Marshal Maxwell" },

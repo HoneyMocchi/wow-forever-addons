@@ -55,8 +55,15 @@ end
 -- (dev.63) showed the chained members only after combat, and the stop's
 -- reason is in these reports. Printed under pcall: a report may carry a
 -- client error text.
+-- ForeverAuras (1.3.8, Dan's combat garbage): the reports on the hot paths (every unit refresh,
+-- every instance, every target change) formatted their text before this function dropped it, about
+-- 4 KB of strings per 40-slot pass with the flag off. Those sites ask BuildReporting() first.
+local function BuildReporting()
+  return type(ForeverAurasSaved) == "table" and ForeverAurasSaved.rowCellsDebug == true
+end
+Display.BuildReporting = BuildReporting   -- (the hot sites read it through Display: a review harness runs them as slices)
 local function CombatBuildReport(msg)
-  if type(ForeverAurasSaved) == "table" and ForeverAurasSaved.rowCellsDebug then
+  if BuildReporting() then
     pcall(print, "|cff88ccff" .. L["FA build:"] .. "|r " .. tostring(msg))
   end
 end
@@ -210,6 +217,15 @@ end
 -- Containers locked in combat: hidden, or given their units, once it ends.
 local lockedHide = setmetatable({}, {__mode = "k"})
 local lockedUnits = setmetatable({}, {__mode = "k"})
+-- ForeverAuras (1.3.6-dev.10, Astra's nameplate combat-end review): the unit
+-- tokens a display still owes a refresh for, per region, when a targeted unit
+-- event (a plate added or removed, a plate changing side) met a container the
+-- client would not let the addon touch. Before, that refusal marked the whole
+-- region (lockedUnits) and the restriction-end drain refreshed all its slots
+-- (40 for a nameplate display) for one plate's worth of work. lockedUnits
+-- keeps its meaning for refusals that concern the whole display (geometry,
+-- erasers, status, a full refresh).
+local pendingTokens = setmetatable({}, {__mode = "k"})
 local pendingSounds = {}
 local activeRegions = {}
 -- ForeverAuras: the active Modern displays, for the Missing veil across
@@ -937,6 +953,20 @@ local function SyncSounds(region)
   pendingSounds[region] = nil
   local native = region.blizzardAuraDisplay
   if not native then return end
+  -- ForeverAuras (1.3.10-dev.1, Astra's nameplate review, same principle as item 1): a display
+  -- with no sound action and no registration has no signature to compare; it leaves before
+  -- the eligible-unit scan (40 nameplate tokens judged, strings built) that every plate event
+  -- asked of every display with a unit filter, sounds or not.
+  do
+    local actions = native.data.actions or {}
+    if not ((actions.start or {}).do_sound or (actions.finish or {}).do_sound or (actions.stack or {}).do_sound)
+      and not (native.soundIDs and next(native.soundIDs)) and native.soundSignature == nil then
+      -- The warning slot is cleared once, as the full path did on its first signature.
+      if not native.soundQuiet then native.soundQuiet = true; SoundWarning(native.data) end
+      return
+    end
+    native.soundQuiet = nil
+  end
   -- Unchanged units, spells and sound actions: the registrations stand.
   local signature
   local live = native.active and Display.GetTrigger(native.data) ~= nil and region:IsShown() and not IsPreview()
@@ -944,7 +974,8 @@ local function SyncSounds(region)
     local trigger = Display.GetTrigger(native.data)
     local actions = native.data.actions or {}
     local parts = {}
-    for _, key in ipairs({"start", "finish"}) do
+    -- ForeverAuras (1.3.9): "stack" is the On Stack Gain slot (Actions tab, Aura (Modern) only).
+    for _, key in ipairs({"start", "finish", "stack"}) do
       local action = actions[key] or {}
       parts[#parts + 1] = table.concat({tostring(action.do_sound), tostring(action.sound), tostring(action.sound_path),
         tostring(action.sound_fojji), tostring(action.sound_channel)}, ",")
@@ -963,7 +994,7 @@ local function SyncSounds(region)
   SoundWarning(data)
   if not live then return end
   local actions = data.actions or {}
-  if not ((actions.start or {}).do_sound or (actions.finish or {}).do_sound) then return end
+  if not ((actions.start or {}).do_sound or (actions.finish or {}).do_sound or (actions.stack or {}).do_sound) then return end
   if not C_UnitAuras or not C_UnitAuras.AddAuraSound or not C_UnitAuras.RemoveAuraSound
     or not Enum.UnitAuraSoundTrigger then
     SoundWarning(data, L["This client does not provide native aura sound registration."])
@@ -990,10 +1021,19 @@ local function SyncSounds(region)
   -- On Show / On Hide follow the display: with Show On Missing the display
   -- appears when the aura is removed, so the sounds swap over.
   local showOnMissing = Display.RawShowOn(trigger) == "showOnMissing"
-  for _, event in ipairs({"Added", "Removed"}) do
-    local onShow = (event == "Added") ~= showOnMissing
-    local action = actions[onShow and "start" or "finish"] or {}
-    if action.do_sound then
+  -- ForeverAuras (1.3.9): On Stack Gain registers Blizzard's ApplicationsIncreased
+  -- trigger (every stack gained, no threshold); clients without it get a warning.
+  for _, event in ipairs({"Added", "Removed", "ApplicationsIncreased"}) do
+    local action
+    if event == "ApplicationsIncreased" then
+      action = actions.stack or {}
+    else
+      local onShow = (event == "Added") ~= showOnMissing
+      action = actions[onShow and "start" or "finish"] or {}
+    end
+    if action.do_sound and not Enum.UnitAuraSoundTrigger[event] then
+      failure = L["This client has no sound trigger for stacks gained."]
+    elseif action.do_sound then
       local file, message
       if action.sound == " Fojji" then
         file, message = Private.ResolveFojjiRecordedSound(action.sound_fojji or "")
@@ -1018,7 +1058,7 @@ local function SyncSounds(region)
             if ok and id then
               native.soundIDs[#native.soundIDs + 1] = id
             else
-              failure = L["Blizzard could not register the %s sound for spell %s."]:format(event:lower(), spellID)
+              failure = L["Blizzard could not register the %s sound for spell %s."]:format(event == "ApplicationsIncreased" and L["stack gain"] or event:lower(), spellID)
             end
           end
         end
@@ -1446,7 +1486,7 @@ local function QuietInstance(region, instance)
     -- pass restores the container; disabling here was the reset
   else
     -- (dev.94) said with "/fa cells debug on" for a chained member: the quiet that disables, and why it was not retained
-    if CombatBuildReport and instance.chained then
+    if instance.chained and Display.BuildReporting and Display.BuildReporting() then
       CombatBuildReport(("%s: list quieted (retaining %s, restricted %s, applied %s, enabled %s, retained %s)"):format(tostring(instance.data and instance.data.id),
         tostring(editorRetaining), tostring(Restricted()), tostring(instance.applied), tostring(instance.container.faEnabled), tostring(instance.retainedMuted)))
     end
@@ -1558,6 +1598,9 @@ function Display.Release(region)
     if native and Display.ReleaseChainSpine and #native.instances == 0 then Display.ReleaseChainSpine(native) end
   end
   if Display.CancelEditorApply then Display.CancelEditorApply(region) end
+  -- ForeverAuras (1.3.6-dev.12, Astra's dev.10 review): a released display owes
+  -- no token work; nothing of it may be served to whatever this region shows next.
+  pendingTokens[region] = nil
   local native = region.blizzardAuraDisplay
   if native then
     native.active = false
@@ -1755,6 +1798,25 @@ local function StyleFlash(native, data)
     out:SetFromAlpha(1); out:SetToAlpha(0); out:SetDuration(FLASH_OUT); out:SetOrder(3)
     flash = {group = group, hold = hold}
     native.flash = flash
+    -- ForeverAuras (1.3.10-dev.7/dev.9, diagnostics only; Astra's dev.8 review):
+    -- the client plays this group whenever it assigns an aura to the button, new
+    -- or already there (a rebuilt or re-enabled display, a unit change, a plate
+    -- back), and stops it before every assignment as well as when it clears the
+    -- button. So "played" is not "newly gained" and "stopped" is not "removed";
+    -- the counts and prints say only what the animation did. Whether these
+    -- scripts run at all under restrictions is what the probe is for.
+    group:SetScript("OnPlay", function()
+      Private.HitchCount("gained: flash animation played")
+      if Private.gainedDebug then print("|cff88ccffFA gained|r", tostring(data.id), "flash animation played at", string.format("%.2f", GetTime())) end
+    end)
+    group:SetScript("OnStop", function()
+      Private.HitchCount("gained: flash animation stopped")
+      if Private.gainedDebug then print("|cff88ccffFA gained|r", tostring(data.id), "flash animation stopped at", string.format("%.2f", GetTime())) end
+    end)
+    group:SetScript("OnFinished", function()
+      Private.HitchCount("gained: flash animation finished")
+      if Private.gainedDebug then print("|cff88ccffFA gained|r", tostring(data.id), "flash animation finished at", string.format("%.2f", GetTime())) end
+    end)
   end
   flash.hold:SetDuration(seconds)
   if not flash.registered then
@@ -2536,6 +2598,15 @@ end
 function Display.UpdateDetachedFrameLevels(region)
   local native = region.blizzardAuraDisplay
   if not native or not native.active then return end
+  -- ForeverAuras (1.3.10-dev.1, Astra's nameplate review, item 1): the scan of every
+  -- container's level only serves detached elements; a display with none (every
+  -- nameplate debuff display) leaves without touching its containers. Read from the
+  -- region's actual elements, not assumed from the display kind.
+  local detached = false
+  for _, element in ipairs(region.subRegions or {}) do
+    if element.secretAuraDetached then detached = true; break end
+  end
+  if not detached then return end
   local level = region:GetFrameLevel()
   for _, instance in ipairs(native.instances) do
     -- A Modern Aura Group's containers may report a secret level; they sit
@@ -2583,7 +2654,18 @@ local function ApplyUnitStatus(instance, trigger)
   if instance.settleUntil and GetTime() < instance.settleUntil then hidden = true end
   instance.statusHidden = hidden or nil
   -- (dev.90) a container muted for the editor stays at alpha 0 (RefreshUnits)
-  if not Locked(instance.container) then instance.container:SetAlpha((hidden or instance.previewMuted) and 0 or instance.baseAlpha or 1) end
+  -- ForeverAuras 1.2.10 (Dan's reminders gone after a wipe until a reload): a container the client
+  -- has locked (a death in combat) takes no alpha; before, the status was still recorded as applied,
+  -- so a later event found nothing to do and the part stayed faded for the session. The write is
+  -- owed instead (statusAlphaPending) and made when restrictions end (statusEvents below).
+  -- ForeverAuras 1.2.10-dev.3 (Dan: reminders stuck in combat until combat drop since dev.2): alpha is
+  -- not a protected write, so a container that is merely protected in combat (Display.Busy) still takes
+  -- it, as it always did; only a forbidden or unparentable container (Display.Locked) owes the write.
+  if not (Display.Locked and Display.Locked(instance.container)) and pcall(instance.container.SetAlpha, instance.container, (hidden or instance.previewMuted) and 0 or instance.baseAlpha or 1) then
+    instance.statusAlphaPending = nil
+  else
+    instance.statusAlphaPending = true
+  end
 end
 
 -- A protected layout can still accept the native content delegate. This is
@@ -2618,16 +2700,57 @@ local function RefreshUnits(region, removedUnit, changedUnit, unitChanged)
   -- A Modern Aura Group grouped by frame places these on unit frames or
   -- nameplates itself (RelinkFlowUnits, below).
   local frameMode = Display.FlowFrameMode(data)
+  -- ForeverAuras (1.3.6-dev.1, Astra's nameplate combat-end review): what a
+  -- unit refresh is asked to do and what it visits, counted into the hitch
+  -- capture only (/fa phitch); nothing here runs when no capture is active.
+  local counting = Private.HitchCounting and Private.HitchCounting()
+  -- ForeverAuras (1.3.6-dev.12, Astra's dev.10 review): changedUnit is one
+  -- token (a string) or a SET of tokens (a table, from the restriction-end
+  -- drain), refreshed in this one pass; the instances it names are selected
+  -- BEFORE anything is asked of their containers, so an unrelated instance is
+  -- neither visited nor lock-checked. A full pass (no token) covers every
+  -- token; what it cannot do now it marks for the whole region again
+  -- (lockedUnits), so tokens owed from earlier targeted events are no longer
+  -- separately owed once that pass has run (below the loop).
+  -- (Astra's dev.12 review) a token is acknowledged only when its instance's
+  -- refresh has run to the end: a refresh that stops early (an error in a
+  -- write) leaves it, and every token not yet reached, owed to the next drain.
+  local tokenSet = type(changedUnit) == "table" and changedUnit or nil
+  local owed = pendingTokens[region]
+  local fullPass = not changedUnit and not removedUnit
+  local selected = 0
+  if counting then
+    local what = "all tokens"
+    if tokenSet then local n = 0; for _ in pairs(tokenSet) do n = n + 1 end; what = ("%d owed tokens, one pass"):format(n)
+    elseif changedUnit then what = "one token" elseif removedUnit then what = "one removed" end
+    Private.HitchCount(("units refresh %s: %s"):format(tostring(trigger.unit), what))
+    Private.HitchCount("units refresh: " .. tostring(data.id))   -- (1.3.6-dev.17, diagnostic) the display
+  end
   for index, instance in ipairs(native.instances) do
     local container = instance.container
     local unit = units[index]
-    if Locked(container) then
-      lockedUnits[region] = true
+    if changedUnit and not (tokenSet and unit ~= nil and tokenSet[unit] or unit == changedUnit) then
+      -- not selected: nothing is asked of this instance
+    elseif Locked(container) then
+      selected = selected + 1
+      -- ForeverAuras (1.3.6-dev.10/12): a targeted event owes work for the
+      -- token it could not serve; a full refresh (no token) still marks the
+      -- whole region as before.
+      if changedUnit then
+        if unit ~= nil then
+          owed = owed or {}
+          pendingTokens[region] = owed
+          owed[unit] = true
+        end
+      else
+        lockedUnits[region] = true
+      end
+      if counting then Private.HitchCount("units refresh: locked instance") end
       -- Re-read every active part for this token, not only its live picture:
       -- Always/Missing clips and row measurements must observe the same unit.
       -- Protected geometry remains deferred through lockedUnits above.
       local accepted, refused = 0, 0
-      if (not changedUnit or unit == changedUnit) and unitChanged and instance.visible == true
+      if unitChanged and instance.visible == true
         and not instance.retainedMuted and not instance.previewMuted and not IsPreview() then
         accepted, refused = Display.RequestBoundAuraRefresh(container, instance.boundUnit, unit, true, true)
         local a, r = Display.RefreshSingleContent(instance, unit, true, true)
@@ -2640,8 +2763,13 @@ local function RefreshUnits(region, removedUnit, changedUnit, unitChanged)
           accepted, refused = accepted + a, refused + r
         end
       end
-      if unitChanged and CombatBuildReport then CombatBuildReport(("%s: container %d is locked: content refresh requests accepted %d, refused %d (the full refresh waits for restrictions to end)"):format(tostring(data.id), index, accepted, refused)) end
-    elseif not changedUnit or unit == changedUnit then
+      if unitChanged and Display.BuildReporting and Display.BuildReporting() then CombatBuildReport(("%s: container %d is locked: content refresh requests accepted %d, refused %d (the full refresh waits for restrictions to end)"):format(tostring(data.id), index, accepted, refused)) end
+      if counting and (accepted > 0 or refused > 0) then
+        Private.HitchCount("units refresh: locked content requests accepted", accepted)
+        Private.HitchCount("units refresh: locked content requests refused", refused)
+      end
+    else
+      selected = selected + 1
       -- In a Modern Aura Group the group's mode decides (screen, unit frames or
       -- nameplates); the display's own anchor is not used for its auras.
       local unitFrames, nameplates
@@ -2836,23 +2964,29 @@ local function RefreshUnits(region, removedUnit, changedUnit, unitChanged)
       -- that kept unit, parent and anchors needs no full refresh.
       if container.faEnabled ~= shown or (shown and not unchanged) then
         -- (dev.91) said with "/fa cells debug on" for a chained member: the write that resets the list's buttons
-        if CombatBuildReport and instance.chained then
+        if instance.chained and Display.BuildReporting and Display.BuildReporting() then
           CombatBuildReport(("%s: list %s (enabled %s -> %s, unchanged %s: unit %s/%s, parent %s, visible %s, removed %s, changed %s, preview %s, muted %s)"):format(tostring(data.id),
             shown and "enabled and re-read" or "disabled", tostring(container.faEnabled), tostring(shown), tostring(unchanged), tostring(instance.boundUnit), tostring(unit),
             tostring(container:GetParent() == parent), tostring(instance.visible), tostring(removedUnit), tostring(changedUnit), tostring(IsPreview()), tostring(muted)))
         end
         container:SetEnabled(shown)
-        if shown then container:UpdateAllAuras(); Private.HitchCount("UpdateAllAuras") end
-        if unitChanged and CombatBuildReport then CombatBuildReport(("%s: container %s (unit %s)"):format(tostring(data.id), shown and "enabled and re-read" or "disabled", tostring(unit))) end
+        -- (1.3.6-dev.1) the enable cycle, apart from the re-read in place below
+        Private.HitchCount(shown and "units refresh: container enabled" or "units refresh: container disabled")
+        if shown then
+          container:UpdateAllAuras(); Private.HitchCount("UpdateAllAuras")
+          if counting then Private.HitchCount("UpdateAllAuras: " .. tostring(data.id)) end   -- (1.3.6-dev.17, diagnostic)
+        end
+        if unitChanged and Display.BuildReporting and Display.BuildReporting() then CombatBuildReport(("%s: container %s (unit %s)"):format(tostring(data.id), shown and "enabled and re-read" or "disabled", tostring(unit))) end
       elseif shown and unitChanged then
-        if CombatBuildReport then CombatBuildReport(("%s: list re-read in place (unit changed; unit %s, bound %s)"):format(tostring(data.id), tostring(unit), tostring(instance.boundUnit))) end
+        Private.HitchCount("units refresh: re-read in place")
+        if Display.BuildReporting and Display.BuildReporting() then CombatBuildReport(("%s: list re-read in place (unit changed; unit %s, bound %s)"):format(tostring(data.id), tostring(unit), tostring(instance.boundUnit))) end
         -- A new unit behind a kept token: the client only re-reads a container
         -- on UNIT_AURA for its unit or when it is shown or enabled again, so
         -- it would keep showing the previous unit's auras. Re-read in place,
         -- without the enable cycle (which clears and lays out again).
         container:UpdateAllAuras(); Private.HitchCount("UpdateAllAuras")
       end
-      if unitChanged and unchanged and not shown and CombatBuildReport then CombatBuildReport(("%s: unit changed but the container is not shown (unit %s, eligible %s)"):format(tostring(data.id), tostring(unit), tostring(wouldShow))) end
+      if unitChanged and unchanged and not shown and Display.BuildReporting and Display.BuildReporting() then CombatBuildReport(("%s: unit changed but the container is not shown (unit %s, eligible %s)"):format(tostring(data.id), tostring(unit), tostring(wouldShow))) end
       Private.StopProfileSystem("aura (modern) - units: status")
       -- (dev.90) the muted container hidden by alpha; shown again as it was when the editor closes
       if muted then
@@ -2916,8 +3050,19 @@ local function RefreshUnits(region, removedUnit, changedUnit, unitChanged)
         if glowShown then glowContainer:UpdateAllAuras() end
       end
       Private.StopProfileSystem("aura (modern) - units: glow")
+      -- ForeverAuras (1.3.6-dev.12): this token's work ran to the end (a write
+      -- it refused above became whole-region debt, lockedUnits), so an entry
+      -- owed for it from an earlier refused pass is retired now, not before.
+      if owed and unit ~= nil and owed[unit] then
+        owed[unit] = nil
+        if next(owed) == nil then pendingTokens[region] = nil; owed = nil end
+      end
     end
   end
+  -- (1.3.6-dev.12) a full pass has now covered every token: what it could not do
+  -- is whole-region debt, so nothing stays separately owed.
+  if fullPass and pendingTokens[region] then pendingTokens[region] = nil end
+  if counting then Private.HitchCount("units refresh: instances visited", selected) end
   -- A healthy activation reuses prepared records, so their private glow
   -- bindings must resume without restyling or resetting native assignments.
   -- Retained/editor-hidden instances wait until their live appearance returns.
@@ -2937,7 +3082,8 @@ local function RefreshUnits(region, removedUnit, changedUnit, unitChanged)
   -- Every display in the group relinks all of them, so the order in which
   -- they rebind their units does not matter.
   Private.StartProfileSystem("aura (modern) - units: relink")
-  if frameMode then Display.RelinkFlowUnits(Display.FlowGroup(data)) end
+  -- (1.3.8) a targeted pass relinks the rows of the units it served only (SecretAuraFlow.lua)
+  if frameMode then Display.RelinkFlowUnits(Display.FlowGroup(data), changedUnit) end
   Private.StopProfileSystem("aura (modern) - units: relink")
   Private.StartProfileSystem("aura (modern) - units: levels")
   Display.UpdateDetachedFrameLevels(region)
@@ -3050,7 +3196,7 @@ local function ApplyInstance(region, data, index, instance)
   if Display.FlowChain and Display.FlowChain(data) then instance.container.faReportDisable = data.id end   -- (dev.94 diagnostic, SecretAuraFlow.lua TrackEnabled)
   -- (dev.91) said with "/fa cells debug on", for a member of a row with cells: whether the list was kept or
   -- configured again, and why (Dan: the A icons still move)
-  if CombatBuildReport and Display.FlowChain and Display.FlowChain(data) then
+  if Display.FlowChain and Display.FlowChain(data) and Display.BuildReporting and Display.BuildReporting() then
     CombatBuildReport(("%s: list %s (%s)"):format(tostring(data.id), keep and "kept" or "configured again",
       keep and "same configuration" or (not instance.applied and "first build" or instance.appliedConfig ~= config and ("configuration changed: " .. tostring(instance.appliedConfig) .. " -> " .. tostring(config))
         or instance.container.faEnabled ~= true and "container not live" or instance.styleEarly and "styled early" or Restricted() and "restricted" or "?")))
@@ -3187,6 +3333,7 @@ local function AbandonProbeBuild(region, data, why)
     native.instanceQueue, instanceQueues[region] = nil, nil
     native.active = false
   end
+  pendingTokens[region] = nil -- (1.3.6-dev.12) a stopped build owes no token work
   if native then native.probeBuild = nil end
   -- ForeverAuras (dev.68): the stopped build's spine is let go (the retry prepares it again).
   if native and Display.ReleaseChainSpine then Display.ReleaseChainSpine(native) end
@@ -4285,6 +4432,51 @@ function Display.CancelEditorApply(region)
   editorQueue[region] = nil
 end
 
+-- ForeverAuras (diagnostic, Dan's stray numbers after the editor closes):
+-- "/fa bindcheck" lists Modern displays whose native binding and frame
+-- disagree: a binding whose data names another display than the frame now
+-- serves, an active binding on a hidden frame, a container whose parent is
+-- not the frame it was bound to, and a frame in the editor or pending
+-- queues that no longer belongs to the display queued for it. Read only;
+-- it changes nothing.
+function Display.BindingCheck()
+  local lines, checked = {}, 0
+  local function note(text) lines[#lines + 1] = "  " .. text end
+  for region in pairs(activeRegions) do
+    checked = checked + 1
+    local native = region.blizzardAuraDisplay
+    local data = native and native.data
+    if data and data.id ~= region.id then
+      note(("%s (clone %s): bound as %s"):format(tostring(region.id), tostring(region.cloneId), tostring(data.id)))
+    end
+    if native and native.active and not region:IsShown() then
+      note(("%s (clone %s): active binding on a hidden frame"):format(tostring(region.id), tostring(region.cloneId)))
+    end
+    for index, instance in ipairs(native and native.instances or {}) do
+      local container = instance.container
+      if container then
+        local ok, parent = pcall(container.GetParent, container)
+        if ok and parent ~= nil and parent ~= region and (not region.GetParent or parent ~= region:GetParent()) then
+          local name = parent.GetName and parent:GetName() or (parent.id and tostring(parent.id)) or "?"
+          note(("%s (clone %s): container %d parented to %s"):format(tostring(region.id), tostring(region.cloneId), index, tostring(name)))
+        end
+        if container.IsShown and container:IsShown() and not region:IsShown() then
+          note(("%s (clone %s): container %d shown while its display is hidden"):format(tostring(region.id), tostring(region.cloneId), index))
+        end
+      end
+    end
+  end
+  for region, data in pairs(editorQueue) do
+    if data and data.id ~= region.id then note(("editor queue: frame of %s queued for %s"):format(tostring(region.id), tostring(data.id))) end
+  end
+  for region, data in pairs(pending) do
+    if data and data.id ~= region.id then note(("pending queue: frame of %s queued for %s"):format(tostring(region.id), tostring(data.id))) end
+  end
+  local prettyPrint = WeakAuras.prettyPrint or print
+  prettyPrint(("Binding check: %d active Modern displays, %d problem(s)."):format(checked, #lines))
+  for _, line in ipairs(lines) do prettyPrint(line) end
+end
+
 -- ForeverAuras: a Remaining Time window on an Icon shows one aura, the first
 -- the client picks by the sort order, and the window only opens and closes
 -- over that one (the client cannot filter by remaining time). With no spell
@@ -4456,14 +4648,34 @@ end
 -- Deaths, releases and disconnects only change the affected unit's alpha.
 local statusEvents = CreateFrame("Frame")
 for _, event in ipairs({"UNIT_CONNECTION", "UNIT_HEALTH", "UNIT_FLAGS", "PLAYER_FLAGS_CHANGED"}) do statusEvents:RegisterEvent(event) end
+-- ForeverAuras 1.2.10 (Dan's reminders gone after a death until a reload): Ignore Out of Range
+-- (ignoreInvisible) hides every member's part while the player is a ghost (nobody is visible from
+-- the graveyard), and nothing re-checked it: a member's own flags do not change when the PLAYER
+-- comes back. The player's own death, release and return re-check every bound unit's status.
+for _, event in ipairs({"PLAYER_DEAD", "PLAYER_ALIVE", "PLAYER_UNGHOST"}) do statusEvents:RegisterEvent(event) end
+local playerStatusEvents = {PLAYER_DEAD = true, PLAYER_ALIVE = true, PLAYER_UNGHOST = true}
 -- A group member coming into or leaving the client's view (UnitIsVisible), for
 -- Ignore out of checking range: the events Aura (Legacy) uses for it. (Not
 -- UNIT_IN_RANGE_UPDATE, which tracks UnitInRange and costs the client extra.)
 statusEvents:RegisterEvent("PARTY_MEMBER_ENABLE")
 statusEvents:RegisterEvent("PARTY_MEMBER_DISABLE")
 statusEvents:RegisterEvent("PLAYER_REGEN_ENABLED")
+statusEvents:RegisterEvent("ADDON_RESTRICTION_STATE_CHANGED")   -- (1.2.10) the owed status alphas
 statusEvents:SetScript("OnEvent", function(_, event, unit)
-  if event == "PLAYER_REGEN_ENABLED" then
+  if event == "PLAYER_REGEN_ENABLED" or event == "ADDON_RESTRICTION_STATE_CHANGED" then
+    -- (1.2.10) the status alphas the client refused in combat are written now, from the current status
+    for region in pairs(activeRegions) do
+      local native = region.blizzardAuraDisplay
+      local trigger = Display.GetSavedTrigger(native.data)
+      for _, instance in ipairs(native and native.instances or {}) do
+        local missing = instance.single and instance.single.missing
+        if trigger and (instance.statusAlphaPending or (missing and missing.active and missing.statusAlphaPending)) then
+          if instance.statusAlphaPending then ApplyUnitStatus(instance, trigger) end
+          Display.RefreshSingleStatus(instance)
+        end
+      end
+    end
+    if event ~= "PLAYER_REGEN_ENABLED" then return end
     -- Glow status changes skipped in combat are replayed.
     for region in pairs(glowStatusPending) do
       glowStatusPending[region] = nil
@@ -4472,7 +4684,8 @@ statusEvents:SetScript("OnEvent", function(_, event, unit)
     end
     return
   end
-  if type(unit) ~= "string" then return end
+  local everyUnit = playerStatusEvents[event] == true   -- (1.2.10) the player's death, release or return
+  if not everyUnit and type(unit) ~= "string" then return end
   for region in pairs(activeRegions) do
     local native = region.blizzardAuraDisplay
     -- Read only: the saved trigger, without the copy GetTrigger may make.
@@ -4480,11 +4693,17 @@ statusEvents:SetScript("OnEvent", function(_, event, unit)
     -- ForeverAuras: hidden displays skip this too (see the event dispatch).
     if region:IsShown() and trigger and (trigger.ignoreDead or trigger.ignoreDisconnected or trigger.ignoreInvisible) then
       -- ForeverAuras: a grid member draws in the grid's container, not its own.
-      if native.gridMember and Display.RefreshGridStatus then Display.RefreshGridStatus(region, unit) end
+      if native.gridMember and Display.RefreshGridStatus then
+        if everyUnit then
+          for _, instance in ipairs(native.instances) do if instance.boundUnit then Display.RefreshGridStatus(region, instance.boundUnit) end end
+        else
+          Display.RefreshGridStatus(region, unit)
+        end
+      end
       local single = #native.instances == 1
       for _, instance in ipairs(native.instances) do
         local bound = instance.visible and instance.boundUnit
-        if bound and (bound == unit or (single and Private.ExecEnv.UnitIsUnit(bound, unit)))
+        if bound and (everyUnit or bound == unit or (single and Private.ExecEnv.UnitIsUnit(bound, unit)))
           and (UnitIgnored(trigger, bound) or nil) ~= instance.statusHidden then
           ApplyUnitStatus(instance, trigger)
           Display.RefreshSingleStatus(instance)
@@ -4660,6 +4879,87 @@ Private.callbacks:RegisterCallback("WEAKAURAS_LOGIN_COMPLETE", function()
   end
 end)
 
+-- ForeverAuras (1.3.10-dev.1, Astra's nameplate review, item 2): the plates added in a frame,
+-- per display: a set of tokens for a nameplate display, true for a display that watches
+-- nameplates another way (a full pass). Flushed once, from the next frame, in one flow batch.
+local plateAdds = setmetatable({}, {__mode = "k"})
+local plateFlushQueued = false
+-- ForeverAuras (1.3.10-dev.2, the reviewer's lost-work and selection-boundary cases): one display's
+-- whole plate pass, selection included, runs under one error boundary, and its work is owned before
+-- anything fallible runs. Queued tokens go into the display's owed set (pendingTokens) first; the
+-- pass is handed that very set, retires each token as its instance completes (RefreshUnits), and a
+-- pass that stops early leaves the failed token and the unvisited ones owed to the restriction-end
+-- drain, exactly as a refused drain pass does. A full-pass request is noted in lockedUnits before
+-- the pass and only taken back when the pass ran to the end without noting debt of its own. No
+-- new retry path: the established drain serves what is left.
+local FULL_PASS_REQUEST = "plates"
+local function SelectionOf(owed)
+  local set = {}
+  for token in pairs(owed) do set[token] = true end
+  return set
+end
+local function PlatePass(region, native, tokens)
+  local trigger = Display.GetSavedTrigger(native.data)
+  local mode = trigger and trigger.unit
+  if tokens ~= true and mode == "nameplate" then
+    local owed = pendingTokens[region] or {}
+    pendingTokens[region] = owed
+    for token in pairs(tokens) do owed[token] = true end
+    -- A token whose plate is gone is unbound already by its own event; its request is cancelled.
+    local count = 0
+    for token in pairs(owed) do
+      local plate = C_NamePlate.GetNamePlateForUnit(token)
+      if plate and not plate:IsForbidden() then count = count + 1 else owed[token] = nil end
+    end
+    if count == 0 then pendingTokens[region] = nil; return end
+    Private.HitchCount("nameplate added: displays refreshed")
+    if count > 1 then Private.HitchCount("nameplate added: plates bound in one pass", count) end
+    -- The pass selects rows by the set it is handed and retires the owed set as it goes; the
+    -- two are separate tables, or the rows to position would be gone by the time the group is
+    -- relinked (the dev.2 review's layout case).
+    RefreshUnits(region, nil, SelectionOf(owed), true)
+    return
+  end
+  Private.HitchCount("nameplate added: displays refreshed")
+  local before = lockedUnits[region]
+  lockedUnits[region] = FULL_PASS_REQUEST
+  RefreshUnits(region, nil, nil, true)
+  if lockedUnits[region] == FULL_PASS_REQUEST then lockedUnits[region] = before end
+end
+local function FlushPlateAdds()
+  plateFlushQueued = false
+  local adds = plateAdds
+  plateAdds = setmetatable({}, {__mode = "k"})
+  Display.BeginFlowBatch()
+  for region, tokens in pairs(adds) do
+    local native = region.blizzardAuraDisplay
+    -- A display unloaded, replaced or hidden since its plates were queued does no unit work
+    -- (its OnShow refreshes its units); its queue is simply dropped.
+    if activeRegions[region] and native and native.active and region:IsShown() and Display.UsesNameplates(native.data) then
+      Private.StartProfileAura(region.id)
+      local ok = xpcall(PlatePass, geterrorhandler(), region, native, tokens)
+      Private.StopProfileAura(region.id)
+      -- A full-pass request that failed stays whole-region debt for the drain; owed tokens
+      -- are already in pendingTokens.
+      if not ok and lockedUnits[region] == FULL_PASS_REQUEST then lockedUnits[region] = true end
+    end
+  end
+  Display.EndFlowBatch()
+end
+local function QueuePlateAdd(region, token)
+  local noted = plateAdds[region]
+  if token == true or noted == true then
+    plateAdds[region] = true
+  else
+    if type(noted) ~= "table" then noted = {}; plateAdds[region] = noted end
+    noted[token] = true
+  end
+  if not plateFlushQueued then
+    plateFlushQueued = true
+    C_Timer.After(0, FlushPlateAdds)
+  end
+end
+
 events:SetScript("OnEvent", function(_, event, unit)
   if event == "UI_SCALE_CHANGED" or event == "DISPLAY_SIZE_CHANGED" then
     for region in pairs(activeRegions) do pending[region] = region.blizzardAuraDisplay.data; if MarkRequest then MarkRequest(region) end end
@@ -4683,7 +4983,7 @@ events:SetScript("OnEvent", function(_, event, unit)
     -- hidden target displays rebound on every target change).
     if not region:IsShown() then
       -- nothing
-      if event == "PLAYER_TARGET_CHANGED" and mode == "target" then CombatBuildReport(("%s: target changed, display hidden (no unit work)"):format(tostring(region.id))) end
+      if event == "PLAYER_TARGET_CHANGED" and mode == "target" and Display.BuildReporting and Display.BuildReporting() then CombatBuildReport(("%s: target changed, display hidden (no unit work)"):format(tostring(region.id))) end
     elseif event == "UNIT_FACTION" then
       -- A plate's side changed (PvP flag, mind control): re-check its hostility.
       if mode == "nameplate" then
@@ -4694,20 +4994,36 @@ events:SetScript("OnEvent", function(_, event, unit)
         -- A target, focus or specific unit changed side: its display re-checks the filter.
         RefreshUnits(region, nil, nil, true)
       end
-    elseif event == "NAME_PLATE_UNIT_ADDED" or event == "NAME_PLATE_UNIT_REMOVED" then
+    elseif event == "NAME_PLATE_UNIT_ADDED" then
+      -- ForeverAuras (1.3.10-dev.1, Astra's nameplate review, item 2): plates that appear in one
+      -- frame are bound in one pass per display at the end of it (FlushPlateAdds), one relink of
+      -- their group and one finishing round, instead of a pass, a relink and a round per plate.
+      -- Removals stay immediate (below): nothing owed can hide a replacement plate. The pass
+      -- reads each token's current plate when it runs.
       if Display.UsesNameplates(region.blizzardAuraDisplay.data) then
+        QueuePlateAdd(region, mode == "nameplate" and unit or true)
+      end
+    elseif event == "NAME_PLATE_UNIT_REMOVED" then
+      if Display.UsesNameplates(region.blizzardAuraDisplay.data) then
+        -- (1.3.6-dev.1) one count per display handling the plate event
+        Private.HitchCount("nameplate removed: displays refreshed")
+        -- ForeverAuras (1.3.6-dev.18, Astra's allocation question): the plate event's work
+        -- is attributed to the display in the profile (/fa pprint: aura list, KB and ms);
+        -- a no-op unless profiling runs.
+        Private.StartProfileAura(region.id)
         if mode == "nameplate" then
-          RefreshUnits(region, event == "NAME_PLATE_UNIT_REMOVED" and unit or nil, unit, true)
+          RefreshUnits(region, unit, unit, true)
         else
           RefreshUnits(region, nil, nil, true)
         end
+        Private.StopProfileAura(region.id)
       end
     elseif pending[region] and not Restricted() then
       -- Rebuilt below; refreshing it first would be wasted.
       -- ForeverAuras 1.2.1 (Dan's stale target countdown, Astra's trace): said under /fa cells debug
-      if event == "PLAYER_TARGET_CHANGED" and mode == "target" then CombatBuildReport(("%s: target changed, a rebuild is pending (no refresh now)"):format(tostring(region.id))) end
+      if event == "PLAYER_TARGET_CHANGED" and mode == "target" and Display.BuildReporting and Display.BuildReporting() then CombatBuildReport(("%s: target changed, a rebuild is pending (no refresh now)"):format(tostring(region.id))) end
     elseif NeedsUnitRefresh(mode, event, unit, trigger) then
-      if event == "PLAYER_TARGET_CHANGED" and mode == "target" then CombatBuildReport(("%s: target changed, refreshing its units (restricted %s)"):format(tostring(region.id), tostring(Restricted()))) end
+      if event == "PLAYER_TARGET_CHANGED" and mode == "target" and Display.BuildReporting and Display.BuildReporting() then CombatBuildReport(("%s: target changed, refreshing its units (restricted %s)"):format(tostring(region.id), tostring(Restricted()))) end
       RefreshUnits(region, nil, nil, true)
     end
     if not region:IsShown() then
@@ -4727,6 +5043,17 @@ events:SetScript("OnEvent", function(_, event, unit)
     for region in pairs(activeRegions) do Display.RefreshConditionAppearance(region) end
   end
   for region in pairs(pendingSounds) do SyncSounds(region) end
+  -- (1.3.6-dev.1) the restriction-end drains, counted per region they visit
+  if Private.HitchCounting and Private.HitchCounting() then
+    local hides, locks = 0, 0
+    for _ in pairs(lockedHide) do hides = hides + 1 end
+    for _ in pairs(lockedUnits) do locks = locks + 1 end
+    if hides > 0 then Private.HitchCount(("drain on %s: lockedHide regions"):format(tostring(event)), hides) end
+    if locks > 0 then Private.HitchCount(("drain on %s: lockedUnits regions (full refresh each)"):format(tostring(event)), locks) end
+    local owed = 0
+    for _, tokens in pairs(pendingTokens) do for _ in pairs(tokens) do owed = owed + 1 end end
+    if owed > 0 then Private.HitchCount(("drain on %s: owed tokens (one pass per region)"):format(tostring(event)), owed) end
+  end
   for region in pairs(lockedHide) do
     lockedHide[region] = nil
     local native = region.blizzardAuraDisplay
@@ -4741,8 +5068,46 @@ events:SetScript("OnEvent", function(_, event, unit)
   end
   for region in pairs(lockedUnits) do
     lockedUnits[region] = nil
-    if region.blizzardAuraDisplay and region.blizzardAuraDisplay.active then RefreshUnits(region, nil, nil, true) end
+    -- (1.3.6-dev.12) a full pass covers the region's owed tokens too (RefreshUnits drops them)
+    if region.blizzardAuraDisplay and region.blizzardAuraDisplay.active then RefreshUnits(region, nil, nil, true) else pendingTokens[region] = nil end
   end
+  -- ForeverAuras (1.3.6-dev.10/12, Astra's reviews): the tokens a region still
+  -- owes are refreshed in ONE targeted pass per region (the set is handed to
+  -- RefreshUnits), so the display-wide finishing work runs once however many
+  -- plates changed. A token refused again is owed again by that pass; a
+  -- token whose plate was removed and reassigned meanwhile is re-bound to its
+  -- current plate and unit, exactly as the event would have. Regions are
+  -- listed first: the pass may give back a region's entry while we walk.
+  -- (Astra's dev.12 review) the set stays owned while the pass runs: the pass
+  -- retires each token as its instance completes, so a pass that stops early
+  -- leaves the failed token and the unvisited ones for the next drain.
+  local owedRegions
+  for region in pairs(pendingTokens) do owedRegions = owedRegions or {}; owedRegions[#owedRegions + 1] = region end
+  if owedRegions then
+    for _, region in ipairs(owedRegions) do
+      local tokens = pendingTokens[region]
+      if tokens then
+        local native = region.blizzardAuraDisplay
+        -- ForeverAuras (1.3.10-dev.3, the dev.2 review's layout case): the pass is handed a copy of
+        -- the owed set for its row selection; it retires the owed set itself as each token completes,
+        -- so handing that set left the relink with no rows to position.
+        if native and native.active then
+          local selection = {}
+          for token in pairs(tokens) do selection[token] = true end
+          RefreshUnits(region, nil, selection, true)
+        else pendingTokens[region] = nil end
+      end
+    end
+  end
+  -- ForeverAuras (Astra's overlay-reuse review, dev.4 follow-up): custom
+  -- overlay retirements the client refused are tried again now, then the
+  -- clones held out of the pool for them are pooled (AuraOverlay.lua,
+  -- Private.PoolHeldClones in ForeverAuras.lua). Both sets are normally empty.
+  if Private.RetryAuraOverlayRetirements then Private.RetryAuraOverlayRetirements() end
+  -- ForeverAuras (Item Manager battleground report, 1.3.10-dev.2): overlay
+  -- texture and border writes the client refused (AuraOverlay.lua).
+  if Private.RetryAuraOverlayLooks then Private.RetryAuraOverlayLooks() end
+  if Private.PoolHeldClones then Private.PoolHeldClones() end
   -- ForeverAuras (dev.95): retained containers that could not be quieted when the editor closed
   if Display.QuietRetainedLater then Display.QuietRetainedLater() end
   -- ForeverAuras (combat-reload probe): list alphas a build in combat

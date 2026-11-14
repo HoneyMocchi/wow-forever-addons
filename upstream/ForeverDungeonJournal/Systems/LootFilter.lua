@@ -650,7 +650,7 @@ function FDJ.UpdateLootFilterNote(frame)
     if not frame then return end
     local note = frame.lootFilterNote
     if not note and frame.lootScroll and frame.lootScroll.GetParent then
-        note = frame.lootScroll:GetParent():CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        note = frame.lootScroll:GetParent():CreateFontString(nil, "OVERLAY", "ForeverDJ_GameFontHighlightSmall")
         frame.lootFilterNote = note
         note:SetPoint("BOTTOMRIGHT", frame.lootScroll, "TOPRIGHT", 0, 3)
         note:SetTextColor(0.72, 0.67, 0.58)
@@ -689,8 +689,9 @@ end
 
 local function MakeCheck(parent, frame, getter, setter)
     local check = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
+    FDJ.OwnFonts(check) -- ownfonts (2.0.8)
     check:SetSize(24, 24)
-    local text = check:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    local text = check:CreateFontString(nil, "OVERLAY", "ForeverDJ_GameFontHighlight")
     text:SetPoint("LEFT", check, "RIGHT", 4, 0)
     text:SetJustifyH("LEFT")
     check.fdjLabel = text
@@ -833,7 +834,7 @@ local function CreateWindow(frame)
     win:SetBackdropColor(0.09, 0.08, 0.07, 0.98)
     win:SetBackdropBorderColor(0.62, 0.50, 0.30, 1)
 
-    win.title = win:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    win.title = win:CreateFontString(nil, "OVERLAY", "ForeverDJ_GameFontNormalLarge")
     win.title:SetPoint("TOPLEFT", 16, -14)
     win.title:SetTextColor(1.00, 0.82, 0.27)
 
@@ -850,18 +851,18 @@ local function CreateWindow(frame)
     win.classOnly:SetPoint("TOPLEFT", 14, -44)
     win.checks[#win.checks + 1] = win.classOnly
 
-    win.statsHeader = win:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    win.statsHeader = win:CreateFontString(nil, "OVERLAY", "ForeverDJ_GameFontNormal")
     win.statsHeader:SetPoint("TOPLEFT", win.classOnly, "BOTTOMLEFT", 2, -14)
     win.statsHeader:SetTextColor(1.00, 0.82, 0.27)
 
-    win.statsHint = win:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    win.statsHint = win:CreateFontString(nil, "OVERLAY", "ForeverDJ_GameFontHighlightSmall")
     win.statsHint:SetPoint("TOPLEFT", win.statsHeader, "BOTTOMLEFT", 0, -3)
     win.statsHint:SetWidth(356)
     win.statsHint:SetJustifyH("LEFT")
     win.statsHint:SetTextColor(0.72, 0.67, 0.58)
 
     -- Minimum required level: empty shows everything.
-    win.minLabel = win:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    win.minLabel = win:CreateFontString(nil, "OVERLAY", "ForeverDJ_GameFontHighlight")
     win.minLabel:SetPoint("TOPLEFT", win.statsHint, "BOTTOMLEFT", 0, -10)
     win.minBox = CreateFrame("EditBox", "ForeverDungeonJournalLootFilterMinLevel", win, "InputBoxTemplate")
     win.minBox:SetSize(44, 20)
@@ -881,6 +882,7 @@ local function CreateWindow(frame)
     -- Armor type drop-down: a red WoW button like the others in this window,
     -- with a mail-armor icon on the left and a down arrow on the right.
     win.armor = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
+    FDJ.OwnFonts(win.armor) -- ownfonts (2.0.8)
     -- Armor / Weapon / Resistance drop-downs side by side under the level box.
     win.armor:SetSize(116, 22)
     win.armor:SetPoint("TOPLEFT", win.minLabel, "BOTTOMLEFT", -2, -10)
@@ -894,7 +896,7 @@ local function CreateWindow(frame)
     caret:SetTexture("Interface\\Buttons\\Arrow-Down-Up")
     caret:SetSize(12, 12)
     caret:SetPoint("RIGHT", win.armor, "RIGHT", -7, -3)
-    win.armor.text = win.armor:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    win.armor.text = win.armor:CreateFontString(nil, "OVERLAY", "ForeverDJ_GameFontNormal")
     win.armor.text:SetPoint("LEFT", win.armor.icon, "RIGHT", 4, 0)
     win.armor.text:SetPoint("RIGHT", caret, "LEFT", -2, 3)
     win.armor.text:SetJustifyH("CENTER")
@@ -944,7 +946,7 @@ local function CreateWindow(frame)
         option.check:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
         option.check:SetAllPoints(option.box)
         option.check:Hide()
-        option.text = option:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        option.text = option:CreateFontString(nil, "OVERLAY", "ForeverDJ_GameFontHighlight")
         option.text:SetPoint("LEFT", option.box, "RIGHT", 4, 0)
         option.text:SetTextColor(0.95, 0.83, 0.53)
         option:SetScript("OnClick", function(self)
@@ -977,6 +979,7 @@ local function CreateWindow(frame)
     -- Weapon type drop-down (shields included), under the armor one.
     do
         local b = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
+        FDJ.OwnFonts(b) -- ownfonts (2.0.8)
         win.weapon = b
         b:SetSize(116, 22)
         b:SetPoint("LEFT", win.armor, "RIGHT", 4, 0)
@@ -989,7 +992,7 @@ local function CreateWindow(frame)
         arrow:SetTexture("Interface\\Buttons\\Arrow-Down-Up")
         arrow:SetSize(12, 12)
         arrow:SetPoint("RIGHT", b, "RIGHT", -7, -3)
-        b.text = b:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        b.text = b:CreateFontString(nil, "OVERLAY", "ForeverDJ_GameFontNormal")
         b.text:SetPoint("LEFT", b.icon, "RIGHT", 3, 0)
         b.text:SetPoint("RIGHT", arrow, "LEFT", -2, 3)
         b.text:SetJustifyH("CENTER")
@@ -1031,7 +1034,7 @@ local function CreateWindow(frame)
             option.check:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
             option.check:SetAllPoints(option.box)
             option.check:Hide()
-            option.text = option:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+            option.text = option:CreateFontString(nil, "OVERLAY", "ForeverDJ_GameFontHighlight")
             option.text:SetPoint("LEFT", option.box, "RIGHT", 4, 0)
             option.text:SetTextColor(0.95, 0.83, 0.53)
             option:SetScript("OnClick", function(self)
@@ -1064,6 +1067,7 @@ local function CreateWindow(frame)
 
     -- Master switch: while off, the journal shows its default loot view.
     win.toggle = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
+    FDJ.OwnFonts(win.toggle) -- ownfonts (2.0.8)
     win.toggle:SetSize(96, 22)
     win.toggle:SetPoint("TOPRIGHT", -34, -12)
     win.toggle:SetScript("OnClick", function()
@@ -1097,7 +1101,7 @@ local function CreateWindow(frame)
                     })
                     tip:SetBackdropColor(0.04, 0.04, 0.05, 0.96)
                     tip:SetBackdropBorderColor(0.60, 0.60, 0.60, 1)
-                    tip.text = tip:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+                    tip.text = tip:CreateFontString(nil, "OVERLAY", "ForeverDJ_GameFontHighlight")
                     tip.text:SetPoint("CENTER")
                 end
                 tip.text:SetText(L(stat.tip))
@@ -1157,7 +1161,7 @@ local function CreateWindow(frame)
             option.check:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
             option.check:SetAllPoints(option.box)
             option.check:Hide()
-            option.text = option:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+            option.text = option:CreateFontString(nil, "OVERLAY", "ForeverDJ_GameFontHighlight")
             option.text:SetPoint("LEFT", option.box, "RIGHT", 4, 0)
             option.text:SetTextColor(0.95, 0.83, 0.53)
             option:SetScript("OnClick", function(self)
@@ -1194,6 +1198,7 @@ local function CreateWindow(frame)
     -- Ticked schools: the item needs at least one of them.
     if RESIST_FILTER then
         local b = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
+        FDJ.OwnFonts(b) -- ownfonts (2.0.8)
         win.resist = b
         b:SetSize(116, 22)
         b:SetPoint("LEFT", win.weapon or win.armor, "RIGHT", 4, 0)
@@ -1207,7 +1212,7 @@ local function CreateWindow(frame)
         arrow:SetTexture("Interface\\Buttons\\Arrow-Down-Up")
         arrow:SetSize(12, 12)
         arrow:SetPoint("RIGHT", b, "RIGHT", -7, -3)
-        b.text = b:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        b.text = b:CreateFontString(nil, "OVERLAY", "ForeverDJ_GameFontNormal")
         b.text:SetPoint("LEFT", b.icon, "RIGHT", 4, 0)
         b.text:SetPoint("RIGHT", arrow, "LEFT", -2, 3)
         b.text:SetJustifyH("CENTER")
@@ -1245,7 +1250,7 @@ local function CreateWindow(frame)
             option.check:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
             option.check:SetAllPoints(option.box)
             option.check:Hide()
-            option.text = option:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+            option.text = option:CreateFontString(nil, "OVERLAY", "ForeverDJ_GameFontHighlight")
             option.text:SetPoint("LEFT", option.box, "RIGHT", 4, 0)
             option.text:SetTextColor(0.95, 0.83, 0.53)
             option:SetScript("OnClick", function(self)
@@ -1280,15 +1285,18 @@ local function CreateWindow(frame)
     end)
 
     win.clear = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
+    FDJ.OwnFonts(win.clear) -- ownfonts (2.0.8)
     win.clear:SetSize(110, 22)
     win.clear:SetPoint("BOTTOMRIGHT", -16, 14)
 
     win.ok = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
+    FDJ.OwnFonts(win.ok) -- ownfonts (2.0.8)
     win.ok:SetSize(90, 22)
     win.ok:SetPoint("BOTTOM", 14, 14)
     win.ok:SetScript("OnClick", function() win:Hide() end)
 
     win.show = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
+    FDJ.OwnFonts(win.show) -- ownfonts (2.0.8)
     win.show:SetSize(130, 22)
     win.show:SetPoint("BOTTOMLEFT", 16, 14)
     -- The game's loot-pouch cursor icon.
@@ -1354,7 +1362,7 @@ function FDJ.CreateLootFilterButton(frame, home, anchorButton)
     button:SetBackdropColor(0.12, 0.115, 0.105, 0.98)
     button:SetBackdropBorderColor(0.48, 0.40, 0.27, 1)
     button:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
-    local text = button:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    local text = button:CreateFontString(nil, "OVERLAY", "ForeverDJ_GameFontHighlight")
     frame.lootFilterButtonText = text
     text:SetPoint("CENTER", 0, 0)
     text:SetTextColor(1.00, 0.82, 0.27)
@@ -1450,9 +1458,9 @@ local function MakeResultRow(parent)
     row.icon = row:CreateTexture(nil, "ARTWORK")
     row.icon:SetSize(28, 28)
     row.icon:SetPoint("LEFT", 26, 0)
-    row.text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    row.text = row:CreateFontString(nil, "OVERLAY", "ForeverDJ_GameFontHighlight")
     row.text:SetJustifyH("LEFT")
-    row.sub = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.sub = row:CreateFontString(nil, "OVERLAY", "ForeverDJ_GameFontHighlightSmall")
     row.sub:SetPoint("RIGHT", -10, 0)
     row.sub:SetJustifyH("RIGHT")
     row.sub:SetTextColor(0.72, 0.67, 0.58)
@@ -1551,14 +1559,14 @@ function FDJ.RefreshLootFilterResults(frame)
             row:SetPoint("TOPLEFT", panel.content, "TOPLEFT", 0, -y)
             row.icon:Hide()
             row.bg:SetColorTexture(0.30, 0.22, 0.10, 0.85)
-            row.text:SetFontObject("GameFontNormalLarge")
+            row.text:SetFontObject("ForeverDJ_GameFontNormalLarge")
             row.text:SetPoint("LEFT", 8, 0)
             row.text:SetText(FDJ.LocalizeDungeonName and FDJ.LocalizeDungeonName(entry.dungeonName) or entry.dungeonName)
             row.text:SetTextColor(1.00, 0.82, 0.27)
         elseif entry.kind == "boss" then
             row.icon:Hide()
             row.bg:SetColorTexture(0.16, 0.14, 0.11, 0.85)
-            row.text:SetFontObject("GameFontNormal")
+            row.text:SetFontObject("ForeverDJ_GameFontNormal")
             row.text:SetPoint("LEFT", 16, 0)
             row.text:SetText(FDJ.LocalizeBossName and FDJ.LocalizeBossName(entry.boss.name) or entry.boss.name)
             row.text:SetTextColor(0.95, 0.90, 0.78)
@@ -1567,7 +1575,7 @@ function FDJ.RefreshLootFilterResults(frame)
             row.icon:SetTexture(ItemIconTexture(item[1]))
             row.icon:Show()
             row.bg:SetColorTexture(0.08, 0.07, 0.06, 0.60)
-            row.text:SetFontObject("GameFontHighlight")
+            row.text:SetFontObject("ForeverDJ_GameFontHighlight")
             row.text:SetPoint("LEFT", row.icon, "RIGHT", 8, 0)
             local name
             if type(GetItemInfo) == "function" and item[1] and item[1] > 0 then
@@ -1604,16 +1612,18 @@ FDJ.ShowLootFilterList = function(frame)
         panel:SetBackdropColor(0.10, 0.08, 0.06, 1)
         panel:SetBackdropBorderColor(0.62, 0.50, 0.30, 1)
 
-        panel.title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        panel.title = panel:CreateFontString(nil, "OVERLAY", "ForeverDJ_GameFontNormalLarge")
         panel.title:SetPoint("TOPLEFT", 16, -16)
         panel.title:SetTextColor(1.00, 0.82, 0.27)
 
         panel.back = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+        FDJ.OwnFonts(panel.back) -- ownfonts (2.0.8)
         panel.back:SetSize(100, 22)
         panel.back:SetPoint("TOPRIGHT", -14, -12)
         panel.back:SetScript("OnClick", function() panel:Hide() end)
 
         panel.filter = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+        FDJ.OwnFonts(panel.filter) -- ownfonts (2.0.8)
         panel.filter:SetSize(120, 22)
         panel.filter:SetPoint("RIGHT", panel.back, "LEFT", -8, 0)
         panel.filter:SetScript("OnClick", function() FDJ.ToggleLootFilterWindow(frame) end)
@@ -1625,7 +1635,7 @@ FDJ.ShowLootFilterList = function(frame)
         panel.content:SetSize(700, 1)
         panel.scroll:SetScrollChild(panel.content)
 
-        panel.empty = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
+        panel.empty = panel:CreateFontString(nil, "OVERLAY", "ForeverDJ_GameFontHighlightLarge")
         panel.empty:SetPoint("CENTER", 0, 0)
         panel.empty:SetTextColor(0.72, 0.67, 0.58)
         panel.rows = {}
@@ -1860,18 +1870,166 @@ end
 -- On a Trash Drops row, the mobs that drop the item are drawn as small
 -- portraits on the right; hovering one shows its name. Returns true when the
 -- portraits replace the source text (every named mob has a known portrait).
-function FDJ.SetRowMobs(row, sourceText)
-    row.fdjMobButtons = row.fdjMobButtons or {}
+-- The mobs a row's source names, when every one of them has a portrait
+-- (else none: the row keeps the names as text).
+function FDJ.RowMobNames(sourceText)
     local names = {}
     if type(sourceText) == "string" and FDJ.TRASH_MOB_DISPLAY_IDS and type(SetPortraitTextureFromCreatureDisplayID) == "function" then
         for name in (sourceText .. " / "):gmatch("(.-) / ") do
             name = name:gsub("^%s+", ""):gsub("%s+$", "")
             if name ~= "" then
-                if not FDJ.TRASH_MOB_DISPLAY_IDS[name] then names = {} break end
+                if not FDJ.TRASH_MOB_DISPLAY_IDS[name]
+                    and not (FDJ.TRASH_MOB_NPC_IDS and FDJ.TRASH_MOB_NPC_IDS[name]) then return {} end
                 names[#names + 1] = name
             end
         end
     end
+    return names
+end
+
+-- moborder (2.0.25; 2.0.24 gave each mob a fixed column, which left gaps):
+-- rows stay packed to the right, but the mobs keep one order across the
+-- page: the mob on the most rows rightmost, then the next, and so on (ties:
+-- the one met first). (The 2.0.25 hover glow across rows went in 2.0.26.)
+function FDJ.PlanMobSlots(loot)
+    FDJ.mobSlots = nil
+    if type(loot) ~= "table" then return end
+    local count, first, order = {}, {}, {}
+    for index, item in ipairs(loot) do
+        for at, name in ipairs(FDJ.RowMobNames(type(item) == "table" and item[5] or nil)) do
+            if not count[name] then
+                count[name], first[name] = 0, index * 100 + at -- ties: met first, then as written
+                order[#order + 1] = name
+            end
+            count[name] = count[name] + 1
+        end
+    end
+    if #order == 0 then return end
+    table.sort(order, function(x, y)
+        if count[x] ~= count[y] then return count[x] > count[y] end
+        return first[x] < first[y]
+    end)
+    local rank = {}
+    for i, name in ipairs(order) do rank[name] = i end
+    FDJ.mobSlots = { rank = rank }
+end
+
+-- mobfast (2.0.31): the looks of trash mobs known by NPC ID only, found
+-- all at once instead of one after another behind the bosses: a hidden
+-- model of each NPC tells its display, which is saved with the journal's
+-- other portraits (ForeverDungeonJournalDB.displayIDs), so after the first
+-- time they are drawn at once. Started a few seconds after logging in and
+-- again when a page shows them; a portrait waiting for one is drawn the
+-- moment it is found.
+FDJ.mobLooks = FDJ.mobLooks or { pending = {}, waiting = {}, models = {} }
+function FDJ.MobDisplay(npcID)
+    local saved = type(ForeverDungeonJournalDB) == "table" and type(ForeverDungeonJournalDB.displayIDs) == "table"
+        and ForeverDungeonJournalDB.displayIDs[npcID]
+    return type(saved) == "number" and saved > 0 and saved or nil
+end
+function FDJ.DrawMobPortrait(texture, displayID)
+    local okPortrait, shown = false, false
+    if FDJ.AcquirePortrait then okPortrait, shown = pcall(FDJ.AcquirePortrait, texture, displayID) end
+    if not (okPortrait and shown) and type(SetPortraitTextureFromCreatureDisplayID) == "function" then
+        pcall(SetPortraitTextureFromCreatureDisplayID, texture, displayID)
+    end
+    texture:SetVertexColor(1, 1, 1, 1)
+end
+function FDJ.ResolveMobDisplays(npcIDs)
+    local looks = FDJ.mobLooks
+    if type(CreateFrame) ~= "function" then return end
+    local now = (GetTime and GetTime()) or 0
+    for _, npcID in ipairs(npcIDs or {}) do
+        if type(npcID) == "number" and not FDJ.MobDisplay(npcID) and not looks.pending[npcID] then
+            looks.pending[npcID] = { tries = 0, at = now - 10 }
+        end
+    end
+    if not next(looks.pending) then return end
+    if not looks.driver then
+        looks.driver = CreateFrame("Frame")
+        looks.driver:SetScript("OnUpdate", function(self)
+            if FDJ.portraitZoning then return end
+            local t = (GetTime and GetTime()) or 0
+            local busy = false
+            for npcID, job in pairs(looks.pending) do
+                busy = true
+                local model = looks.models[npcID]
+                if not model then
+                    local ok, made = pcall(CreateFrame, "PlayerModel", nil, UIParent)
+                    if ok and made then
+                        made:SetSize(1, 1)
+                        made:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+                        made:SetAlpha(0)
+                        looks.models[npcID] = made
+                        model = made
+                    end
+                end
+                if not model then
+                    looks.pending[npcID] = nil
+                elseif t - job.at >= 2.5 then
+                    -- Ask (again): an NPC this client has not met comes in a
+                    -- moment after the server answers.
+                    job.tries, job.at = job.tries + 1, t
+                    if job.tries > 12 then
+                        looks.pending[npcID] = nil
+                        model:Hide()
+                    else
+                        model:Show()
+                        if model.ClearModel then pcall(model.ClearModel, model) end
+                        if not pcall(model.SetCreature, model, npcID) then looks.pending[npcID] = nil end
+                    end
+                else
+                    local ok, display = pcall(model.GetDisplayInfo, model)
+                    if ok and type(display) == "number" and display > 0 then
+                        looks.pending[npcID] = nil
+                        if type(ForeverDungeonJournalDB) == "table" then
+                            ForeverDungeonJournalDB.displayIDs = ForeverDungeonJournalDB.displayIDs or {}
+                            ForeverDungeonJournalDB.displayIDs[npcID] = display
+                        end
+                        if model.ClearModel then pcall(model.ClearModel, model) end
+                        model:Hide()
+                        for button in pairs(looks.waiting) do
+                            if button.fdjMobNpc == npcID then
+                                looks.waiting[button] = nil
+                                FDJ.DrawMobPortrait(button.portrait, display)
+                            end
+                        end
+                    end
+                end
+            end
+            if not busy then self:Hide() end
+        end)
+    end
+    looks.driver:Show()
+end
+-- All of them, a few seconds after logging in (once a session).
+function FDJ.WarmMobDisplays()
+    if FDJ.mobLooks.warmed then return end
+    FDJ.mobLooks.warmed = true
+    local ids = {}
+    for _, npcID in pairs(FDJ.TRASH_MOB_NPC_IDS or {}) do ids[#ids + 1] = npcID end
+    FDJ.ResolveMobDisplays(ids)
+end
+do
+    local warm = CreateFrame and CreateFrame("Frame")
+    if warm then
+        warm:RegisterEvent("PLAYER_LOGIN")
+        warm:SetScript("OnEvent", function(self)
+            self:UnregisterAllEvents()
+            if C_Timer and C_Timer.After then C_Timer.After(4, FDJ.WarmMobDisplays) else FDJ.WarmMobDisplays() end
+        end)
+    end
+end
+
+function FDJ.SetRowMobs(row, sourceText)
+    row.fdjMobButtons = row.fdjMobButtons or {}
+    local names = FDJ.RowMobNames(sourceText)
+    local plan = FDJ.mobSlots
+    -- moborder: the page's order, its first mob rightmost.
+    if plan and plan.rank and #names > 1 then
+        table.sort(names, function(x, y) return (plan.rank[x] or 999) < (plan.rank[y] or 999) end)
+    end
+    row.fdjMobSpan = 0
     for i, name in ipairs(names) do
         local button = row.fdjMobButtons[i]
         if not button then
@@ -1889,22 +2047,49 @@ function FDJ.SetRowMobs(row, sourceText)
             row.fdjMobButtons[i] = button
         end
         button.fdjMobName = name
+        button.fdjMobNpc = nil
+        FDJ.mobLooks.waiting[button] = nil
         button:ClearAllPoints()
-        button:SetPoint("RIGHT", row, "RIGHT", -10 - (#names - i) * 38, 0)
+        -- moborder: packed to the right, in the page's order (no gaps); with
+        -- no page order, in the source's order as before.
+        local column = (plan and plan.rank) and (i - 1) or (#names - i)
+        button:SetPoint("RIGHT", row, "RIGHT", -10 - column * 38, 0)
+        if column + 1 > row.fdjMobSpan then row.fdjMobSpan = column + 1 end
         local mobDisplayID = FDJ.TRASH_MOB_DISPLAY_IDS[name]
-        -- Bundled picture, else the off-screen portrait pool like the bosses
-        -- (no black square while it loads; warmed after login).
-        local okPortrait, shown = false, false
-        if FDJ.AcquirePortrait then okPortrait, shown = pcall(FDJ.AcquirePortrait, button.portrait, mobDisplayID) end
-        if not (okPortrait and shown) then
-            pcall(SetPortraitTextureFromCreatureDisplayID, button.portrait, mobDisplayID)
+        if mobDisplayID then
+            -- Bundled picture, else the off-screen portrait pool like the bosses
+            -- (no black square while it loads; warmed after login).
+            local okPortrait, shown = false, false
+            if FDJ.AcquirePortrait then okPortrait, shown = pcall(FDJ.AcquirePortrait, button.portrait, mobDisplayID) end
+            if not (okPortrait and shown) then
+                pcall(SetPortraitTextureFromCreatureDisplayID, button.portrait, mobDisplayID)
+            end
+            button.portrait:SetVertexColor(1, 1, 1, 1)
+        else
+            -- trashnpc (2.0.22): known by NPC ID only. mobfast (2.0.31): its
+            -- look saved from an earlier lookup is drawn at once; else it is
+            -- looked up now (all of the page's together) and drawn the moment
+            -- it is found, a plain dark disc until then (no "?").
+            local npcID = FDJ.TRASH_MOB_NPC_IDS[name]
+            local display = FDJ.MobDisplay(npcID)
+            if display then
+                FDJ.DrawMobPortrait(button.portrait, display)
+            else
+                if FDJ.ReleasePortrait then pcall(FDJ.ReleasePortrait, button.portrait) end
+                button.portrait:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask")
+                button.portrait:SetTexCoord(0, 1, 0, 1)
+                button.portrait:SetVertexColor(0.08, 0.07, 0.06, 0.85)
+                button.fdjMobNpc = npcID
+                FDJ.mobLooks.waiting[button] = true
+                FDJ.ResolveMobDisplays({ npcID })
+            end
         end
         button:Show()
     end
     for i = #names + 1, #row.fdjMobButtons do row.fdjMobButtons[i]:Hide() end
     -- Keep the item name clear of the portraits.
     if row.name and row.name.SetPoint then
-        row.name:SetPoint("RIGHT", row, "RIGHT", -10 - #names * 38, 0)
+        row.name:SetPoint("RIGHT", row, "RIGHT", -10 - row.fdjMobSpan * 38, 0)
     end
     return #names > 0
 end

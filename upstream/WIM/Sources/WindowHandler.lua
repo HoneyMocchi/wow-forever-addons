@@ -1,0 +1,2810 @@
+--[[
+    Extends Modules by adding:
+        Module:OnWindowCreated(winObj)
+        Module:OnWindowDestroyed(winObj)
+        Module:OnWindowPopped(winObj)
+	Module:OnWindowMessageAdded(winObj, msg, r, g, b)
+        Module:OnWindowShow(winObj)
+        Module:OnWindowHide(winObj)
+        Module:OnContainerShow()
+        Module:OnContainerHide()
+]]
+
+local WIM = WIM;
+
+-- imports
+local _G = _G;
+local CreateFrame = CreateFrame;
+local UIFrameFadeIn = UIFrameFadeIn;
+local UIFrameFadeOut = UIFrameFadeOut;
+local GetMouseFocus = WIM.utils.compat.GetMouseTopFocus;
+local table = table;
+local string = string;
+local IsShiftKeyDown = IsShiftKeyDown;
+local select = select;
+local pairs = pairs;
+local type = type;
+local tostring = tostring;
+local unpack = unpack;
+local strsub = strsub;
+local time = time;
+local Ambiguate = Ambiguate;
+local GetGuildInfo = GetGuildInfo;
+local UnitClass = UnitClass;
+local UnitLevel = UnitLevel;
+local UnitRace = UnitRace;
+local InCombatLockdown = InCombatLockdown;
+local GetCommunitiesChannelColor = (ChatFrameUtil and ChatFrameUtil.GetCommunitiesChannelColor) or ChatFrame_GetCommunitiesChannelColor or function() return 1, 0.82, 0 end;
+local GetCommunityAndStreamName = (ChatFrameUtil and ChatFrameUtil.GetCommunityAndStreamName) or ChatFrame_GetCommunityAndStreamName;
+
+-- set namespace
+setfenv(1, WIM);
+
+
+-- load message window related default settings.
+db_defaults.displayColors = {
+	sysMsg = {
+		r=1,
+		g=0.6627450980392157,
+		b=0
+	},
+	errorMsg = {
+		r=1,
+		g=0,
+		b=0
+	},
+	useSkin = true,
+	useNative = {
+		enabled = true,
+		whisper = true,
+		bnet = true,
+		say = true,
+		guild = true,
+		officer = true,
+		party = true,
+		raid = true,
+		instance = true,
+		channel = true,
+	},
+};
+
+-- streamer mode setting
+db_defaults.streamMode = false;
+
+-- The input field takes the color of the chat type it sends as, like
+-- the game's own chat box. A Modern skin option, inert under other
+-- skins like the rest of the theme settings.
+local function nativeColorsActive()
+	local native = db and db.displayColors and db.displayColors.useNative;
+	if(not (native and native.enabled)) then return nil; end
+	local skin = GetSelectedSkin and GetSelectedSkin();
+	return (skin and skin.schema_version == 2) and native or nil;
+end
+
+local function inputColorTarget(obj)
+	if(obj.type == "whisper" or obj.type == "w2w") then
+		if(obj.isBN) then
+			return "bnet", "BN_WHISPER";
+		end
+		return "whisper", "WHISPER";
+	elseif(obj.type == "chat") then
+		local chatType = obj.chatType;
+		if(chatType == "say") then
+			-- Follows the say window's output toggle.
+			return "say", GetSayOutputType and GetSayOutputType() or "SAY";
+		elseif(chatType == "guild") then
+			return "guild", "GUILD";
+		elseif(chatType == "officer") then
+			return "officer", "OFFICER";
+		elseif(chatType == "party") then
+			return "party", "PARTY";
+		elseif(chatType == "raid") then
+			return "raid", "RAID";
+		elseif(chatType == "battleground") then
+			return "instance", "INSTANCE_CHAT";
+		elseif(chatType == "channel") then
+			return "channel", "CHANNEL"..(obj.channelNumber or "");
+		elseif(chatType == "community") then
+			return "channel", "COMMUNITIES_CHANNEL";
+		end
+	end
+end
+
+function UpdateInputColor(obj)
+	local box = obj and obj.widgets and obj.widgets.msg_box;
+	if(not box) then return; end
+	local native = nativeColorsActive();
+	local key, token = inputColorTarget(obj);
+	local info = native and key and native[key]
+		and (_G.ChatTypeInfo[token or ""] or _G.ChatTypeInfo["CHANNEL"]);
+	if(info) then
+		box:SetTextColor(info.r, info.g, info.b);
+		obj.wimInputColored = true;
+	elseif(obj.wimInputColored) then
+		obj.wimInputColored = nil;
+		local widgetSkin = GetSelectedSkin().message_window.widgets.msg_box;
+		local color = widgetSkin and widgetSkin.font_color;
+		if(type(color) == "table") then
+			box:SetTextColor(_G.unpack(color));
+		elseif(color) then
+			box:SetTextColor(utils.color.RGBHexToPercent(color));
+		else
+			box:SetTextColor(1, 1, 1);
+		end
+	end
+end
+
+function UpdateAllInputColors()
+	for box in Widgets("msg_box") do
+		UpdateInputColor(box.parentWindow);
+	end
+end
+
+db_defaults.fontSize = 12;
+db_defaults.windowAlpha = 80;
+db_defaults.winSize = {
+		width = 333,
+		height = 245,
+		scale = 100,
+                strata = "DIALOG"
+	};
+db_defaults.winLoc = {
+		left =217,
+		top =664
+	};
+db_defaults.winCascade = {
+		enabled = true,
+		direction = 8
+	};
+db_defaults.winFade = true;
+db_defaults.winFadeAmount = 50;
+db_defaults.winAnimation = true;
+db_defaults.wordwrap_indent = false;
+db_defaults.coloredNames = true;
+db_defaults.escapeToHide = true;
+db_defaults.ignoreArrowKeys = true;
+db_defaults.pop_rules = {};
+db_defaults.whoLookups = true;
+db_defaults.hoverLinks = false;
+db_defaults.tabAdvance = false;
+db_defaults.clampToScreen = true;
+
+db_defaults.formatting = {
+                bracketing = {
+                                enabled = true,
+                                type = 1,
+                },
+};
+
+
+WIM.lists.bracketing = {
+                [1] = {
+                                [1] = "[",
+                                [2] = "]"
+                },
+                [2] = {
+                                [1] = "<",
+                                [2] = ">"
+                },
+}
+
+local WindowSoupBowl = {
+    windowToken = 0,
+    available = 0,
+    used = 0,
+    windows = {
+    }
+}
+
+local FadeProps = {
+	-- min & max are deprecated since we have a defined value set now.
+	-- min = .5,
+	-- max = 1,
+	interval = .25,
+	delay = 2
+};
+
+local cascadeDirection = {
+        {0, 25},        -- Up
+        {0, -25},       -- Down
+        {-50, 0},       -- Left
+        {50, 0},        -- Right
+        {-50, 25},      -- Up & Left
+        {50, 25},       -- Up & Right
+        {-50, -25},     -- Down & Left
+        {50, -25},      -- Down & Right
+};
+
+local GameClients = { -- thank you MysticalOS
+    ["BSAp"] = nil, --Battle.net Mobile "Interface\\FriendsFrame\\Battlenet-Battleneticon"
+    ["WoW"] = nil, --World of Warcraft
+    ["S2"] = 'sc2', --Starcraft 2 "Interface\\FriendsFrame\\Battlenet-Sc2icon"
+    ["D3"] = 'd3', --Diablo 3 "Interface\\FriendsFrame\\Battlenet-D3icon"
+    ["WTCG"] = 'hs', --Hearthstone "Interface\\FriendsFrame\\Battlenet-WTCGicon"
+    ["App"] = nil, --Battle.net Client
+    ["Hero"] = 'hots', --Heroes of the Storm "Interface\\FriendsFrame\\Battlenet-HotSicon"
+    ["Pro"] = 'ow', --Overwatch "Interface\\FriendsFrame\\Battlenet-Overwatchicon"
+    ["CLNT"] = nil, --Battle.net Client alternate (Unused?)
+    ["S1"] = 'sc1', --Starcraft 1
+    ["DST2"] = 'dsty2', --Destiny 2
+    ["VIPR"] = 'vipr', --COD
+    ["ODIN"] = 'vipr', --COD MW
+    ["LAZR"] = 'vipr', --COD MW2
+    ["ZEUS"] = 'vipr', --COD BOCW
+    ["W3"] = nil, --Warcraft 3 Reforged
+    ["RTRO"] = nil, --Blizzard Arcane
+    ["WLBY"] = nil, --Crash 4
+    ["OSI"] = 'd3' --Diablo 2
+}
+
+windowsByAge = {};
+
+nextColor = {};
+
+local FormattingCallsList = {}; -- used to get a list of available Formattings.
+local FormattingCalls = {}; -- functions which are passed events to be formatted. Only one may be used at once.
+
+local StringModifiers = {}; -- registered functions which will be used to format the message part of the string.
+
+
+-- Window's Parent (Container for all Windows)
+WindowParent = _G.CreateFrame("Frame", "WIM_UIParent", _G.UIParent);
+	WindowParent:SetFrameStrata("BACKGROUND");
+	WindowParent:SetPoint("BOTTOMLEFT", _G.UIParent, "BOTTOMLEFT", 0, 0);
+	WindowParent:SetScript("OnShow", function(self)
+					WindowParent:SetWidth(_G.UIParent:GetWidth());
+					WindowParent:SetHeight(_G.UIParent:GetHeight());
+	end);
+	-- WindowParent.test = WindowParent:CreateTexture("BACKGROUND");
+	-- WindowParent.test:SetColorTexture(1,1,1,.5)
+	-- WindowParent.test:SetAllPoints();
+	WindowParent:Hide();
+
+	WindowParent:SetScript("OnUpdate", function (self, elapsed)
+
+		-- Keep the container matched to the screen. Its size is
+		-- otherwise only captured on first show and goes stale on
+		-- resolution and scale changes, which skews the client's
+		-- move and size operations for every window anchored here.
+		local uiWidth, uiHeight = _G.UIParent:GetWidth(), _G.UIParent:GetHeight();
+		if(self:GetWidth() ~= uiWidth) then
+			self:SetWidth(uiWidth);
+		end
+		if(self:GetHeight() ~= uiHeight) then
+			self:SetHeight(uiHeight);
+		end
+
+		-- EditBoxInFocus & _EditBoxInFocus Management
+		-- if new edit box is focused, reset timer
+		if (EditBoxInFocus and self._editBoxInFocusElapsed) then
+			self._editBoxInFocusElapsed = nil
+
+		-- if no edit box is in focus, but one is stored in temp history, reset after 100ms
+		elseif (not EditBoxInFocus and _EditBoxInFocus) then
+			self._editBoxInFocusElapsed = (self._editBoxInFocusElapsed or 0) + elapsed
+			if (self._editBoxInFocusElapsed > .1) then
+				_EditBoxInFocus = nil
+				self._editBoxInFocusElapsed = nil
+			end
+		end
+	end);
+
+
+-- the following table defines a list of actions to be taken when
+-- script handlers are fired for different type windows.
+-- use WIM:RegisterWidgetTrigger(WindowType, ScriptEvent, function());
+local Widget_Triggers = {};
+
+local function getFormatByName(format)
+	for i=1, #FormattingCalls do
+		if(FormattingCalls[i].name == format) then
+			return FormattingCalls[i].fun;
+		end
+	end
+	return FormattingCalls[1].fun;
+end
+
+function applyMessageFormatting(...)
+	local fun = getFormatByName(db.messageFormat);
+	return fun(...);
+end
+
+
+function applyStringModifiers(str, chatDisplay)
+	if (IsSecretValue(str)) then
+		return str;
+	end
+
+	for i=1, #StringModifiers do
+		str = StringModifiers[i](str, chatDisplay);
+	end
+        chatDisplay.noEscapedStrings = nil;
+	return str;
+end
+
+
+local RegisteredWidgets = {}; -- a list of registered widgets added to windows from modules.
+windows.widgets = RegisteredWidgets;
+
+--[[ Sample Widget with triggers
+RegisteredWidgets["Test"] = function(parentWindow)
+	_G.DEFAULT_CHAT_FRAME:AddMessage("Test Widget created!");
+	local t = CreateFrame("Frame");
+	t.SetDefaults = function()
+			_G.DEFAULT_CHAT_FRAME:AddMessage("Test Widget defaults set!");
+		end
+	t.UpdateProps = function()
+			_G.DEFAULT_CHAT_FRAME:AddMessage("Test Widget props updated!");
+		end
+	return t;
+end
+]]
+
+local windowListByLevel_Recycle = {};
+local function getActiveWindowListByLevel()
+	-- first remove items from previously used list.
+	for i=1,#windowListByLevel_Recycle do
+		table.remove(windowListByLevel_Recycle, 1);
+	end
+	-- load all used windows into table
+	for i=1, #WindowSoupBowl.windows do
+		if(WindowSoupBowl.windows[i].inUse and WindowSoupBowl.windows[i].obj:IsVisible()) then
+			table.insert(windowListByLevel_Recycle, WindowSoupBowl.windows[i].obj);
+		end
+	end
+	table.sort(windowListByLevel_Recycle, function(a,b)
+		a, b = a:GetFrameLevel(), b:GetFrameLevel();
+		return a>b;
+	end);
+	return windowListByLevel_Recycle;
+end
+
+function getWindowAtCursorPosition(excludeObj)
+	-- can optionaly exclude an object
+	local x,y = _G.GetCursorPosition();
+	local windows = getActiveWindowListByLevel();
+	for i=1,#windows do
+		if(excludeObj ~= windows[i]) then
+			local x1, y1 = windows[i]:GetLeft()*windows[i]:GetEffectiveScale(), windows[i]:GetTop()*windows[i]:GetEffectiveScale();
+			local x2, y2 = x1 + windows[i]:GetWidth()*windows[i]:GetEffectiveScale(), y1 - windows[i]:GetHeight()*windows[i]:GetEffectiveScale();
+			if(x >= x1 and x <= x2 and y <= y1 and y >= y2) then
+				return windows[i];
+			end
+		end
+	end
+	return nil;
+end
+
+-- window resizing helper
+local resizeFrame = CreateFrame("Button", "WIM_WindowResizeFrame", WindowParent);
+resizeFrame:Hide();
+resizeFrame.widgetName = "resize";
+resizeFrame:SetFrameStrata("TOOLTIP");
+resizeFrame.Attach = function(self, win)
+		if(self.isSizing) then
+			-- never reparent or restyle the grip mid-gesture
+			return;
+		end
+		if(win.widgets.close ~= GetMouseFocus() and win.type ~= "demo") then
+			self:SetParent(win);
+			self.parentWindow = win;
+			ApplySkinToWidget(self);
+			self:Show();
+			-- resizeFrame:SetFrameLevel(999);
+		else
+                        self:Reset();
+			resizeFrame:Hide();
+		end
+	end
+resizeFrame.Reset = function(self)
+		if(self.isSizing) then
+			-- the gesture owns the grip until the button is
+			-- released; fast cursor swings drop mouse focus for a
+			-- frame and must not end the resize
+			return;
+		end
+		self:SetParent(WindowParent);
+		self:ClearAllPoints();
+		self:SetPoint("TOPLEFT");
+		self:Hide();
+	end
+-- Sizing is driven by hand from cursor deltas instead of StartSizing:
+-- the client's sizing operation misclamps against the resize bounds
+-- when the frame's effective scale is not 1, and lets screen clamping
+-- walk the frame sideways when the cursor leaves the screen.
+resizeFrame:SetScript("OnMouseDown", function(self)
+		local win = self.parentWindow;
+		self.isSizing = true;
+                win.customSize = true;
+                win.isBeingSized = true;
+                -- pin the window by its top-left so growth extends
+                -- right and down, the way corner sizing reads
+                local es = win:GetEffectiveScale();
+                local left = win:SafeGetLeft() * es;
+                local top = win:SafeGetTop() * es;
+                win:ClearAllPoints();
+                win:SetPoint("TOPLEFT", WindowParent, "BOTTOMLEFT", left / es, top / es);
+                self.sizingStartX, self.sizingStartY = _G.GetCursorPosition();
+                self.sizingStartWidth = win:GetWidth();
+                self.sizingStartHeight = win:GetHeight();
+                self.sizingMinWidth, self.sizingMinHeight = 0, 0;
+                if(win.GetResizeBounds) then
+                        self.sizingMinWidth, self.sizingMinHeight = win:GetResizeBounds();
+                elseif(win.GetMinResize) then
+                        self.sizingMinWidth, self.sizingMinHeight = win:GetMinResize();
+                end
+                -- growth may only use the space between the window and
+                -- the right and bottom screen edges, or the screen
+                -- clamp starts walking the frame sideways; measured
+                -- against the live UIParent so a stale container can
+                -- never squeeze the cap below the floor
+                local pes = _G.UIParent:GetEffectiveScale();
+                self.sizingMaxWidth = _G.math.max(self.sizingMinWidth,
+                        (_G.UIParent:GetWidth() * pes - left) / es);
+                self.sizingMaxHeight = _G.math.max(self.sizingMinHeight, top / es);
+	end);
+resizeFrame.ApplySizing = function(self)
+                local win = self.parentWindow;
+                if(not win) then
+                        return;
+                end
+                local es = win:GetEffectiveScale();
+                if(not es or es <= 0) then
+                        return;
+                end
+                local x, y = _G.GetCursorPosition();
+                local width = self.sizingStartWidth + (x - self.sizingStartX) / es;
+                local height = self.sizingStartHeight + (self.sizingStartY - y) / es;
+                width = _G.math.max(self.sizingMinWidth, _G.math.min(width, self.sizingMaxWidth));
+                height = _G.math.max(self.sizingMinHeight, _G.math.min(height, self.sizingMaxHeight));
+                win:SetWidth(width);
+                win:SetHeight(height);
+        end
+resizeFrame:SetScript("OnMouseUp", function(self)
+                if(self.isSizing) then
+                        self:ApplySizing();
+                end
+		self.isSizing = false;
+                self.parentWindow.customSize = true;
+                self.parentWindow.isBeingSized = nil;
+		local tabStrip = self.parentWindow.tabStrip;
+		if(tabStrip) then
+			dPrint("Size sent to tab strip.");
+		end
+--                DisplayTutorial(L["Window Resized!"], L["If you want all windows to be this size, you can set the default window size within WIM's options."]);
+	end);
+resizeFrame:SetScript("OnHide", function(self)
+                if(self.parentWindow and self.isSizing) then
+                        local OnMouseUp = self:GetScript("OnMouseUp");
+                        OnMouseUp(self);
+                end
+        end);
+resizeFrame:SetScript("OnUpdate", function(self)
+		if(self.isSizing) then
+			self:ApplySizing();
+		end
+		if(self.isSizing and self.parentWindow and self.parentWindow.tabStrip) then
+			local curSize = self.parentWindow:GetWidth()..self.parentWindow:GetHeight();
+			if(self.prevSize ~= curSize) then
+				self.parentWindow.tabStrip:UpdateTabs();
+				self.prevSize = curSize;
+			end
+		end
+		if(self.parentWindow.isMoving) then
+			self:Reset();
+		end
+	end);
+
+
+-- helperFrame's purpose is to assist with dragging and dropping of Windows into tab strips.
+-- The frame will monitor which window objects are being dragged over and attach itself to them when
+-- it's key trigger is pressed.
+local helperFrame = CreateFrame("Frame", "WIM_WindowHelperFrame", WindowParent);
+helperFrame.flash = helperFrame:CreateTexture(helperFrame:GetName().."Flash", "OVERLAY");
+helperFrame.flash:SetPoint("BOTTOMLEFT");
+helperFrame.flash:SetPoint("BOTTOMRIGHT");
+helperFrame.flash:SetHeight(4);
+helperFrame.flash:SetBlendMode("ADD");
+helperFrame.flash:SetTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight");
+helperFrame:SetFrameStrata("TOOLTIP");
+helperFrame:SetWidth(1);
+helperFrame:SetHeight(1);
+helperFrame.ResetState = function(self)
+        helperFrame:ClearAllPoints();
+		helperFrame:SetParent(UIPanel);
+        helperFrame:SetWidth(1);
+        helperFrame:SetHeight(1);
+        helperFrame:SetPoint("TOPLEFT", WindowParent, "TOPLEFT", 0, 0);
+		helperFrame.isAttached = false;
+        helperFrame.attachedTo = nil;
+    end
+helperFrame:SetPoint("TOPLEFT", WindowParent, "TOPLEFT", 0, 0);
+helperFrame:SetScript("OnUpdate", function(self)
+        if(IsShiftKeyDown()) then
+			local obj = GetMouseFocus();
+			if(obj and (obj.isWimWindow or obj.parentWindow)) then
+				local win;
+				if(obj.isWimWindow) then
+					win = obj;
+				else
+					win = obj.parentWindow;
+				end
+
+				-- make sure we have a WIM message window
+				if (not win.isWimWindow) then
+					return;
+				end
+
+				if(win == WIM.DemoWindow) then
+					return;
+				end
+
+				if(not win.isMoving) then
+					resizeFrame:Attach(win);
+				end
+
+				if(win.isMoving and not (win.tabStrip and win.tabStrip:IsVisible())) then
+					local mWin = getWindowAtCursorPosition(win);
+
+					if(mWin) then
+						if(self.isAttached) then
+							if(mWin ~= self.attachedTo) then
+											self:ResetState();
+							end
+						else
+							if(mWin ~= WIM.DemoWindow) then
+								-- attach to window
+								local skinTable = GetSelectedSkin().tab_strip;
+								self.parentWindow = mWin;
+								self.attachedTo = mWin;
+								mWin.helperFrame = self;
+								self:SetParent(mWin);
+								SetWidgetRect(self, skinTable);
+								self:SetHeight(self.flash:GetHeight());
+								self.isAttached = true;
+							end
+						end
+					else
+						if(self.isAttached) then
+							self:ResetState();
+						end
+					end
+				else
+					if(self.isAttached) then
+						self:ResetState();
+					end
+				end
+			else
+				resizeFrame:Reset();
+				if(self.isAttached) then
+					self:ResetState();
+				end
+			end
+		else
+		    resizeFrame:Reset();
+			if(self.isAttached) then
+				self:ResetState();
+			end
+		end
+
+		if(self.isAttached) then
+			self.flash:Show();
+		else
+			self.flash:Hide();
+		end
+	end);
+helperFrame:Show();
+
+
+local function executeHandlers(WidgetName, wType, HandlerName, ...)
+	local tbl, fun;
+	if(Widget_Triggers[WidgetName] and Widget_Triggers[WidgetName][HandlerName] and Widget_Triggers[WidgetName][HandlerName][wType]) then
+		tbl = Widget_Triggers[WidgetName][HandlerName][wType];
+	end
+	if(type(tbl) == "table") then
+		for i=1,#tbl do
+			fun = tbl[i];
+			fun(...);
+		end
+	end
+end
+
+-- Returns object, SoupBowl_windows_index or nil if window can not be found.
+local function getWindowBy(userName)
+    if(type(userName) ~= "string") then
+        return nil;
+    end
+    for i=1,#WindowSoupBowl.windows do
+        if(WindowSoupBowl.windows[i].user == userName) then
+            return WindowSoupBowl.windows[i].obj, i;
+        end
+    end
+end
+
+
+-- Clean up the frame's points and make sure the main point TOPLEFT,BOTTOMRIGHT is set
+function cleanPoints(win)
+                local x, y;
+                for i = 1, win:GetNumPoints() do
+                                local p1, parent, p2, tx, ty = win:GetPoint(i);
+                                _G.DEFAULT_CHAT_FRAME:AddMessage(p1..", ".._G.tostring(parent)..", "..p2..", "..tx..", "..ty);
+                end
+                _G.DEFAULT_CHAT_FRAME:AddMessage("    "..win:SafeGetLeft()..", "..win:SafeGetTop());
+end
+
+-- climb up inherritance tree and find parent window recursively.
+local function getParentMessageWindow(obj)
+    if(not obj) then
+	return nil;
+    elseif(obj.isParent) then
+        return obj;
+    elseif(obj.parentWindow) then
+	return obj.parentWindow;
+    elseif(obj:GetName() == "UIParent") then
+        return nil;
+    else
+        return getParentMessageWindow(obj:GetParent())
+    end
+end
+
+local function animateFade(obj, directionIn, force)
+        local fadeAnimator = obj.animators.fade
+        local to = directionIn and 1 or (db.winFadeAmount / 100)
+        local from = obj:GetAlpha()
+
+        if force then
+                obj:SetAlpha(to)
+                fadeAnimator.animation.fadingDiretionIn = directionIn
+                return
+        end
+
+	if fadeAnimator:IsPlaying() then
+		local progress = fadeAnimator:GetProgress()
+                from = fadeAnimator.animation:GetToAlpha() * progress
+		fadeAnimator:Stop()
+
+                fadeAnimator.animation:SetDuration(FadeProps.interval)
+                fadeAnimator.animation:SetFromAlpha(from)
+                fadeAnimator.animation:SetToAlpha(to)
+                fadeAnimator:Play()
+		fadeAnimator:SetScript("OnFinished", function ()
+                    obj:SetAlpha(to)
+                end)
+        else
+		fadeAnimator.animation:SetDuration(FadeProps.interval)
+                fadeAnimator.animation:SetFromAlpha(from)
+                fadeAnimator.animation:SetToAlpha(to)
+		fadeAnimator:SetScript("OnFinished", function ()
+                    obj:SetAlpha(to)
+                end)
+                fadeAnimator:Play()
+        end
+
+        fadeAnimator.animation.fadingDiretionIn = directionIn
+end
+
+local function setWindowAsFadedIn(obj)
+	if(WIM.db.winFade and obj.tabStrip == nil) then
+                if not obj.fadedIn then
+                        obj:fadeIn()
+                        obj.delayFadeElapsed = 0;
+                        obj.delayFade = true;
+                        obj.fadedIn = true;
+                end
+	else
+		obj:fadeIn(true);
+	end
+end
+
+--------------------------------------
+--       Widget Script Handlers     --
+--------------------------------------
+
+function updateScrollBars(parentWindow)
+        if(parentWindow and parentWindow.widgets and parentWindow.widgets.chat_display) then
+                if(parentWindow.widgets.chat_display:AtTop()) then
+                	parentWindow.widgets.scroll_up:Disable();
+                else
+                	parentWindow.widgets.scroll_up:Enable();
+                end
+                if(parentWindow.widgets.chat_display:AtBottom()) then
+                	parentWindow.widgets.scroll_down:Disable();
+                else
+                	parentWindow.widgets.scroll_down:Enable();
+                end
+        end
+end
+
+-- Movement is driven by hand from cursor deltas instead of StartMoving:
+-- the client's move operation can teleport a scaled window on its
+-- first tick, by an offset that grows with every click. Positions are
+-- advanced from the frame's current rect each tick, so the screen
+-- clamp still applies and the window re-attaches to the cursor as
+-- soon as it leaves an edge.
+local function applyMovement(window)
+        local es = window:GetEffectiveScale();
+        if(not es or es <= 0) then
+                return;
+        end
+        local x, y = _G.GetCursorPosition();
+        local dx, dy = (x - window.moveLastX) / es, (y - window.moveLastY) / es;
+        window.moveLastX, window.moveLastY = x, y;
+        if(dx == 0 and dy == 0) then
+                return;
+        end
+        local left, top = window:SafeGetLeft() + dx, window:SafeGetTop() + dy;
+        window:ClearAllPoints();
+        window:SetPoint("TOPLEFT", WindowParent, "BOTTOMLEFT", left, top);
+end
+
+local function MessageWindow_MovementControler_OnDragStart(self)
+    local window = getParentMessageWindow(self);
+    if(window and not window.isMoving) then
+        window.moveLastX, window.moveLastY = _G.GetCursorPosition();
+        window.isMoving = true;
+    end
+end
+
+local function MessageWindow_MovementControler_OnDragStop(self)
+    local window = getParentMessageWindow(self);
+    if(window) then
+	local dropTo = helperFrame.attachedTo;
+	helperFrame:ResetState();
+        if(window.moveLastX) then
+                applyMovement(window);
+                window.moveLastX, window.moveLastY = nil, nil;
+        end
+        window.isMoving = false;
+        window.widgets.chat_display:Hide();
+        window.widgets.chat_display:Show();
+        window.hasMoved = true;
+	if(dropTo) then
+		if(dropTo.tabStrip) then
+			dropTo.tabStrip:Attach(window);
+                        window:Hide();
+                        dropTo.tabStrip:JumpToTab(dropTo);
+		else
+                        window:Hide();
+			local tabStrip = GetAvailableTabGroup();
+			tabStrip:Attach(dropTo);
+			tabStrip:Attach(window);
+                        tabStrip:JumpToTab(dropTo);
+		end
+	end
+    end
+end
+
+-- this needs to be looked at. it isn't doing anything atm...
+local function MessageWindow_Frame_OnShow(self)
+        self.everShown = true;
+        if(WindowParent.animUp) then
+                return;
+        end
+                -- _G.DEFAULT_CHAT_FRAME:AddMessage(_G.debugstack(1))
+        setWindowAsFadedIn(self);
+        if(self ~= DemoWindow) then
+                updateScrollBars(self);
+                CallModuleFunction("OnWindowShow", self);
+        	for widgetName, widgetObj in pairs(self.widgets) do
+        		if(type(widgetObj.OnWindowShow) == "function") then
+        			widgetObj:OnWindowShow();
+        		end
+        	end
+        else
+                self.widgets.chat_display:Clear();
+                self.widgets.chat_display:AddMessage(L["_DemoText"]);
+                self.widgets.msg_box:Hide();
+        end
+end
+
+-- this needs to be looked at. it isn't doing anything atm...
+local function MessageWindow_Frame_OnHide(self)
+        if ( self.isMoving ) then
+		self.isMoving = false;
+                self.moveLastX, self.moveLastY = nil, nil;
+        end
+        self:ResetAnimation();
+        if(self.type == "demo" and self.demoSave) then
+                -- save window placement settings.
+                db.winLoc.left = self:SafeGetLeft()*self:GetEffectiveScale();
+                db.winLoc.top = self:SafeGetTop()*self:GetEffectiveScale();
+                local reopen = self.wimReopenSettings;
+                self.wimReopenSettings = nil;
+                self.demoSave = nil;
+                DestroyWindow(self);
+                WIM.DemoWindow = nil;
+                if(reopen and not _G.InCombatLockdown() and _G.Settings
+                   and _G.Settings.OpenToCategory and options.modernCategoryID) then
+                        _G.Settings.OpenToCategory(options.modernCategoryID);
+                end
+        elseif(self.type ~= "demo") then
+                CallModuleFunction("OnWindowHide", self);
+                for widgetName, widgetObj in pairs(self.widgets) do
+                	if(type(widgetObj.OnWindowHide) == "function") then
+                		widgetObj:OnWindowHide();
+                	end
+                end
+        end
+end
+
+
+local function updateTracker(win)
+                if(not WindowParent.animUp) then
+                                local pS, sS = WindowParent:GetEffectiveScale(), win:GetEffectiveScale()
+                                local pL, pR, pT, pB = WindowParent:GetLeft()*pS, WindowParent:GetRight()*pS, WindowParent:GetTop()*pS, WindowParent:GetBottom()/pS;
+                                local sL, sR, sT, sB = win:GetLeft()*sS, win:GetRight()*sS, win:GetTop()*sS, win:GetBottom()*sS;
+
+                                if(not db.clampToScreen and sT < 0) then -- bottom
+                                                if(win.offScreen ~= 1) then
+                                                                win.offScreen = 1;
+                                                                CallModuleFunction("OnWindowLeaveScreen", win, 1);
+                                                end
+                                elseif(not db.clampToScreen and sB > pT) then -- top
+                                                if(win.offScreen ~= 2) then
+                                                                win.offScreen = 2;
+                                                                CallModuleFunction("OnWindowLeaveScreen", win, 2);
+                                                end
+                                elseif(not db.clampToScreen and sR < 0) then -- left
+                                                if(win.offScreen ~= 3) then
+                                                                win.offScreen = 3;
+                                                                CallModuleFunction("OnWindowLeaveScreen", win, 3);
+                                                end
+                                elseif(not db.clampToScreen and sL > pR) then -- right
+                                                if(win.offScreen ~= 4) then
+                                                                win.offScreen = 4;
+                                                                CallModuleFunction("OnWindowLeaveScreen", win, 4);
+                                                end
+                                else
+                                                -- on screen
+                                                if(win.offScreen ~= 0) then
+                                                                CallModuleFunction("OnWindowEnterScreen", win);
+                                                end
+                                                win.offScreen = 0;
+                                end
+                end
+end
+
+
+local function MessageWindow_Frame_OnUpdate(self, elapsed)
+	if (self.isMoving and self.moveLastX) then
+		applyMovement(self);
+	end
+
+	-- window is visible, there aren't any messages waiting...
+	updateTracker(self);
+
+	self.msgWaiting = false;
+	self.unreadCount = 0;
+
+	-- animation segment
+	if (self.animation and self.animation.mode) then
+		local animate = self.animation;
+
+		if (animate.mode == "HIDE") then
+			animate.elapsed = animate.elapsed + elapsed;
+			if (animate.elapsed > animate.time) then
+				self:Hide_Normal();
+			else
+				local prct = animate.elapsed / animate.time;
+				local scale = (db.winSize.scale / 100) * (1 - prct);
+				scale = scale > animate.scaleLimit and scale or animate.scaleLimit;
+				self:SetScale(scale);
+				if (animate.to and animate.to.GetEffectiveScale) then
+					local to = animate.to;
+					local es, ts = self:GetEffectiveScale(), to:GetEffectiveScale();
+					es, ts = es > 0 and es or .01, ts > 0 and ts or .01;
+					local x1, y1, x2, y2 = animate.initLeft * es, animate.initTop * es, to:GetLeft() * ts, to:GetTop() *
+					ts;
+					local rise, run = ((y2 - y1) >= 0) and (y2 - y1) or 0, ((x2 - x1) >= 0) and (x2 - x1) or 0;
+					self:ClearAllPoints();
+					self:SetPoint("TOPLEFT", WindowParent, "BOTTOMLEFT", (x1 + run * prct) / es, (y1 + rise * prct) / es);
+				end
+			end
+		end
+	else
+		-- fading segment
+		if (db.winFade and self ~= DemoWindow) then
+			self.fadeElapsed = (self.fadeElapsed or 0) + elapsed;
+
+			while (self.fadeElapsed > .1) do
+				local window = GetMouseFocus();
+				if (window) then
+					if (((window == self or window.parentWindow == self or self.isOnHyperLink or
+									self == helperFrame.attachedTo or
+									(EditBoxInFocus and EditBoxInFocus.parentWindow == self)) or
+								(window.tabStrip and window.tabStrip.selected.obj == self)) and
+							(not self.fadedIn or self.delayFade)) then
+						self:fadeIn()
+						self.fadedIn = true;
+						self.delayFade = false;
+						self.delayFadeElapsed = 0;
+					elseif (window ~= self and window.parentWindow ~= self and not self.isOnHyperLink and
+							(not (window.tabStrip and window.tabStrip.selected.obj == self)) and
+							helperFrame.attachedTo ~= self and
+							(not EditBoxInFocus or EditBoxInFocus.parentWindow ~= self) and self.fadedIn) then
+						if (self.delayFade) then
+							self.delayFadeElapsed = (self.delayFadeElapsed or 0) + elapsed;
+							while (self.delayFadeElapsed > FadeProps.delay) do
+								self.delayFade = false;
+								self.delayFadeElapsed = 0;
+							end
+						else
+							self.fadedIn = false;
+							self.delayFadeElapsed = 0;
+							self:fadeOut()
+						end
+					end
+				end
+				self.fadeElapsed = 0;
+			end
+		elseif (not self.fadedIn) then
+			setWindowAsFadedIn(self);
+		end
+	end
+end
+
+-- local function MessageWindow_MsgBox_OnMouseUp()
+--    CloseDropDownMenus();
+--    if(arg1 == "RightButton") then
+--        WIM_MSGBOX_MENU_CUR_USER = this:GetParent().theUser;
+--        UIDropDownMenu_Initialize(WIM_MsgBoxMenu, WIM_MsgBoxMenu_Initialize);
+--        ToggleDropDownMenu(1, nil, WIM_MsgBoxMenu, this, 0, 0);
+--    end
+-- end
+
+
+
+local function loadHandlers(obj)
+	local widgets = obj.widgets;
+	for widget, tbl in pairs(Widget_Triggers) do
+		for handler,_ in pairs(tbl) do
+                        -- This is, what i feel an over kill of checks.. but if it works... /shrug.
+			if(widgets[widget] and widgets[widget]and not widgets[widget]:GetScript(handler)) then
+				widgets[widget]:SetScript(handler, function(...) executeHandlers(widget, obj.type, handler, ...); end)
+			end
+		end
+	end
+end
+
+
+local function setAllChildrenParentWindow(parent, child)
+	if(child ~= parent) then
+		child.parentWindow = parent;
+	end
+	local children = {child:GetChildren()};
+	for i=1,#children do
+		setAllChildrenParentWindow(parent, children[i]);
+	end
+end
+
+local function loadRegisteredWidgets(obj)
+	local widgets = obj.widgets;
+	for widget, createFun in pairs(RegisteredWidgets) do
+		if(widgets[widget] == nil) then
+			if(type(createFun) == "function") then
+				widgets[widget]  = createFun(obj);
+                                widgets[widget]:SetParent(obj);
+                                widgets[widget].widgetName = widget;
+                                widgets[widget].parentWindow = obj;
+                                widgets[widget].enabled = true;
+                                widgets[widget].Enable = function(self)
+                                        self.enabled = true;
+                                        self:Show();
+                                        self.parentWindow:UpdateProps();
+                                end
+                                widgets[widget].Disable = function(self)
+                                        self.enabled = false;
+                                        self:Hide();
+                                        self.parentWindow:UpdateProps();
+                                end
+                                ApplySkinToWidget(widgets[widget]);
+				dPrint("Widget '"..widget.."' added to '"..obj:GetName().."'");
+				if(type(widgets[widget].SetDefaults) == "function") then
+					widgets[widget]:SetDefaults(); -- load defaults for this widget
+				end
+			end
+		else
+			if(type(widgets[widget].SetDefaults) == "function") then
+				widgets[widget]:SetDefaults(); -- load defaults for this widget
+			end
+		end
+		-- widgets[widget].parentWindow = obj;
+		if(type(widgets[widget]) == "table") then
+			widgets[widget].parentWindow = obj;
+		end
+	end
+	setAllChildrenParentWindow(obj, obj)
+end
+
+local function updateActiveObjects()
+	for i=1, #WindowSoupBowl.windows do
+		if(WindowSoupBowl.windows[i].inUse) then
+			loadRegisteredWidgets(WindowSoupBowl.windows[i].obj);
+			loadHandlers(WindowSoupBowl.windows[i].obj);
+		end
+	end
+end
+
+function scaleWindow(self, scale)
+	-- scale down window and preserve location
+	local left, top = self:SafeGetLeft()*self:GetEffectiveScale(), self:SafeGetTop()*self:GetEffectiveScale();
+	local setScale = self.SetScale_Orig or self.SetScale;
+	setScale(self, (scale > 0) and scale or 0.01)
+	self:ClearAllPoints();
+        local curScale = self:GetEffectiveScale();
+        curScale = (curScale > 0) and curScale or 0.01;
+	self:SetPoint("TOPLEFT", WindowParent, "BOTTOMLEFT", left/curScale, top/curScale);
+end
+
+-- create all of MessageWindow's object children
+local function instantiateWindow(obj)
+    local fName = obj:GetName();
+    -- set frame's initial properties
+    obj:SetClampedToScreen(not WindowParent.animUp and db.clampToScreen);
+    obj:SetFrameStrata("DIALOG");
+    obj:SetMovable(true);
+    obj:SetToplevel(true);
+    obj:SetWidth(384);
+    obj:SetHeight(256);
+    obj:EnableMouse(true);
+    obj:SetPoint("TOPLEFT", WindowParent, "BOTTOMLEFT", 25, WindowParent:GetTop()-125);
+    obj:RegisterForDrag("LeftButton");
+    obj:SetScript("OnDragStart", MessageWindow_MovementControler_OnDragStart);
+    obj:SetScript("OnDragStop", MessageWindow_MovementControler_OnDragStop);
+    obj:SetScript("OnMouseUp", MessageWindow_MovementControler_OnDragStop);
+    obj:SetScript("OnShow", MessageWindow_Frame_OnShow);
+    obj:SetScript("OnHide", MessageWindow_Frame_OnHide);
+    obj:SetScript("OnUpdate", MessageWindow_Frame_OnUpdate);
+    obj.isWimWindow = true;
+    obj.helperFrame = helperFrame;
+    obj.animation = {};
+
+    obj.SetScale_Orig = obj.SetScale;
+    obj.SetScale = scaleWindow;
+
+    -- create animations
+    obj.animators = {}
+	obj.animators.fade = obj:CreateAnimationGroup()
+	obj.animators.fade.animation = obj.animators.fade:CreateAnimation("Alpha")
+    obj.fadeIn = function (self, force) animateFade(self, true, force) end
+    obj.fadeOut = function (self, force) animateFade(self, false, force) end
+    obj.fadedIn = true
+
+    obj.widgets = {};
+    local widgets = obj.widgets;
+
+    -- add window backdrop frame
+    widgets.Backdrop = CreateFrame("Frame", fName.."Backdrop", obj);
+    widgets.Backdrop:SetToplevel(false);
+    widgets.Backdrop:SetAllPoints(obj);
+    widgets.class_icon = widgets.Backdrop:CreateTexture(fName.."BackdropClassIcon", "BACKGROUND");
+    widgets.class_icon.widgetName = "class_icon";
+    widgets.class_icon.parentWindow = obj;
+    widgets.Backdrop.tl = widgets.Backdrop:CreateTexture(fName.."Backdrop_TL", "BORDER");
+    widgets.Backdrop.tr = widgets.Backdrop:CreateTexture(fName.."Backdrop_TR", "BORDER");
+    widgets.Backdrop.bl = widgets.Backdrop:CreateTexture(fName.."Backdrop_BL", "BORDER");
+    widgets.Backdrop.br = widgets.Backdrop:CreateTexture(fName.."Backdrop_BR", "BORDER");
+    widgets.Backdrop.t  = widgets.Backdrop:CreateTexture(fName.."Backdrop_T" , "BORDER");
+    widgets.Backdrop.b  = widgets.Backdrop:CreateTexture(fName.."Backdrop_B" , "BORDER");
+    widgets.Backdrop.l  = widgets.Backdrop:CreateTexture(fName.."Backdrop_L" , "BORDER");
+    widgets.Backdrop.r  = widgets.Backdrop:CreateTexture(fName.."Backdrop_R" , "BORDER");
+    widgets.Backdrop.bg = widgets.Backdrop:CreateTexture(fName.."Backdrop_BG", "BORDER");
+    widgets.from = widgets.Backdrop:CreateFontString(fName.."BackdropFrom", "OVERLAY", "GameFontNormalLarge");
+    widgets.from.widgetName = "from";
+	widgets.from._allowCustomFont = true;
+    widgets.char_info = widgets.Backdrop:CreateFontString(fName.."BackdropCharacterDetails", "OVERLAY", "GameFontNormal");
+    widgets.char_info.widgetName = "char_info";
+
+    -- create core window objects
+    widgets.close = CreateFrame("Button", fName.."ExitButton", obj);
+    widgets.close:RegisterForClicks("LeftButtonUp", "RightButtonUp");
+    widgets.close.curTextureIndex = 1;
+    widgets.close.parentWindow = obj;
+    widgets.close.widgetName = "close";
+
+    widgets.scroll_up = CreateFrame("Button", fName.."ScrollUp", obj);
+    widgets.scroll_up:RegisterForClicks("LeftButtonUp", "RightButtonUp");
+    widgets.scroll_up.widgetName = "scroll_up";
+
+    widgets.scroll_down = CreateFrame("Button", fName.."ScrollDown", obj);
+    widgets.scroll_down:RegisterForClicks("LeftButtonUp", "RightButtonUp");
+    widgets.scroll_down.widgetName = "scroll_down";
+
+    widgets.chat_display = CreateFrame("ScrollingMessageFrame", fName.."ScrollingMessageFrame", obj);
+    -- widgets.chat_display:RegisterForDrag("LeftButton");
+    widgets.chat_display:SetHyperlinksEnabled(true)
+    widgets.chat_display:SetFading(false);
+    widgets.chat_display:SetMaxLines(128);
+    widgets.chat_display:SetMovable(true);
+    -- widgets.chat_display:SetScript("OnDragStart", function(self) MessageWindow_MovementControler_OnDragStart(self); end);
+    -- widgets.chat_display:SetScript("OnDragStop", function(self) MessageWindow_MovementControler_OnDragStop(self); end);
+    widgets.chat_display:SetJustifyH("LEFT");
+    widgets.chat_display:EnableMouse(true);
+    widgets.chat_display:EnableMouseWheel(1);
+    widgets.chat_display.widgetName = "chat_display";
+	widgets.chat_display._isWIM = true; -- flag that this is a WIM frame.
+	widgets.chat_display._allowCustomFont = true; -- flag that this frame allows custom fonts.
+
+    widgets.msg_box = CreateFrame("EditBox", fName.."MsgBox", obj);
+    widgets.msg_box:SetAutoFocus(false);
+    widgets.msg_box:SetHistoryLines(32);
+    -- widgets.msg_box:SetMaxLetters(255);
+    widgets.msg_box:SetAltArrowKeyMode(true);
+    widgets.msg_box:EnableMouse(true);
+    widgets.msg_box.widgetName = "msg_box";
+	widgets.msg_box._allowCustomFont = true;
+
+	-- because we're pretending to be the default chat edit box at times, we need to make sure that any calls are covered.
+	local _ghostFun = function() end;
+	for _, slug in pairs({"Deactivate"}) do
+		widgets.msg_box[slug] = _ghostFun;
+	end
+
+    -- Addmessage functions
+    obj.AddMessage = function(self, msg, ...)
+		-- check that msg exists
+		if not msg then return end
+
+		msg = applyStringModifiers(msg, self.widgets.chat_display);
+		self.widgets.chat_display:AddMessage(msg, ...);
+        updateScrollBars(self);
+		CallModuleFunction("OnWindowMessageAdded", self, msg, ...);
+    end
+
+    obj.AddMessageRaw = function(self, msg, ...)
+        self.widgets.chat_display:AddMessage(msg, ...);
+    end
+
+    obj.AddEventMessage = function(self, r, g, b, event, ...)
+		local arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14, arg15, arg16, arg17 = ...;
+
+		nextColor.r, nextColor.g, nextColor.b = r, g, b;
+
+		self.nextStamp = select(29, ...) or self.nextStamp;
+
+		local spreadArgs = {select(2, ...)}
+		local messageFormatter = function (msg)
+			return applyMessageFormatting(self.widgets.chat_display, event, msg or arg1, unpack(spreadArgs));
+		end
+
+		local str = messageFormatter();
+
+		-- if censoring is supported by client
+		if (
+			arg11 and
+			_G.C_ChatInfo and
+			_G.C_ChatInfo.IsChatLineCensored and
+			_G.C_ChatInfo.IsChatLineCensored(arg11)
+		) then
+
+			local infoType = strsub(event, 10);
+			local info = _G.ChatTypeInfo[infoType];
+
+			local isChatLineCensored = _G.C_ChatInfo.IsChatLineCensored(arg11);
+
+			-- deferred events that are censored will not have a message, so we need to check for that and use the default censored message if needed.
+			if not msg and isChatLineCensored then
+				str = messageFormatter(_G.CENSORED_MESSAGE_HIDDEN:format(arg2, arg11));
+			end
+
+			local eventArgs;
+			if isChatLineCensored then
+				eventArgs = utils.table.packTable(...)
+			end
+
+			self:AddMessage(str, r, g, b, info.id, undef, undef, event, eventArgs, messageFormatter);
+		else
+			-- otherwise use old method
+			self:AddMessage(str, r, g, b);
+		end
+
+		self.msgWaiting = true;
+		self.lastActivity = _G.GetTime();
+
+		if(self.tabStrip) then
+            self.tabStrip:UpdateTabs();
+        end
+    end
+
+	local function applyClassIconMask(icon)
+		if (GetSelectedSkin().message_window.widgets.class_icon.is_round) then
+			icon.mask = icon.mask or icon:GetParent():CreateMaskTexture();
+			icon.mask:SetAtlas("CircleMaskScalable");
+			icon.mask:SetAllPoints(icon);
+			icon:AddMaskTexture(icon.mask);
+		else
+			if(icon.mask) then
+				icon:RemoveMaskTexture(icon.mask);
+				icon.mask:SetTexture(nil);
+			end
+		end
+	end
+
+    obj.UpdateIcon = function(self)
+        local icon = self.widgets.class_icon;
+        if(self.type == "chat" and self.chatType) then
+				if (self.chatType == "community") then
+					if (self.clubId and self.streamId) then
+						local r, g, b = GetCommunitiesChannelColor(self.clubId, self.streamId)
+						local color = { r = r, g = g, b = b };
+
+						icon:SetTexCoord(0,1,0,1);
+						utils.skin.applyTexture(icon, GetSelectedSkin().message_window.widgets.class_icon.chatAlphaMask);
+						icon:SetSize(GetSelectedSkin().message_window.widgets.class_icon.width, GetSelectedSkin().message_window.widgets.class_icon.height);
+						icon:SetVertexColor(color.r, color.g, color.b, 1);
+						applyClassIconMask(icon);
+
+						-- Only take the resolved name when there is one. Early in a
+						-- session GetCommunityAndStreamName can return empty, and
+						-- theUser must never become nil: it is the identity every
+						-- list and lookup displays.
+						local resolved = GetCommunityAndStreamName and GetCommunityAndStreamName(self.clubId, self.streamId);
+						dPrint("Community name resolve ["..tostring(self.clubId)..":"..tostring(self.streamId).."]: '"..tostring(resolved).."'");
+						if (type(resolved) == "string" and string.gsub(resolved, "[%s%-]", "") ~= "") then
+							self.theUser = resolved;
+						end
+						self.widgets.from:SetText(self.theUser);
+						self.widgets.from:SetTextColor(color.r, color.g, color.b);
+					end
+				else
+					icon:SetTexCoord(0,1,0,1);
+					utils.skin.applyTexture(icon, GetSelectedSkin().message_window.widgets.class_icon.chatAlphaMask);
+					icon:SetSize(GetSelectedSkin().message_window.widgets.class_icon.width, GetSelectedSkin().message_window.widgets.class_icon.height);
+					local chat_type = self.chatType == "battleground" and "INSTANCE_CHAT" or string.upper(self.chatType);
+					local color = _G.ChatTypeInfo[chat_type]; -- Drii: ticket 344
+					icon:SetVertexColor(color.r, color.g, color.b, 1);
+					applyClassIconMask(icon);
+					if(GetSelectedSkin().message_window.widgets.from.use_class_color) then
+						self.widgets.from:SetTextColor(color.r, color.g, color.b);
+					end
+				end
+        else
+                local classTag = obj.class;
+				icon:SetGradient("VERTICAL",
+					{ r = 1, g = 1, b = 1, a = 1 },
+					{ r = 1, g = 1, b = 1, a = 1 }
+				);
+
+				if (self.bn and self.bn.client and (not obj.class or obj.class == "")) then
+					local client = GameClients[self.bn.client];
+					if (client) then
+						icon:SetTexture(GetSelectedSkin().message_window.widgets.client_icon.texture);
+						icon:SetTexCoord(unpack(GetSelectedSkin().message_window.widgets.client_icon[client]));
+					else
+						icon:SetTexture(GetSelectedSkin().message_window.widgets.client_icon.texture);
+                		icon:SetTexCoord(unpack(GetSelectedSkin().message_window.widgets.client_icon['bnd']));
+					end
+					applyClassIconMask(icon);
+                elseif(self.class == "") then
+                	classTag = "blank"
+                	icon:SetTexture(GetSelectedSkin().message_window.widgets.class_icon.texture);
+                	icon:SetTexCoord(unpack(GetSelectedSkin().message_window.widgets.class_icon[classTag]));
+					applyClassIconMask(icon);
+				else
+                	if(constants.classes[self.class]) then
+                		classTag = string.lower(constants.classes[self.class].tag);
+                        classTag = string.gsub(classTag, "f$", "");
+                	else
+                		classTag = "blank";
+                	end
+
+					icon:SetTexture(GetSelectedSkin().message_window.widgets.class_icon.texture);
+					icon:SetTexCoord(unpack(GetSelectedSkin().message_window.widgets.class_icon[classTag]));
+					applyClassIconMask(icon);
+                end
+                if(constants.classes[self.class]) then
+                        self.classColor = constants.classes[self.class].color;
+                        if(GetSelectedSkin().message_window.widgets.from.use_class_color) then
+                            self.widgets.from:SetTextColor(utils.color.RGBHexToPercent(constants.classes[self.class].color));
+                        end
+                end
+          end
+    end
+
+    obj.UpdateCharDetails = function(self)
+        self.widgets.char_info:SetText(GetSelectedSkin().message_window.widgets.char_info.format(self, self.guild, self.level, self.race, self.class));
+    end
+
+    obj.WhoCallback = function(result)
+        if(result and result.Online and result.Name == obj.theUser) then
+            obj.class = result.Class;
+            obj.level = result.Level;
+            obj.race = result.Race;
+            obj.guild = result.Guild;
+            obj.location = result.Zone;
+            obj:UpdateIcon();
+            obj:UpdateCharDetails();
+        end
+    end
+
+    obj.SendWho = function(self,wCallback, invokeFriendListWho)
+        if(self.type ~= "whisper") then
+                return;
+        end
+        if(self.isGM) then
+                self.WhoCallback({
+                        Name = self.theUser,
+                        Online = true,
+                        Guild = "Blizzard",
+                        Class = L["Game Master"],
+                        Level = "",
+                        Race = "",
+                        Zone = L["Unknown"]
+                });
+        elseif(self.isBN) then
+                -- get information of BN user from friends data.
+                local id = self.theUser and _G.BNet_GetBNetIDAccount(self.theUser) or nil;
+                if(id) then
+					local _, _, _, _, _, bnetIDGameAccount = GetBNGetFriendInfoByID(id)
+					local hasFocus, toonName, client, realmName, realmID, faction, race, class, guild, zoneName, level, gameText, broadcastText, broadcastTime = GetBNGetGameAccountInfo(bnetIDGameAccount or 0);
+					self.class = class or "";
+					self.level = level or "";
+					self.race = race or "";
+					self.guild = guild or "";
+					self.location = client == _G.BNET_CLIENT_WOW and zoneName or gameText;
+					self.bn.class = class;
+					self.bn.level = level;
+					self.bn.race = race;
+					self.bn.guild = guild;
+					self.bn.location = client == _G.BNET_CLIENT_WOW and zoneName or gameText;
+					self.bn.gameText = gameText;
+					self.bn.toonName = toonName;
+					self.bn.client = client;
+					self.bn.realmName = realmName;
+					self.bn.faction = faction;
+					self.bn.broadcastText = broadcastText;
+					self.bn.broadcastTime = broadcastTime;
+					self.bn.hasFocus = hasFocus;
+					self.bn.id = id;
+
+					-- streamer mode: hide personal info
+					if (db.streamMode) then
+						self.widgets.from:SetText(utils.GetPrivateBNetName(self.theUser));
+
+					-- show toon name if different
+					elseif (toonName and toonName ~= "" and toonName ~= self.theUser and not IsBNCharacterNamedFriend(id)) then
+                        self.widgets.from:SetText(utils.GetReadableName(self.theUser).." ("..toonName..")");
+                    end
+					self:UpdateIcon();
+					if (client == _G.BNET_CLIENT_WOW) then
+						self:UpdateCharDetails();
+					end
+                else
+					self:AddMessage(_G.BN_UNABLE_TO_RESOLVE_NAME, db.displayColors.errorMsg.r, db.displayColors.errorMsg.g, db.displayColors.errorMsg.b);
+                end
+        else
+        		--Check if sending unit is in your party, then check guild
+        		if _G.IsInRaid() then
+        			for i = 1, _G.GetNumGroupMembers() do
+        				local unitId = "raid"..i
+        				local name = _G.GetUnitName(unitId, true)
+						if self.theUser == name then
+							self.WhoCallback({
+								Name = name,
+								Online = true,
+								Guild = self.guild or "",
+								Class = UnitClass(unitId) or "",
+								Level = UnitLevel(unitId) or "",
+								Race = UnitRace(unitId) or "",
+								Zone = self.zone  or ""
+							});
+        					break
+        				end
+        			end
+        		elseif _G.IsInGroup() then
+        			for i = 1, _G.GetNumSubgroupMembers() do
+        				local unitId = "party"..i
+        				local name = _G.GetUnitName(unitId, true)
+						if self.theUser == name then
+							self.WhoCallback({
+								Name = name,
+								Online = true,
+								Guild = self.guild or "",
+								Class = UnitClass(unitId) or "",
+								Level = UnitLevel(unitId) or "",
+								Race = UnitRace(unitId) or "",
+								Zone = self.zone  or ""
+							});
+        					break
+        				end
+        			end
+        		end
+        		if _G.IsInGuild() then
+					local lookupName = Ambiguate(self.theUser, "none");
+					local playerGuildIndex = lists.guild[lookupName];
+					if (playerGuildIndex) then
+						local name, rank, rankIndex, level, class, zone = _G.GetGuildRosterInfo(playerGuildIndex)
+						if name and lookupName:lower() == Ambiguate(name, "none"):lower() then --no name, means during our scan someone left guild and we hit an index that no longer returns player name, or the index is outdated and names do not match
+							self.WhoCallback({
+								Name = self.theUser,
+								Online = true,
+								Guild = select(1, GetGuildInfo("player")) or "",
+								Class = class or "",
+								Level = level or "",
+								Race = self.race or "",
+								Zone = zone  or ""
+							});
+						end
+					end
+        		end
+        		if( invokeFriendListWho ) then
+					local function eventHandlerWho(self, event, ...)
+					    if event == "WHO_LIST_UPDATE" then
+					        local numResults = _G.C_FriendList.GetNumWhoResults();
+					        for i = 1, numResults do
+					            local info = _G.C_FriendList.GetWhoInfo(i);
+					            if( info.fullName == self.thUser ) then
+									self.WCallback({
+										Name = info.fullName or "",
+										Online = true,
+										Guild = info.fullGuildName or "",
+										Class = info.classStr or "",
+										Level = info.level or "",
+										Race = info.raceStr or "",
+										Zone = info.area or "",
+									});
+						            if wCallback then
+						                wCallback();
+						            end
+						            _G.C_FriendList.SetWhoToUi(false);
+						            -- close who frame
+						            _G.FriendsFrameCloseButton:Click();
+					            end
+					        end
+					        self:UnregisterEvent("WHO_LIST_UPDATE");
+					    end
+					end
+					_G.C_FriendList.SetWhoToUi(true);
+					local wFrame = CreateFrame("Frame");
+					wFrame:RegisterEvent("WHO_LIST_UPDATE");
+				    wFrame:SetScript("OnEvent", eventHandlerWho);
+				    wFrame.thUser = self.theUser;
+				    wFrame.WCallback = self.WhoCallback;
+				    _G.C_FriendList.SendWho("n-"..self.theUser);
+				end
+        end
+    end
+
+    obj.GetRuleSet = function(self)
+        return GetPopRuleSet(self.type) or db.pop_rules.whisper.other;
+    end
+
+    -- PopUp rules
+    obj.Pop = function(self, msgDirection, forceResult, forceFocus) -- true to force show, false it ignore rules and force quiet.
+	-- account for variable arguments.
+	if(type(msgDirection) == "boolean") then
+		forceResult, forceFocus = msgDirection, forceResult;
+		msgDirection = "in";
+	elseif(msgDirection == nil) then
+		msgDirection = "in";
+	end
+
+	local rules = self:GetRuleSet(); -- defaults incase unknown
+
+	-- pass isNew to pop ruleset.
+	if(forceResult == true) then
+		-- go by forceResult and ignore rules
+		if(self.tabStrip) then
+			-- if(not EditBoxInFocus) then
+				ShowContainer();
+				self.tabStrip:JumpToTab(self);
+				if(not InCombatLockdown() and not getVisibleChatFrameEditBox() and (rules.autofocus or forceFocus)) then
+					self.widgets.msg_box:SetFocus();
+				end
+			-- end
+		else
+			ShowContainer();
+			self:ResetAnimation();
+			self:Show();
+			if(not InCombatLockdown() and ((not getVisibleChatFrameEditBox() and not EditBoxInFocus and rules.autofocus) or forceFocus)) then
+				self.widgets.msg_box:SetFocus();
+			end
+			local count = 0;
+			for i=1, #WindowSoupBowl.windows do
+				count = WindowSoupBowl.windows[i].obj:IsShown() and count + 1 or count;
+			end
+			--[[if(count > 1) then
+				DisplayTutorial(L["Creating Tab Groups"], L["You can group two or many windows together by <Shift-Clicking> a window and dragging it on top of another."]);
+			else
+				DisplayTutorial(L["Resizing Windows"], L["You can resize a window by holding <Shift> and dragging the bottom right corner of the window."]);
+			end-- ]]
+		end
+	else
+		-- execute pop rules.
+		if((rules.onSend and msgDirection == "out") or (rules.onReceive and msgDirection == "in")) then
+			if(self.tabStrip) then
+				self:ResetAnimation();
+
+				local infocus = EditBoxInFocus and EditBoxInFocus:GetParent().tabStrip;
+
+				if(infocus ~= self.tabStrip) then
+					self.tabStrip:JumpToTab(self);
+					setWindowAsFadedIn(self);
+				end
+			else
+				self:ResetAnimation();
+				self:Show();
+				setWindowAsFadedIn(self);
+			end
+
+			if(not InCombatLockdown() and self:IsVisible() and not getVisibleChatFrameEditBox() and not EditBoxInFocus and rules.autofocus) then
+				self.widgets.msg_box:SetFocus();
+			end
+		end
+	end
+
+	-- update/swap window name
+	obj.Rename = function (self, name)
+		for i=1,#WindowSoupBowl.windows do
+			if(WindowSoupBowl.windows[i].user == self.theUser) then
+				WindowSoupBowl.windows[i].user = name;
+				break;
+			end
+		end
+
+		self.user = name
+		self.theUser = name
+		self.widgets.from:SetText(utils.GetReadableName(name))
+	end
+
+	-- at this state the message is no longer classified as a new window, reset flag.
+	obj.isNew = false;
+        CallModuleFunction("OnWindowPopped", self);
+    end
+
+    obj.UpdateProps = function(self)
+        self:SetFrameStrata(db.winSize.strata);
+		self:SetScale(db.winSize.scale/100);
+		self.widgets.Backdrop:SetAlpha(db.windowAlpha/100);
+		local Path,_,Flags = self.widgets.chat_display:GetFont();
+		self:SetClampedToScreen(not WindowParent.animUp and db.clampToScreen);
+		self.widgets.chat_display:SetFont(Path or _G["ChatFontNormal"]:GetFont(),db.fontSize+2,Flags);
+		self.widgets.chat_display:SetAlpha(1);
+		self.widgets.chat_display:SetIndentedWordWrap(db.wordwrap_indent);
+		self.widgets.msg_box:SetAlpha(1);
+		self.widgets.msg_box:SetAltArrowKeyMode(db.ignoreArrowKeys);
+
+		self.widgets.from:SetAlpha(1);
+		self.widgets.char_info:SetAlpha(1);
+		self.widgets.close:SetAlpha(db.windowAlpha / 100);
+		self.widgets.scroll_up:SetAlpha(db.windowAlpha / 100);
+		self.widgets.scroll_down:SetAlpha(db.windowAlpha / 100);
+
+        if(not self.customSize) then
+                self:SetWidth(db.winSize.width);
+                self:SetHeight(db.winSize.height);
+        end
+
+        local minWidth, minHeight = GetSelectedSkin().message_window.min_width, GetSelectedSkin().message_window.min_height;
+        -- The skinner's layout-aware floor wins over the skin's static
+        -- one; without this the two writers disagree and ad-hoc
+        -- resizing can shrink windows until the shortcut column
+        -- overflows.
+        if(self.wimSkinMinWidth and self.wimSkinMinWidth > minWidth) then
+                minWidth = self.wimSkinMinWidth;
+        end
+        if(self.wimSkinMinHeight and self.wimSkinMinHeight > minHeight) then
+                minHeight = self.wimSkinMinHeight;
+        end
+
+		-- process registered widgets
+		for widgetName, widgetObj in pairs(obj.widgets) do
+			if(type(widgetObj.UpdateProps) == "function") then
+				widgetObj:UpdateProps();
+			end
+				if(widgetObj.type) then
+					if(widgetObj.enabled and string.match(widgetObj.type, obj.type)) then
+						widgetObj:Show();
+						local w, h = widgetObj:GetWidth(), widgetObj:GetHeight();
+						-- A widget's rectangle is nil until its
+						-- anchor chain resolves (a suppressed pop-up
+						-- window is created hidden and unpositioned);
+						-- the window's own side is already
+						-- Safe-wrapped.
+						local wLeft, wRight = widgetObj:GetLeft(), widgetObj:GetRight();
+						if(wLeft and wRight) then
+						minWidth = _G.math.max(minWidth, (self:SafeGetLeft() - wLeft) + w + (wRight - self:SafeGetRight()));
+						end
+						-- Commenting this line out so widgets don't limit the min height.
+						-- minHeight = _G.math.max(minHeight, (self:SafeGetTop() - widgetObj:GetTop() - WindowParent:GetBottom()) + h + (widgetObj:GetBottom() - self:SafeGetBottom() - WindowParent:GetBottom()));
+					else
+						widgetObj:Hide()
+					end
+				end
+		end
+        -- Never rewrite bounds or force geometry while the user is
+        -- mid-drag on the resize grip: it breaks the sizing operation's
+        -- reference point and the window runs away.
+        if(not self.isBeingSized) then
+			if self.SetResizeBounds then -- WoW 10.0
+					self:SetResizeBounds(minWidth, minHeight);
+			else
+					self:SetMinResize(minWidth, minHeight);
+			end
+			self:SetWidth(_G.math.max(minWidth, self:GetWidth()));
+			self:SetHeight(_G.math.max(minHeight, self:GetHeight()));
+        end
+
+		-- Modern Skin related properties
+		if (obj.wimChrome) then
+			obj.wimChrome:SetAlpha(db.windowAlpha/100);
+			obj.wimChrome.well:SetAlpha(db.windowAlpha/100);
+			obj.wimChrome.scrollBar:SetAlpha(db.windowAlpha/100);
+		end
+
+        -- Publish the computed floor: the Edit Mode sliders clamp to the
+        -- same bounds ad-hoc resizing enforces, which widgets can raise
+        -- well past the skin's static minimums.
+        editModeWindowMin = editModeWindowMin or {};
+        editModeWindowMin[self.type] = { width = minWidth, height = minHeight };
+        self.initialized = true;
+    end
+
+    obj.Hide_Normal = obj.Hide;
+    obj.Hide = function(self, animate)
+		local fromSettingsPanel = _G.string.match(_G.debugstack(), "OpenSettingsPanel") and true or false
+
+		-- don't close when opening settings window
+		if fromSettingsPanel then
+			return;
+		end
+
+		if(not self:IsShown() or self.animation.mode) then
+			-- don't do anything if window is already hidden.
+			return;
+		end
+		if(not animate) then
+			self:Hide_Normal();
+			self:ResetAnimation();
+		else
+
+			if(not db.winAnimation) then
+				self:Hide_Normal();
+				self:ResetAnimation();
+			else
+				self.widgets.chat_display:SetParent(_G.UIParent);
+				self.widgets.chat_display:Hide();
+				local a = self.animation;
+				obj:SetClampedToScreen(false);
+				a.initLeft = self:SafeGetLeft();
+				a.initTop = self:SafeGetTop();
+				a.to = MinimapIcon or nil;
+				a.elapsed, a.time = 0, .5;
+							a.scaleLimit = .001 -- _G.math.max(_G.math.ceil((100-_G.UIParent:GetScale()*100)/2)/100 + .04, .01);
+				a.mode = "HIDE"; -- this starts the animation
+				dPrint("Animation Started: "..self:GetName());
+			end
+		end
+    end
+    obj.ResetAnimation = function(self)
+	if(self.animation.mode) then
+		self:SetClampedToScreen(not WindowParent.animUp and db.clampToScreen);
+		self:SetScale_Orig(db.winSize.scale/100);
+                self:ClearAllPoints();
+		self:SetPoint("TOPLEFT", WindowParent, "BOTTOMLEFT", self.animation.initLeft, self.animation.initTop - WindowParent:GetBottom());
+                self.widgets.chat_display:Show();
+                self.widgets.chat_display:SetParent(self);
+		dPrint("Animation Reset: "..self:GetName());
+	end
+	for key, _ in pairs(self.animation) do
+		self.animation[key] = nil;
+	end
+    end
+    obj.SafeGetLeft = function(self)
+                return self:GetLeft() - WindowParent:GetLeft();
+    end
+    obj.SafeGetRight = function(self)
+                return self:GetRight() - WindowParent:GetLeft();
+    end
+    obj.SafeGetTop = function(self)
+                return self:GetTop() - WindowParent:GetBottom();
+    end
+    obj.SafeGetBottom = function(self)
+                return self:GetBottom() - WindowParent:GetBottom();
+    end
+
+	obj.close = function (self)
+		self.widgets.close.forceShift = true;
+		self.widgets.close:Click();
+	end
+
+    -- enforce that all core widgets have parentWindow set.
+	for _, w in pairs(obj.widgets) do
+		w.parentWindow = obj;
+	end
+
+    -- load Registered Widgets
+    loadRegisteredWidgets(obj);
+    loadHandlers(obj);
+
+    -- local shortcuts = CreateFrame("Frame", fName.."ShortcutFrame", obj);
+    -- shortcuts:SetToplevel(true);
+    -- shortcuts:SetFrameStrata("DIALOG");
+    -- for i=1,ShortcutCount do
+    --    CreateFrame("Button", fName.."ShortcutFrameButton"..i, shortcuts, "WIM_ShortcutButtonTemplate");
+    -- end
+
+end
+
+local function placeWindow(win)
+        win:ClearAllPoints();
+        local lastWindow = nil;
+        for i=1, #windowsByAge do
+                if(windowsByAge[i] ~= win and windowsByAge[i]:IsShown() and windowsByAge[i].hasMoved == false) then
+                        lastWindow = windowsByAge[i];
+                        break;
+                end
+        end
+        if (not lastWindow or db.winCascade.enabled == false) or (db.tabs.whispers.enabled and win.type == "whisper") or (db.tabs.chat.enabled and win.type == "chat") then
+                win:SetPoint("TOPLEFT", WindowParent, "BOTTOMLEFT", db.winLoc.left/win:GetEffectiveScale(), (db.winLoc.top)/win:GetEffectiveScale());
+        else
+                local casc = cascadeDirection[db.winCascade.direction];
+                win:SetPoint("TOPLEFT", WindowParent, "BOTTOMLEFT", lastWindow:SafeGetLeft()+casc[1], lastWindow:SafeGetTop()+casc[2]);
+        end
+end
+
+
+-- load object into it's default state.
+local function loadWindowDefaults(obj)
+	obj:Hide();
+        obj.everShown = nil;
+        obj.age = _G.GetTime();
+        obj.hasMoved = false;
+
+	obj.lastActivity = _G.GetTime();
+
+        obj.customSize = false;
+
+	obj.guild = "";
+	obj.level = "";
+	obj.race = "";
+	obj.class = "";
+	obj.location = "";
+	obj.demoSave = nil;
+	obj.classColor = "ffffff";
+
+	obj.isGM = lists.gm[obj.theUser];
+
+	obj:UpdateIcon();
+	obj.isNew = true;
+
+	obj:SetScale(1);
+	obj:SetAlpha(1);
+
+	obj.widgets.Backdrop:SetAlpha(1);
+
+	obj.widgets.from:SetText(utils.GetReadableName(obj.theUser));
+	obj.widgets.from:SetTextColor(utils.color.RGBHexToPercent(GetSelectedSkin().message_window.widgets.from.font_color));
+
+	obj.widgets.char_info:SetText("");
+
+	obj.widgets.msg_box.setText = 0;
+	obj.widgets.msg_box:SetText("");
+        obj.widgets.msg_box:Show();
+
+	obj.widgets.chat_display:Clear();
+	obj.widgets.chat_display:AddMessage("  ");
+	obj.widgets.chat_display:AddMessage("  ");
+	updateScrollBars(obj);
+
+        obj.widgets.close.forceShift = false;
+
+	-- load Registered Widgets (if not created already) & set defaults
+	loadRegisteredWidgets(obj);
+	loadHandlers(obj);
+
+	-- process registered widgets
+	for widgetName, widgetObj in pairs(obj.widgets) do
+		if(type(widgetObj.SetDefaults) == "function") then
+			widgetObj:SetDefaults();
+		end
+	end
+	ApplySkinToWindow(obj);
+	obj:UpdateProps();
+        placeWindow(obj);
+end
+
+-- Create (recycle if available) message window. Returns object.
+-- (wtype == "whisper", "chat" or "w2w")
+local function createWindow(userName, wtype, onBeforeReturn)
+    if(type(userName) ~= "string") then
+        return;
+    end
+    -- if(type(WIM:GetSelectedSkin()) ~= "table") then
+    --    WIM:LoadSkin(WIM.db.skin.selected, WIM.db.skin.style);
+    -- end
+    local func = function ()
+                        if(WindowSoupBowl.available > 0) then
+                            for i=1,#WindowSoupBowl.windows do
+                                if(WindowSoupBowl.windows[i].inUse == false and WindowSoupBowl.windows[i].obj.type == wtype) then
+                                    return WindowSoupBowl.windows[i].obj, i;
+                                end
+                            end
+                        else
+                            return nil;
+                        end
+                    end
+    local obj, index = func();
+    if(obj) then
+        -- object available...
+        WindowSoupBowl.available = WindowSoupBowl.available - 1;
+        WindowSoupBowl.used = WindowSoupBowl.used + 1;
+        WindowSoupBowl.windows[index].inUse = true;
+        WindowSoupBowl.windows[index].user = userName;
+        obj.theUser = userName;
+        obj.type = wtype;
+        loadWindowDefaults(obj); -- clear contents of window and revert back to it's initial state.
+        dPrint("Window recycled '"..obj:GetName().."'");
+		if (type(onBeforeReturn) == "function") then
+			onBeforeReturn(obj);
+		end
+		CallModuleFunction("OnWindowCreated", obj);
+        table.insert(windowsByAge, obj);
+        table.sort(windowsByAge, function(a, b) return a.age > b.age; end);
+        return obj;
+    else
+        -- must create new object
+        WindowSoupBowl.used = WindowSoupBowl.used + 1;
+        WindowSoupBowl.windowToken = WindowSoupBowl.windowToken + 1; -- increment token for propper frame name creation.
+        local fName = "WIM3_msgFrame"..WindowSoupBowl.windowToken;
+		dPrint("Window created '"..fName.."'");
+        local f = CreateFrame("Frame",fName, WindowParent);
+        local winTable = {
+            user = userName,
+            frameName = fName,
+            inUse = true,
+            obj = f
+        };
+        table.insert(WindowSoupBowl.windows, winTable);
+        f.theUser = userName;
+        f.type = wtype;
+        f.isParent = true;
+        instantiateWindow(f);
+        -- f.icon.theUser = userName;
+        loadWindowDefaults(f);
+        dPrint("Window created '"..f:GetName().."'");
+		if (type(onBeforeReturn) == "function") then
+			onBeforeReturn(f);
+		end
+		CallModuleFunction("OnWindowCreated", f);
+        table.insert(windowsByAge, f);
+        table.sort(windowsByAge, function(a, b) return a.age > b.age; end);
+        return f;
+    end
+end
+
+
+-- Returns object, SoupBowl_windows_index or nil if window can not be found.
+local function getWindowByName(userName)
+    if(type(userName) ~= "string") then
+        return nil;
+    end
+    for i=1,#WindowSoupBowl.windows do
+        if(WindowSoupBowl.windows[i].user == userName) then
+            return WindowSoupBowl.windows[i].obj, i;
+        end
+    end
+end
+
+-- Deletes message window and makes it available in the Soup Bowl.
+local function destroyWindow(userNameOrObj)
+    local obj, index;
+    if(type(userNameOrObj) == "string") then
+        obj, index = getWindowByName(userNameOrObj);
+    else
+		obj, index = getWindowByName(userNameOrObj.theUser);
+		if (not obj) then
+			obj, index = getWindowByName(userNameOrObj.user);
+		end
+    end
+
+    if(obj) then
+		if(obj.tabStrip) then
+			obj.tabStrip:Detach(obj);
+		end
+        WindowSoupBowl.windows[index].inUse = false;
+        WindowSoupBowl.windows[index].user = "";
+        WindowSoupBowl.available = WindowSoupBowl.available + 1;
+        WindowSoupBowl.used = WindowSoupBowl.used - 1;
+
+        obj:Show();
+        obj.widgets.chat_display:Clear();
+        obj:Hide();
+        obj.initialized = nil;
+		dPrint("Window '"..obj:GetName().."' destroyed.");
+		CallModuleFunction("OnWindowDestroyed", obj);
+        utils.table.removeFromTable(windowsByAge, obj);
+    end
+end
+
+
+
+
+
+
+function RegisterWidgetTrigger(WidgetName, wType, HandlerName, Function)
+	-- config table to handle widget
+	if(not Widget_Triggers[WidgetName]) then
+		Widget_Triggers[WidgetName] = {}
+	end
+	-- config widget table to handle hander
+	if(not Widget_Triggers[WidgetName][HandlerName]) then
+		Widget_Triggers[WidgetName][HandlerName] = {
+			whisper = {},
+			chat = {},
+			w2w = {},
+                        demo = {},
+		};
+	end
+	-- register to table
+	for i=1,select("#", string.split(",", wType)) do
+		table.insert(Widget_Triggers[WidgetName][HandlerName][select(i, string.split(",", wType))], Function);
+	end
+	updateActiveObjects();
+end
+
+function GetWindowSoupBowl()
+    return WindowSoupBowl;
+end
+
+function CreateWhisperWindow(playerName, onBeforeReturn)
+    return createWindow(playerName, "whisper", onBeforeReturn);
+end
+
+function CreateChatWindow(chatName, onBeforeReturn)
+    return createWindow(chatName, "chat", onBeforeReturn);
+end
+
+function CreateW2WWindow(chatName, onBeforeReturn)
+    return createWindow(chatName, "w2w", onBeforeReturn);
+end
+
+function DestroyWindow(playerNameOrObject)
+	destroyWindow(playerNameOrObject);
+end
+
+function ShowDemoWindow()
+        local reopenSettings = false;
+        if(_G.SettingsPanel and _G.SettingsPanel:IsShown() and _G.HideUIPanel) then
+                _G.HideUIPanel(_G.SettingsPanel);
+                reopenSettings = true;
+        end
+        if(not WIM.DemoWindow) then
+                WIM.DemoWindow = createWindow(L["Demo Window"], "demo");
+        end
+        WIM.DemoWindow:Show();
+        WIM.DemoWindow.demoSave = true;
+        WIM.DemoWindow.wimReopenSettings = reopenSettings;
+end
+
+
+function RegisterWidget(widgetName, createFunction, moduleName)
+	-- moduleName is optional if not being called from a module.
+        -- including module name will force the UI to be reloaded before removing the widgets.
+	RegisteredWidgets[widgetName] = createFunction;
+	if(moduleName) then
+		modules[moduleName].hasWidget = true;
+	end
+        for i=1, #WindowSoupBowl.windows do
+		if(WindowSoupBowl.windows[i].inUse) then
+			loadRegisteredWidgets(WindowSoupBowl.windows[i].obj);
+		end
+	end
+        updateActiveObjects();
+end
+
+-- iterator: All loaded widgets
+function Widgets(widgetName)
+        local index = 1
+        return function()
+                for i=index, #WindowSoupBowl.windows do
+                        if(WindowSoupBowl.windows[i].obj.widgets[widgetName]) then
+                                index = i+1;
+                                return WindowSoupBowl.windows[i].obj.widgets[widgetName];
+                        end
+                end
+        end
+end
+
+function RegisterStringModifier(fun, prioritize)
+	utils.table.addToTableUnique(StringModifiers, fun, prioritize);
+end
+
+function UnregisterStringModifier(fun)
+	utils.table.removeFromTable(StringModifiers, fun);
+end
+
+function RegisterMessageFormatting(name, fun)
+	table.insert(FormattingCalls, {
+		name = name,
+		fun = fun
+	});
+	table.insert(FormattingCallsList, name);
+end
+
+function GetMessageFormattingList()
+	return FormattingCallsList;
+end
+
+function HideAllWindows(type)
+        ShowContainer();
+	type = type and string.lower(type) or nil;
+	for i=1, #WindowSoupBowl.windows do
+		if(WindowSoupBowl.windows[i].inUse and WindowSoupBowl.windows[i].obj.type == (type or WindowSoupBowl.windows[i].obj.type)) then
+			WindowSoupBowl.windows[i].obj:Hide(true);
+		end
+	end
+end
+
+function GetWindowsShown(type)
+	type = type and string.lower(type) or nil;
+	local windows = {};
+	for i=1, #WindowSoupBowl.windows do
+		if(WindowSoupBowl.windows[i].inUse and WindowSoupBowl.windows[i].obj.type == (type or WindowSoupBowl.windows[i].obj.type)) then
+			local obj = WindowSoupBowl.windows[i] and WindowSoupBowl.windows[i].obj;
+			if (obj:IsShown()) then
+				table.insert(windows, obj);
+			end
+		end
+	end
+
+	return windows;
+end
+
+local showAllTbl = {};
+function ShowAllWindows(type)
+	type = type and string.lower(type) or nil;
+	for i=1, #WindowSoupBowl.windows do
+		if(WindowSoupBowl.windows[i].inUse and WindowSoupBowl.windows[i].obj.type == (type or WindowSoupBowl.windows[i].obj.type)) then
+			local obj = WindowSoupBowl.windows[i] and WindowSoupBowl.windows[i].obj;
+			if(obj.tabStrip and #obj.tabStrip.attached > 1) then
+				if(utils.table.addToTableUnique(showAllTbl, obj.tabStrip)) then
+					obj.tabStrip.selected.obj:Pop(true);
+				end
+			else
+				WindowSoupBowl.windows[i].obj:Pop(true);
+			end
+		end
+	end
+        -- clean table
+        for key, _ in pairs(showAllTbl) do
+                showAllTbl[key] = nil;
+        end
+end
+
+local showAllUnreadTbl = {};
+function ShowAllUnreadWindows(type)
+        type = type and string.lower(type) or nil;
+	for i=1, #WindowSoupBowl.windows do
+		if(WindowSoupBowl.windows[i].inUse and WindowSoupBowl.windows[i].obj.type == (type or WindowSoupBowl.windows[i].obj.type)) then
+			local obj = WindowSoupBowl.windows[i] and WindowSoupBowl.windows[i].obj;
+			if(obj and obj.unreadCount and obj.unreadCount > 0) then
+				if(obj.tabStrip) then
+					if(utils.table.addToTableUnique(showAllUnreadTbl, obj.tabStrip)) then
+						WindowSoupBowl.windows[i].obj:Pop(true);
+					end
+				else
+					WindowSoupBowl.windows[i].obj:Pop(true);
+				end
+			end
+		end
+	end
+        -- clean table
+        for key, _ in pairs(showAllUnreadTbl) do
+                showAllUnreadTbl[key] = nil;
+        end
+end
+
+
+function UpdateAllWindowProps()
+	for i=1, #WindowSoupBowl.windows do
+		if(WindowSoupBowl.windows[i].inUse) then
+			WindowSoupBowl.windows[i].obj:UpdateProps();
+		end
+	end
+end
+
+function AddEscapeWindow(frame)
+	for i=1, #_G.UISpecialFrames do
+		if(_G.UISpecialFrames[i] == frame:GetName()) then
+			return;
+		end
+	end
+	table.insert(_G.UISpecialFrames, frame:GetName());
+end
+
+function RemoveEscapeWindow(frame)
+	for i=1, #_G.UISpecialFrames do
+		if(_G.UISpecialFrames[i] == frame:GetName()) then
+			table.remove(_G.UISpecialFrames, i);
+			return;
+		end
+	end
+end
+
+
+------------------------------------
+-- WindowParent - Container Calls --
+------------------------------------
+
+
+local function WindowParent_AnimPos(self, fraction)
+                if(db.expose.direction == 1) then
+                                -- UP
+                                return "BOTTOMLEFT", _G.UIParent, "BOTTOMLEFT", 0, fraction*(_G.UIParent:GetHeight());
+                elseif(db.expose.direction == 2) then
+                                -- DOWN
+                                return "BOTTOMLEFT", _G.UIParent, "BOTTOMLEFT", 0, -fraction*(_G.UIParent:GetHeight());
+                elseif(db.expose.direction == 3) then
+                                -- LEFT
+                                return "BOTTOMLEFT", _G.UIParent, "BOTTOMLEFT", -fraction*(_G.UIParent:GetWidth()), 0;
+                elseif(db.expose.direction == 4) then
+                                -- RIGHT
+                                return "BOTTOMLEFT", _G.UIParent, "BOTTOMLEFT", fraction*(_G.UIParent:GetWidth()), 0;
+                end
+end
+
+local WindowParentAnimTable = {
+	totalTime = 0.5,
+	updateFunc = "SetPoint",
+	getPosFunc = WindowParent_AnimPos,
+	}
+
+local function WindowParent_AnimFinished(self)
+	self.animFinished = true;
+        if(self.animUp) then
+                self:Hide();
+        else
+                self:SetPoint("BOTTOMLEFT", _G.UIParent, "BOTTOMLEFT", 0, 0);
+                self:SetWidth(_G.UIParent:GetWidth());
+                self:SetHeight(_G.UIParent:GetHeight());
+        end
+        for i=1, #WindowSoupBowl.windows do
+		local win = WindowSoupBowl.windows[i].obj;
+                win:SetClampedToScreen(not self.animUp and db.clampToScreen);
+                if(win:IsVisible()) then
+                                WIM.CallModuleFunction("OnWindowShow", win);
+                end
+	end
+end
+
+function ShowContainer(animate)
+                if(not WindowParent.animUp) then
+                                return;
+                end
+                WindowParent:Show();
+                WindowParent.animUp = false;
+                if(animate) then
+                                WindowParentAnimTable.totalTime = 0.3;
+                else
+                                WindowParentAnimTable.totalTime = 0;
+                end
+                WindowParent.animFinished = false;
+                WindowParent.inSequence = true;
+                --[[for i=1, #WindowSoupBowl.windows do
+                                local win = WindowSoupBowl.windows[i].obj;
+                                win:SetClampedToScreen(false);
+                                local left, top = win:SafeGetLeft(), win:SafeGetTop()*win:GetScale();
+                                win:ClearAllPoints();
+                                win:SetPoint("TOPLEFT", WindowParent, "BOTTOMLEFT", left, top);
+                                win:SetClampedToScreen(false);
+                end]]
+                if(animate) then
+                                WIM.SetUpAnimation(WindowParent, WindowParentAnimTable, WindowParent_AnimFinished, true);
+                else
+                                WindowParent:SetPoint(WindowParent_AnimPos(WindowParent, 100));
+                                WindowParent_AnimFinished(WindowParent);
+                end
+                WIM.CallModuleFunction("OnContainerShow");
+end
+
+function HideContainer(animate)
+                if(WindowParent.animUp) then
+                                return;
+                end
+                WindowParent.animUp = true;
+                if(animate) then
+                                WindowParentAnimTable.totalTime = 0.3;
+                else
+                                WindowParentAnimTable.totalTime = 0;
+                end
+                WindowParent.animFinished = false;
+                WindowParent.inSequence = true;
+                for i=1, #WindowSoupBowl.windows do
+                                local win = WindowSoupBowl.windows[i].obj;
+                                win:SetClampedToScreen(false);
+                                local left, top = win:SafeGetLeft(), win:SafeGetTop();
+                                win:ClearAllPoints();
+                                win:SetPoint("TOPLEFT", WindowParent, "BOTTOMLEFT", left, top);
+                                win:SetClampedToScreen(false);
+                end
+                if(animate) then
+                                WIM.SetUpAnimation(WindowParent, WindowParentAnimTable, WindowParent_AnimFinished, false);
+                else
+                                WindowParent:SetPoint(WindowParent_AnimPos(WindowParent, 0));
+                                WindowParent_AnimFinished(WindowParent);
+                end
+                WIM.CallModuleFunction("OnContainerHide");
+end
+
+function ToggleContainer(animate)
+                if(WindowParent.animUp) then
+                                ShowContainer(animate);
+                else
+                                HideContainer(animate);
+                end
+end
+
+function RefreshBNetWindows()
+    for i=1, #WindowSoupBowl.windows do
+        local win = WindowSoupBowl.windows[i].obj;
+        if(win.isBN) then
+            win:SendWho();
+        end
+    end
+end
+
+
+----------------------------------
+-- Set default widget triggers	--
+----------------------------------
+
+RegisterWidgetTrigger("close", "whisper,chat,w2w", "OnEnter", function(self)
+		if(db.showToolTips == true) then
+			_G.GameTooltip:SetOwner(self, "ANCHOR_TOPRIGHT");
+			_G.GameTooltip:SetText(L["<Shift-Click> to close window."]);
+		end
+	end);
+
+RegisterWidgetTrigger("close", "whisper,chat,w2w", "OnLeave", function(self) _G.GameTooltip:Hide(); end);
+
+RegisterWidgetTrigger("close", "whisper,chat,w2w,demo", "OnClick", function(self)
+		if(IsShiftKeyDown() or self.forceShift or self.parentWindow.type == "demo") then
+                        self.forceShift = false;
+			destroyWindow(self:GetParent());
+		else
+-- 			DisplayTutorial(L["Message Window Hidden"], L["WIM's message window has been hidden to WIM's Minimap Icon. If you want to end a conversation, you may do so by <Shift-Clicking> the close button."]);
+			self:GetParent():Hide(true);
+		end
+	end);
+
+RegisterWidgetTrigger("close", "whisper,chat,w2w", "OnUpdate", function(self)
+		-- Set texture based on shift key state
+
+		local SelectedSkin = WIM:GetSelectedSkin();
+		if(GetMouseFocus() == self and IsShiftKeyDown() and self.curTextureIndex == 1) then
+			local normal = SelectedSkin.message_window.widgets.close.state_close.NormalTexture;
+			local pushed = SelectedSkin.message_window.widgets.close.state_close.PushedTexture;
+			local highlight = SelectedSkin.message_window.widgets.close.state_close.HighlightTexture;
+			local highlightAlphaMode = SelectedSkin.message_window.widgets.close.state_close.HighlightAlphaMode;
+
+			utils.skin.applyNormalTexture(self, normal)
+			utils.skin.applyPushedTexture(self, pushed)
+			utils.skin.applyHighlightTexture(self, highlight, highlightAlphaMode)
+			self.curTextureIndex = 2;
+		elseif(not (GetMouseFocus() == self and IsShiftKeyDown()) and self.curTextureIndex ~= 1) then
+			local normal = SelectedSkin.message_window.widgets.close.state_hide.NormalTexture;
+			local pushed = SelectedSkin.message_window.widgets.close.state_hide.PushedTexture;
+			local highlight = SelectedSkin.message_window.widgets.close.state_hide.HighlightTexture;
+			local highlightAlphaMode = SelectedSkin.message_window.widgets.close.state_hide.HighlightAlphaMode;
+
+			utils.skin.applyNormalTexture(self, normal)
+			utils.skin.applyPushedTexture(self, pushed)
+			utils.skin.applyHighlightTexture(self, highlight, highlightAlphaMode)
+			self.curTextureIndex = 1;
+		end
+	end);
+
+RegisterWidgetTrigger("scroll_up", "whisper,chat,w2w", "OnClick", function(self)
+		local obj = self:GetParent();
+		if( _G.IsControlKeyDown() ) then
+			obj.widgets.chat_display:ScrollToTop();
+		else
+			if( _G.IsShiftKeyDown() ) then
+			    obj.widgets.chat_display:PageUp();
+			else
+			    obj.widgets.chat_display:ScrollUp();
+			end
+		end
+		updateScrollBars(obj);
+	end);
+
+RegisterWidgetTrigger("scroll_down", "whisper,chat,w2w", "OnClick", function(self)
+		local obj = self:GetParent();
+		if( _G.IsControlKeyDown() ) then
+			obj.widgets.chat_display:ScrollToBottom();
+		else
+			if( _G.IsShiftKeyDown() ) then
+			    obj.widgets.chat_display:PageDown();
+			else
+			    obj.widgets.chat_display:ScrollDown();
+			end
+		end
+		updateScrollBars(obj);
+	end);
+
+RegisterWidgetTrigger("chat_display", "whisper,chat,w2w", "OnMouseWheel", function(self, ...)
+	    if(select(1, ...) > 0) then
+		if( _G.IsControlKeyDown() ) then
+		    self:ScrollToTop();
+		else
+		    if( _G.IsShiftKeyDown() ) then
+			self:PageUp();
+		    else
+			self:ScrollUp();
+		    end
+		end
+	    else
+		if( _G.IsControlKeyDown() ) then
+		    self:ScrollToBottom();
+		else
+		    if( _G.IsShiftKeyDown() ) then
+	                self:PageDown();
+		    else
+			self:ScrollDown();
+		    end
+		end
+	    end
+	    updateScrollBars(getParentMessageWindow(self));
+	end);
+
+RegisterWidgetTrigger("chat_display", "whisper,chat,w2w,demo", "OnMouseDown", function(self)
+                self:GetParent().prevLeft = self:GetParent():SafeGetLeft();
+                self:GetParent().prevTop = self:GetParent():SafeGetTop();
+                MessageWindow_MovementControler_OnDragStart(self);
+	end);
+
+RegisterWidgetTrigger("chat_display", "whisper,chat,w2w,demo", "OnMouseUp", function(self)
+                MessageWindow_MovementControler_OnDragStop(self);
+                if(self.parentWindow ~= DemoWindow) then
+                        self:Hide();
+                        self:Show();
+                end
+                if(self:GetParent().prevLeft == self:GetParent():SafeGetLeft() and self:GetParent().prevTop == self:GetParent():SafeGetTop() and self.parentWindow ~= DemoWindow) then
+                        --[ Frame was clicked not dragged
+                        local msg_box = self:GetParent().widgets.msg_box;
+                        if(EditBoxInFocus == nil) then
+                            msg_box:SetFocus();
+                        else
+                            if(EditBoxInFocus == msg_box) then
+                        	msg_box:Hide();
+                        	msg_box:Show();
+                            else
+                        	msg_box:SetFocus();
+                            end
+                        end
+                end
+	end);
+
+
+--ItemRef Definitions
+local registeredItemRef = {};
+
+-- Handles WIM's registered custom link types (wim_url, filter notices,
+-- and so on) for any frame with hyperlinks. Returns true when a handler
+-- consumed the link. The message windows' handler and the History
+-- Viewer's chat pane both route through this.
+function DispatchItemRefHandler(link)
+    for cmd, fun in pairs(registeredItemRef) do
+        if(string.match(link, "^"..cmd..":")) then
+            fun(link);
+            return true;
+        end
+    end
+    return false;
+end
+
+function RegisterItemRefHandler(cmd, fun)
+    registeredItemRef[cmd] = fun;
+end
+
+local myself = _G.UnitName("player")
+RegisterWidgetTrigger("chat_display", "whisper,chat,w2w", "OnHyperlinkClick", function(self, link, text, button)
+	local t,n,i = string.split(":", link)
+	local winType = self:GetParent().type
+
+	if t == 'censoredmessage' then
+		local hyperlinkLineID = _G.tonumber(n);
+
+		-- Uncensor this line so that the original text can be retrieved from C_ChatInfo.GetChatLineText.
+		_G.C_ChatInfo.UncensorChatLine(hyperlinkLineID);
+
+		local function DoesMessageLineIDMatch(message, r, g, b, infoID, accessID, typeID, event, eventArgs, MessageFormatter, ...)
+			-- eventArgs only present if the line was censored.
+			local lineID = eventArgs and eventArgs[11];
+			return lineID == hyperlinkLineID;
+		end
+
+		local _event = nil;
+		local _eventArgs = nil;
+		local function SetMessage(message, r, g, b, infoID, accessID, typeID, event, eventArgs, MessageFormatter, ...)
+			local lineID = eventArgs[11];
+
+			-- Original text is routed through the tts system, which prepends the message with "<player whispers> text.
+			local text = _G.C_ChatInfo.GetChatLineText(lineID);
+
+			-- The displayed message
+			local formattedText = MessageFormatter(applyStringModifiers(text, self));
+
+			-- Report hyperlink is appended to the display message.
+			local formattedTextReport = _G.CENSORED_MESSAGE_REPORT:format(formattedText, lineID);
+
+			-- edit history entry.
+			if (modules.History and modules.History.ReplaceCensoredMessage) then
+				modules.History:ReplaceCensoredMessage(lineID, text);
+			end
+
+			eventArgs[1] = text
+			return formattedTextReport, r, g, b, infoID, accessID, typeID, event, eventArgs, MessageFormatter, ...;
+		end
+
+		self:TransformMessages(DoesMessageLineIDMatch, SetMessage)
+
+		return;
+	end
+
+	-- registered ItemRef handlers
+	if(DispatchItemRefHandler(link)) then
+		return;
+	end
+
+	if t == 'player' then
+		-- allow player click if shit-clicking to insert into WIM
+		if EditBoxInFocus and button == "LeftButton" and _G.IsModifiedClick() then
+			EditBoxInFocus:Insert(n);
+			return;
+
+		-- or if shift-clicking into another editbox or doing a who lookup
+		elseif not _G.IsModifiedClick() and button == "LeftButton" and winType == "whisper" then
+			return;
+
+		elseif button == "RightButton" and n == myself then
+			return;
+		end
+
+	end
+
+	-- Pass all other clicks to SetItemRef. The frame argument matters:
+	-- the player context menu anchors to the clicked chat frame and
+	-- silently refuses to open without one.
+	_G.SetItemRef(link, text, button, self);
+end);
+--RegisterWidgetTrigger("chat_display", "whisper,chat,w2w","OnMessageScrollChanged", function(self) updateScrollBars(self:GetParent()); end);
+
+local lastTTlink
+RegisterWidgetTrigger("chat_display", "whisper,chat,w2w", "OnHyperlinkEnter", function(self, link)
+			local obj = self.parentWindow;
+			obj.isOnHyperLink = true;
+                        if(db.hoverLinks) then
+                                local t = string.match(link, "^(.-):")
+                                if(t == "item" or t == "enchant" or t == "spell" or t == "quest") then
+                                	lastTTlink = t
+                                	_G.GameTooltip:SetOwner(_G.UIParent, "ANCHOR_CURSOR");
+                                	_G.GameTooltip:SetHyperlink(link);
+                                	_G.GameTooltip:Show();
+                                end
+                        end
+		end)
+
+RegisterWidgetTrigger("chat_display", "whisper,chat,w2w", "OnHyperlinkLeave", function(self, link)
+			local obj = self.parentWindow;
+			obj.isOnHyperLink = false;
+                        if(db.hoverLinks) then
+                                local t = lastTTlink	--string.match(link, "^(.-):")
+                                if(t == "item" or t == "enchant" or t == "spell" or t == "quest") then
+                                    _G.GameTooltip:ClearLines()
+									_G.GameTooltip:Hide()
+                                	lastTTlink = nil
+                                end
+                        end
+		end)
+
+RegisterWidgetTrigger("msg_box", "whisper,chat,w2w,demo", "OnEnterPressed", function(self)
+		if(strsub(self:GetText(), 1, 1) == "/") then
+			-- Chat-type commands (/s, /e, /y ...) route through the
+			-- splitter: the default edit box sends one message and the
+			-- client drops everything past the length cap. Commands
+			-- that need a target or channel number keep the edit box.
+			local command, body = string.match(self:GetText(), "^(/%S+)%s+(.-)%s*$");
+			local chatType = command and body and body ~= ""
+				and _G.hash_ChatTypeInfoList
+				and _G.hash_ChatTypeInfoList[string.upper(command)]
+				and _G.ChatTypeInfo[_G.hash_ChatTypeInfoList[string.upper(command)]]
+				and _G.hash_ChatTypeInfoList[string.upper(command)];
+
+			if(
+				chatType
+				and SendSplitMessage
+				and not chatType:match("WHISPER")
+				and chatType ~= 'REPLY'
+				and chatType ~= 'CHANNEL'
+			) then
+				if(not InChatMessagingLockdown()) then
+					SendSplitMessage("ALERT", "WIM", PreSendFilterText(body), chatType);
+					self:SetText("");
+				else
+					LockdownNotice();
+				end
+			else
+				if(InChatMessagingLockdown()) then
+					LockdownNotice();
+					return;
+				end
+				EditBoxInFocus = nil;
+				_G.ChatFrame1EditBox:SetText(self:GetText());
+				if (_G.ChatFrameEditBoxBaseMixin and _G.ChatFrameEditBoxBaseMixin.SendText) then
+					_G.ChatFrameEditBoxBaseMixin.SendText(_G.ChatFrame1EditBox, 1);
+				else
+					_G.ChatEdit_SendText(_G.ChatFrame1EditBox, 1);
+				end
+				self:SetText("");
+				EditBoxInFocus = self;
+			end
+		else
+            if(self:GetText() == "") then
+				self:Hide();
+				self:Show();
+                return;
+			end
+		end
+		-- keep focus or not
+		if(self:GetParent():GetRuleSet().keepfocus) then
+			self:SetFocus();
+		else
+			self:Hide();
+			self:Show();
+		end
+
+	end);
+
+RegisterWidgetTrigger("msg_box", "whisper,chat,w2w,demo", "OnShow", function(self)
+		UpdateInputColor(self:GetParent());
+	end);
+
+RegisterWidgetTrigger("msg_box", "whisper,chat,w2w,demo", "OnEscapePressed", function(self)
+	local text = self:GetText()
+	self:SetText("");
+
+	if (text == "") then
+		self:Hide();
+		self:Show();
+	end
+end);
+
+RegisterWidgetTrigger("msg_box", "whisper,chat,w2w,demo", "OnUpdate", function(self)
+		if(self.setText == 1) then
+			self.setText = 0;
+			self:SetText(self.textToSet or "");
+			self.textToSet = "";
+		end
+	end);
+
+RegisterWidgetTrigger("msg_box", "whisper,chat,w2w", "OnEditFocusGained", function(self)
+                                EditBoxInFocus = self;
+                end);
+RegisterWidgetTrigger("msg_box", "whisper,chat,w2w", "OnEditFocusLost", function(self)
+								_EditBoxInFocus = EditBoxInFocus -- temporary reference
+                                EditBoxInFocus = nil;
+                end);
+RegisterWidgetTrigger("msg_box", "whisper,chat,w2w", "OnMouseUp", function(self, button)
+                                libs.DropDownMenu.CloseDropDownMenus();
+                                if(button == "RightButton") then
+                                                PopContextMenu("MENU_MSGBOX", self);
+                                else
+ --                                               DisplayTutorial(L["Right-Mouse Click!"], L["There might be useful tools hidden under the message box. Right-Click to see them!"]);
+                                end
+                end);
+RegisterWidgetTrigger("msg_box", "whisper,chat,w2w", "OnMouseDown", function(self, button)
+                                MSG_CONTEXT_MENU_EDITBOX = self;
+                end);
+
+RegisterWidgetTrigger("msg_box", "whisper,w2w", "OnTabPressed", function(self)
+                if(db.tabAdvance and not _G.IsShiftKeyDown()) then
+                		-- Get the current whisper target
+                		local win = getParentMessageWindow(self)
+                		local whisperTarget = win.isBN and win.toonName or win.theUser
+                		local chatType = win.isBN and "BN_WHISPER" or "WHISPER"
+                		-- Lookup the next whisper target
+                		local ok, nextWhisperTarget = _G.pcall(_G.ChatFrameUtil and _G.ChatFrameUtil.GetNextTellTarget or _G.ChatEdit_GetNextTellTarget, whisperTarget, chatType)
+
+                		if ok and nextWhisperTarget and nextWhisperTarget ~= "" and not HasAnySecretValues(nextWhisperTarget) then
+                			win = GetWhisperWindowByUser(nextWhisperTarget);
+                			chatType = win.isBN and "BN_WHISPER" or "WHISPER"
+                			win:Hide();
+                			win:Pop(true); -- force popup
+                			win.widgets.msg_box:SetFocus();
+                		end
+                end
+	end);
+
+-- must be handled on key down in order to allow protected functions to be called (predicated by user interaction, such as typing).
+-- might have to add options for keyboard type selection for users not using a standard QWERTY keyboard.
+-- for example, on a German keyboard, the "/" character requires Shift + 7, so the key detection logic would need to account for that.
+RegisterWidgetTrigger("msg_box", "whisper,chat,w2w", "OnKeyDown", function(self, key)
+	if (key == "/" and not _G.IsShiftKeyDown() and self:GetText()) == "" then
+		local open = _G.ChatFrameUtil and _G.ChatFrameUtil.OpenChat or _G.ChatEdit_OpenChat;
+		open("/");
+		_G.C_Timer.After(0, function() self:SetText(""); end);
+	end
+end);
+
+
+-- handle formatting options.
+local function applyBracket(index)
+                if(db.formatting.bracketing.enabled) then
+                                local tbl = lists.bracketing[db.formatting.bracketing.type];
+                                return tbl[(index or 1)];
+                else
+                                return "";
+                end
+end
+
+RegisterMessageFormatting(L["Default"], function(smf, event, ...)
+	local arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12 = ...;
+	arg11 = arg11 or 0;
+	local doColoredNames = constants.classes.GetColoredNameByChatEvent;
+	if (event == "CHAT_MSG_WHISPER") then
+		return applyBracket() ..
+		"|Hplayer:" ..
+		arg2 ..
+		":" .. arg11 .. "|h" ..
+		(db.coloredNames and doColoredNames(event, ...) or arg2) .. "|h" .. applyBracket(2) .. ": " .. arg1;
+	elseif (event == "CHAT_MSG_WHISPER_INFORM") then
+		arg11 = arg11 or 0;
+		return applyBracket() ..
+		"|Hplayer:" ..
+		_G.UnitName("player") ..
+		":" ..
+		arg11 ..
+		"|h" ..
+		(db.coloredNames and constants.classes.GetMyColoredName() or _G.UnitName("player")) ..
+		"|h" .. applyBracket(2) .. ": " .. arg1;
+	elseif (event == "CHAT_MSG_BN_WHISPER") then
+		local win = smf.parentWindow;
+		local color;
+		if (win.bn.client == _G.BNET_CLIENT_WOW and constants.classes[win.bn.class] and constants.classes[win.bn.class].color) then
+			color = constants.classes[win.bn.class].color
+			color = string.len(color) == 6 and color or nil;
+		end
+		local name = db.streamMode and utils.GetPrivateBNetName(arg2, true) or arg2;
+		return applyBracket() ..
+		"|HBNplayer:" ..
+		arg2 ..
+		":" ..
+		arg11 ..
+		"|h" .. (db.coloredNames and color and "|cff" .. color .. name .. "|r" or arg2) ..
+		"|h" .. applyBracket(2) .. ": " .. arg1;
+	elseif (event == "CHAT_MSG_BN_WHISPER_INFORM") then
+		arg11 = arg11 or 0;
+		return applyBracket() ..
+		"|Hplayer:" ..
+		_G.UnitName("player") ..
+		":" ..
+		arg11 ..
+		"|h" ..
+		(db.coloredNames and constants.classes.GetMyColoredName() or _G.UnitName("player")) ..
+		"|h" .. applyBracket(2) .. ": " .. arg1;
+	elseif (event == "CHAT_MSG_AFK") then
+		return _G.format(L["%s is Away From Keyboard: %s"],
+			applyBracket() .. "|Hplayer:" .. arg2 .. ":" .. arg11 .. "|h" .. arg2 .. "|h" .. applyBracket(2), arg1);
+	elseif (event == "CHAT_MSG_DND") then
+		return _G.format(L["%s does not wish to be disturbed: %s"],
+			applyBracket() .. "|Hplayer:" .. arg2 .. ":" .. arg11 .. "|h" .. arg2 .. "|h" .. applyBracket(2), arg1);
+	elseif (event == "CHAT_MSG_GUILD" or event == "CHAT_MSG_OFFICER" or event == "CHAT_MSG_PARTY" or
+			event == "CHAT_MSG_RAID" or event == "CHAT_MSG_RAID_LEADER" or event == "CHAT_MSG_SAY" or event == "CHAT_MSG_PARTY_LEADER" or
+			event == "CHAT_MSG_CHANNEL" or event == "CHAT_MSG_INSTANCE_CHAT" or event == "CHAT_MSG_INSTANCE_CHAT_LEADER") then
+		return applyBracket() ..
+		"|Hplayer:" ..
+		arg2 ..
+		":" .. arg11 .. "|h" ..
+		(db.coloredNames and doColoredNames(event, ...) or arg2) .. "|h" .. applyBracket(2) .. ": " .. arg1;
+	elseif (event == "CHAT_MSG_EMOTE") then
+		return "|Hplayer:" ..
+		arg2 .. ":" .. arg11 .. "|h" .. (db.coloredNames and doColoredNames(event, ...) or arg2) .. "|h" .. " " .. arg1;
+	elseif (event == "CHAT_MSG_TEXT_EMOTE") then
+		local user = "|Hplayer:" ..
+		arg2 .. ":" .. arg11 .. "|h" .. (db.coloredNames and doColoredNames(event, ...) or arg2) .. "|h"
+		return arg1;
+	elseif (event == "CHAT_MSG_RAID_WARNING") then
+		return _G.RAID_WARNING ..
+		" " ..
+		applyBracket() ..
+		"|Hplayer:" ..
+		arg2 ..
+		":" .. arg11 .. "|h" ..
+		(db.coloredNames and doColoredNames(event, ...) or arg2) .. "|h" .. applyBracket(2) .. ": " .. arg1;
+	elseif (event == "CHAT_MSG_CHANNEL_JOIN") then
+		return string.format(_G.CHAT_CHANNEL_JOIN_GET, arg2);
+	elseif (event == "CHAT_MSG_CHANNEL_LEAVE") then
+		return string.format(_G.CHAT_CHANNEL_LEAVE_GET, arg2);
+	elseif (event == "CHAT_MSG_CHANNEL_NOTICE_USER") then
+		if (_G.strlen(arg5) > 0) then
+			-- TWO users in this notice (E.G. x kicked y)
+			return _G.format(_G["CHAT_" .. arg1 .. "_NOTICE"], arg8, arg4, arg2, arg5);
+		elseif (arg1 == "INVITE") then
+			return _G.format(_G["CHAT_" .. arg1 .. "_NOTICE"], arg4, arg2);
+		else
+			return _G.format(_G["CHAT_" .. arg1 .. "_NOTICE"], arg8, arg4, arg2);
+		end
+	elseif (event == "CHAT_MSG_CHANNEL_NOTICE") then
+		return _G.format(_G["CHAT_" .. arg1 .. "_NOTICE"], arg8, arg4);
+	else
+		return "Unknown event received...";
+	end
+end);
+
+
+
+-- handle escape to close windows
+local escapeFrame = CreateFrame("Frame", "WIM_SpecialWindowMonitor")
+table.insert(_G.UISpecialFrames, "WIM_SpecialWindowMonitor");
+escapeFrame.Hide = function(self)
+                if(WindowParent.animUp or not (db and db.escapeToHide)) then
+                                return nil; -- don't close windows if WindowParent is in use.
+                end
+                -- lets do some checks first shall we?
+                local stack = _G.debugstack(1);
+                if(IsSecretValue(stack)) then
+                                return;
+                end
+		if(stack:match("TOGGLEWORLDMAP")) then
+				-- we do not want to close the windows.
+                                return;
+		elseif(stack:match("UIParent_OnEvent")) then
+				-- need some checks here. we want to close the windows at some point...
+                                return;
+		end
+                for i=1, #WindowSoupBowl.windows do
+                                local win = WindowSoupBowl.windows[i].obj;
+                                if(win:IsShown()) then
+                                                win:Hide();
+                                end
+                end
+end
+escapeFrame.IsShown = function(self)
+                if(WindowParent.animUp or not (db and db.escapeToHide)) then
+                                return nil; -- don't close windows if WindowParent is in use.
+                end
+                for i=1, #WindowSoupBowl.windows do
+                                local win = WindowSoupBowl.windows[i].obj;
+                                if(win:IsVisible()) then
+                                                return 1;
+                                end
+                end
+                return nil;
+end
+escapeFrame:Show();
+
+
+-- define context menu
+local info = {};
+info.text = "MENU_MSGBOX";
+local msgBoxMenu = AddContextMenu(info.text, info);
+                info = {};
+                info.text = _G.CANCEL;
+                info.notCheckable = true;
+                info.func = function() libs.DropDownMenu.CloseDropDownMenus(); end
+                msgBoxMenu:AddSubItem(AddContextMenu("MENU_CANCEL", info));
+
+
+local function toggleWindows (type)
+	type = string.trim(string.lower(type));
+
+	if (type == "all" or type == "whisper" or type == "chat") then
+		if (type == "all") then
+			type = nil
+		end
+
+		if (table.getn(GetWindowsShown(type)) > 0) then
+			HideAllWindows(type)
+		else
+			ShowAllWindows(type)
+		end
+	else
+		_G.DEFAULT_CHAT_FRAME:AddMessage("|cff69ccf0"..L["Usage"]..":|r  ".."/wim toggle {all | whisper | chat}");
+	end
+end
+
+WIM.ToggleWindows = toggleWindows;
+
+WIM.RegisterSlashCommand("toggle", toggleWindows, L["Hide or show {all, whisper, chat} windows."]);

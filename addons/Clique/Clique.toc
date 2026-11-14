@@ -2,7 +2,7 @@
 
 ## Title: Clique
 ## Author: Cladhaire
-## Version: v5.1.4-release
+## Version: v5.1.5-release
 ## Notes: Simply powerful click-casting interface
 ## Notes-koKR: 파티원 체력바 위에서 클릭이나 단축키로 치유·보호·해제를 시전합니다. /clique로 설정합니다.
 ## Notes-ruRU: Простой и мощный интерфейс для привязки заклинаний к щелчку мыши.

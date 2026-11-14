@@ -32,7 +32,7 @@ for name in ([[
     Maraudon2 Ragefire1 RazorfenDowns1 RazorfenKraul1 ScarletMonastery1
     ScarletMonastery2 ScarletMonastery3 ScarletMonastery4 ShadowfangKeep1
     ShadowfangKeep6 ShadowfangKeep7 Stratholme1 Stratholme2 TheDeadmines1
-    TheDeadmines2 TheStockade1 TheTempleOfAtalHakkar1 Uldaman1 Uldaman2
+    TheDeadmines2 TheStockade1 Uldaman1 Uldaman2
     WailingCaverns1
 ]]):gmatch("%S+") do COPIES[name] = true end
 
@@ -54,7 +54,7 @@ function FDJ.CheckMapTiles(panel, tiles, count, floor, apiTextures, apiLayer, ar
         return
     end
     if not note then
-        note = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        note = panel:CreateFontString(nil, "OVERLAY", "ForeverDJ_GameFontNormal")
         note:SetPoint("BOTTOM", panel, "BOTTOM", 0, 22)
         note:SetWidth(560)
         note:SetJustifyH("CENTER")

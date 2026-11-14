@@ -435,7 +435,10 @@ local function ScanFrames(depth, frame, ...)
       end
     end
   end
-  ScanFrames(depth, ...)
+  -- Tail-call siblings so wide child lists do not retain every remaining argument list.
+  -- ForeverAuras 1.2.10-dev.5 (Astra's LibGetFrame allocation review): every suspended caller kept its
+  -- remaining sibling arguments; a wide child list retained them quadratically.
+  return ScanFrames(depth, ...)
 end
 
 local status = "ready"

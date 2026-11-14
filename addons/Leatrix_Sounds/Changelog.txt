@@ -1,4 +1,10 @@
-﻿1.60.27 - 5th November 2026
+﻿1.60.30 - 11th November 2026
+- Added support for the 'Show info card' sounds button in the latest release of Leatrix Plus.
+- Added a new option 'Set keybindings' which replaces the previous way of setting addon related keybindings.
+- The 'Show sounds' context menu option will now never appear during combat or while addon restrictions are in place (such as during instanced encounters).
+- Sounds updated to 1.60.1.70888 (Nov  9 2026) (16001).
+
+1.60.27 - 5th November 2026
 - Added a 'Show mount sounds' feature.  Right-click a mount in the mount journal and click 'Show mount sounds'.  Then you can listen to and mute any of the sounds.
 - The 'Show mob sounds' setting is now 'Show target sounds'.  Target any mob, NPC or player and click 'Show target sounds' from the target menu to see what sounds the target makes, including what NPCs say and the emotes players make.  If you target a player riding a mount, it will show the sounds of their mount too.  You can also target any pet, such as a hunter's pet, and see its sounds the same way.
 - If 'Show target sounds' is enabled in the settings, you can right-click any pet in the pet journal to hear and mute its sounds.
