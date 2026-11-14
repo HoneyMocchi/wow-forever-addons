@@ -36,3 +36,10 @@
 - Questie에 동봉된 별도 QuestieTrace 데이터 수집 모듈은 신규 설치/등록하지 않았다.
 - AI 클라이언트/PC 브리지는 이번 제3자 애드온 업데이트 범위에서 변경하지 않았다. 실제 수신 내용·로그·인증 정보·WTF/SavedVariables를 복사하지 않았다.
 - 원본 파일 ID/아카이브 SHA-256은 lock에 기록했다. 게임 내 동작은 아직 확인하지 않았으며, 이 커밋은 배포 태그가 아닌 PR 검토 후보이다.
+
+## Attune 제외: 2026.11.14.2
+
+- 사용자 요청에 따라 addons/Attune과 upstream/Attune, 배포 lock의 Attune 항목을 제거했다.
+- 로컬 설치 폴더는 AddOns 밖의 백업 폴더로 이동했으며, WTF/SavedVariables의 진행 설정은 원본을 유지하고 별도 백업했다.
+- 다른 팀원의 기존 Attune은 개인 애드온 보존 정책상 sync.py가 자동으로 삭제하지 않는다. 제거하려면 본인 AddOns/Attune 폴더만 백업 후 삭제한다.
+- 다른 애드온의 소스와 동기화 동작은 변경하지 않았다.
