@@ -64,7 +64,13 @@ function M.Link(ref)
     return "|H" .. ref.payload .. "|h[" .. ref.name .. "]|h"
 end
 
+-- The game can fire a load result synchronously even for cached IDs.
+-- Record each request before calling the API so a redraw cannot request it again.
+local requested = { item = {}, quest = {} }
 function M.Request(ref)
+    local pending = requested[ref.kind]
+    if not pending or pending[ref.id] then return end
+    pending[ref.id] = true
     if ref.kind == "item" then Call(C_Item and C_Item.RequestLoadItemDataByID, ref.id)
     else Call(C_QuestLog and C_QuestLog.RequestLoadQuestByID, ref.id) end
 end

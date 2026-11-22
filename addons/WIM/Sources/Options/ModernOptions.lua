@@ -1458,7 +1458,8 @@ RegisterModernPage(function(category, ui)
                 _G.HUD_EDIT_MODE_MENU or L["Edit Mode"],
                 function() ShowEditMode(); end,
                 L["Where new windows appear, their default size and scale, and the placement of the History Viewer and filter editor are set in the game's Edit Mode."],
-                function() return CanShowEditMode(); end);
+                -- The standalone placement editor uses its own combat guard and has no Blizzard predicate.
+                function() return not _G.InCombatLockdown(); end);
         else
             ui.Button(layout, L["Set Window Spawn Location"], L["Set Window Spawn Location"],
                 function() ShowDemoWindow(); end,

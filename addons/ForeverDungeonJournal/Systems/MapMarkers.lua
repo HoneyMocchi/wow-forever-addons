@@ -6060,7 +6060,9 @@ do
                 b:SetScript("OnEnter", function(self)
                     if not GameTooltip then return end
                     GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-                    GameTooltip:SetText(FDJ.L("ARROW_SKIP_NOW_TIP"), 1, 1, 1, 1, true)
+                    -- AddLine handles wrapping consistently across Forever client builds.
+                    GameTooltip:ClearLines()
+                    GameTooltip:AddLine(FDJ.L("ARROW_SKIP_NOW_TIP"), 1, 1, 1, true)
                     GameTooltip:Show()
                 end)
                 b:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
