@@ -8,7 +8,7 @@
 ## Notes-frFR: Compteur de menace compact pour WoW Forever avec alertes d’aggro, modes Tank/DPS/Soigneur et support des raids.
 ## Notes-koKR: WoW Forever용 위협 수준 측정기. 어그로 경고, 탱커/공격/치유 모드 및 공격대 지원.
 ## Author: Loyftwa
-## Version: 1.7.4
+## Version: 1.13.0
 ## SavedVariables: ForeverThreatDB
 
 Libs\LibStub\LibStub.lua

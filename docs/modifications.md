@@ -52,3 +52,4 @@
 - Auctionator 351, Leatrix Plus 1.60.37, WIM 3.19.8도 공식 원본을 기준으로 기존 수정 사항을 병합했다. 게임 내 검증은 아직 하지 않았다.
 - Leatrix Sounds 1.60.31 및 Myslot 6.3.1에 기존 수정 사항을 병합했다.
 
+- NeedRoll 1.9.0 및 ForeverThreat 1.13.0에 기존 한글 수정을 병합했다. NeedRoll 기존 로컬 추가 지도 파일도 보존했다.

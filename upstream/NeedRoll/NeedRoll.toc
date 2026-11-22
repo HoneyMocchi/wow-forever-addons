@@ -1,0 +1,84 @@
+## Interface: 16001
+## Title: NeedRoll
+## Notes: Modern loot browser for WoW: Forever dungeons, raids, PvP, factions, collections and professions.
+## Author: mikebvs
+## Version: v1.9.0
+## Category: Item
+## IconTexture: Interface\Icons\INV_Misc_Bag_10
+## SavedVariables: NeedRollDB
+## LoadSavedVariablesFirst: 1
+## AddonCompartmentFunc: NeedRoll_OnCompartmentClick
+## AddonCompartmentFuncOnEnter: NeedRoll_OnCompartmentEnter
+## AddonCompartmentFuncOnLeave: NeedRoll_OnCompartmentLeave
+
+# Libraries, copied in unchanged. LibDBIcon-1.0 makes the minimap button
+# (UI\MinimapButton.lua), so minimap addons manage it like other addons' buttons.
+Libs\LibStub\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
+Libs\LibDBIcon-1.0\LibDBIcon-1.0.lua
+
+# Text in the player's language (ns.L)
+Locales\Locales.xml
+
+# Core
+Core\Init.lua
+Core\Items.lua
+Core\Names.lua
+Core\SavedLists.lua
+Core\Shopping.lua
+Core\Wishlist.lua
+Core\LibraryBooks.lua
+Core\LootLog.lua
+Core\Drops.lua
+Core\Trainers.lua
+Core\TrainerShare.lua
+Core\Vendors.lua
+Core\Tooltip.lua
+Core\Talents.lua
+
+# Data (generated files are listed by Data\Data.xml)
+Data\Data.lua
+Data\Data.xml
+Data\Entrances.lua
+Data\Bosses.lua
+Data\Abilities.lua
+Data\ForeverAbilities.lua
+Data\Maps.lua
+Data\Outlines.lua
+Data\Quests.lua
+Data\ClassQuests.lua
+Data\HunterPets.lua
+Data\WarlockPets.lua
+Data\ClassSpells.lua
+Data\Poisons.lua
+Data\MageScrolls.lua
+Data\QuestStarts.lua
+Data\QuestItems.lua
+Data\RecipeSources.lua
+Data\RecipeDrops.lua
+Data\RecipeTrainers.lua
+Data\VendorPairs.lua
+Data\CompanionSources.lua
+Data\ScarceReagents.lua
+Data\FoodBuffs.lua
+Data\ProfessionGuide.lua
+Data\Camping.lua
+Data\LibraryBooks.lua
+Data\Portals.lua
+Data\Lore.lua
+Data\Attunements.lua
+Data\ItemChains.lua
+Data\KnownQuests.lua
+Data\KnownDrops.lua
+Data\KnownVendorRecipes.lua
+Data\Chains.lua
+Data\Hotfixes.lua
+# After every file that places NPCs: its vendors' spots fill only the gaps
+Data\VendorItems.lua
+
+# UI
+UI\UI.xml
+
+# Calls for other addons (docs/API.md)
+API.lua

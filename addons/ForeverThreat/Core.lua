@@ -3,7 +3,7 @@ local addonName, FT = ...
 _G.ForeverThreat = FT
 
 FT.name = addonName
-FT.version = "1.7.4"
+FT.version = "1.13.0"
 do
     local clientLocale = type(GetLocale) == "function" and GetLocale() or "enUS"
 
@@ -17,6 +17,8 @@ do
         FT.defaultLanguage = "FR"
     elseif clientLocale == "koKR" then
         FT.defaultLanguage = "KO"
+    elseif clientLocale == "ruRU" then
+        FT.defaultLanguage = "RU"
     else
         FT.defaultLanguage = "EN"
     end
@@ -39,17 +41,22 @@ FT.defaults = {
     autoShowInCombat = true,
     autoHideOutOfCombat = false,
     soundEnabled = true,
+    soundInSolo = false,
+    soundVolume = 35,
     warningEnabled = true,
     highThreatWarning = true,
     etaWarningEnabled = true,
     highThreatThreshold = 90,
+    etaWarningThreshold = 5,
+    tankLeadWarning = true,
+    tankLeadWarningThreshold = 5,
     windowAlpha = 0.97,
     idleDimming = false,
     idleAlpha = 0.35,
     skinStyle = "ORANGE",
     barTexture = "BLIZZARD",
     barStyle = "FLAT",
-    windowStyle = "ADDON",
+    windowStyle = "BLIZZARD",
     showHeader = true,
     barHeight = 20,
     fontSize = 12,
@@ -59,6 +66,10 @@ FT.defaults = {
     showThreatETA = true,
     showPercent = true,
     showTankMarker = true,
+    showAggroCrown = true,
+    showTankStreak = true,
+    showThreatRace = true,
+    funMode = false,
     showThreatDelta = true,
     highlightPlayer = true,
     showPets = false,
@@ -104,12 +115,13 @@ FT.defaults = {
     raidTopRows = 10,
     raidAlwaysShowPlayer = true,
     raidTankViewEnabled = true,
+    raidDangerViewEnabled = false,
     showRaidPets = false,
 
     welcomeSeen = false,
     configLastTab = "welcome",
     language = FT.defaultLanguage,
-    dbVersion = 28,
+    dbVersion = 39,
 }
 
 local function CopyDefaults(source, dest)
@@ -430,7 +442,7 @@ function FT:SetBarStyle(style)
 end
 
 function FT:SetWindowStyle(style)
-    style = tostring(style or "ADDON"):upper()
+    style = tostring(style or "BLIZZARD"):upper()
     if not self:IsValidWindowStyle(style) or not self.db then
         return false
     end
@@ -453,9 +465,9 @@ function FT:ApplyAppearancePreset(name)
         self.db.showHeader = true
     elseif name == "BLIZZARD" then
         self.db.barTexture = "BLIZZARD"
-        self.db.barStyle = "GRADIENT"
+        self.db.barStyle = "FLAT"
         self.db.windowStyle = "BLIZZARD"
-        self.db.showHeader = false
+        self.db.showHeader = true
     elseif name == "MINIMAL" then
         self.db.barTexture = "SOLID"
         self.db.barStyle = "FLAT"
@@ -480,6 +492,9 @@ local DISPLAY_PRESETS = {
         showPercent = true,
         showThreatDelta = false,
         showTankMarker = true,
+        showAggroCrown = true,
+        showTankStreak = true,
+        showThreatRace = true,
         highlightPlayer = true,
         showPets = false,
         showTargetTarget = false,
@@ -500,6 +515,9 @@ local DISPLAY_PRESETS = {
         showPercent = true,
         showThreatDelta = true,
         showTankMarker = true,
+        showAggroCrown = true,
+        showTankStreak = true,
+        showThreatRace = true,
         highlightPlayer = true,
         showPets = false,
         showTargetTarget = true,
@@ -520,6 +538,9 @@ local DISPLAY_PRESETS = {
         showPercent = true,
         showThreatDelta = true,
         showTankMarker = true,
+        showAggroCrown = true,
+        showTankStreak = true,
+        showThreatRace = true,
         highlightPlayer = true,
         showPets = false,
         showTargetTarget = true,
@@ -540,6 +561,9 @@ local DISPLAY_PRESETS = {
         showPercent = true,
         showThreatDelta = true,
         showTankMarker = true,
+        showAggroCrown = true,
+        showTankStreak = true,
+        showThreatRace = true,
         highlightPlayer = true,
         showPets = false,
         showTargetTarget = true,
@@ -551,6 +575,91 @@ local DISPLAY_PRESETS = {
         fontSize = 12,
         maxRows = 15,
     },
+    DUNGEON_TANK = {
+        threatMode = "TANK",
+        useClassColors = true,
+        showThreatValue = true,
+        showTPS = true,
+        showThreatETA = true,
+        showPercent = true,
+        showThreatDelta = true,
+        showTankMarker = true,
+        showAggroCrown = true,
+        showTankStreak = true,
+        showThreatRace = true,
+        highlightPlayer = true,
+        showPets = false,
+        showTargetTarget = true,
+        dynamicThreatColors = true,
+        highlightAggroChanges = true,
+        showGapToAggro = true,
+        windowAlpha = 0.97,
+        barHeight = 20,
+        fontSize = 12,
+        maxRows = 10,
+        raidTopEnabled = false,
+        raidTankViewEnabled = false,
+        raidDangerViewEnabled = false,
+        showRaidPets = false,
+    },
+    RAID_TANK = {
+        threatMode = "TANK",
+        useClassColors = true,
+        showThreatValue = true,
+        showTPS = true,
+        showThreatETA = true,
+        showPercent = true,
+        showThreatDelta = true,
+        showTankMarker = true,
+        showAggroCrown = true,
+        showTankStreak = true,
+        showThreatRace = true,
+        highlightPlayer = true,
+        showPets = false,
+        showTargetTarget = true,
+        dynamicThreatColors = true,
+        highlightAggroChanges = true,
+        showGapToAggro = true,
+        windowAlpha = 0.97,
+        barHeight = 18,
+        fontSize = 11,
+        maxRows = 12,
+        raidTopEnabled = true,
+        raidTopRows = 10,
+        raidAlwaysShowPlayer = true,
+        raidTankViewEnabled = false,
+        raidDangerViewEnabled = true,
+        showRaidPets = false,
+    },
+    RAID_DPS = {
+        threatMode = "DPS",
+        useClassColors = true,
+        showThreatValue = false,
+        showTPS = false,
+        showThreatETA = true,
+        showPercent = true,
+        showThreatDelta = true,
+        showTankMarker = true,
+        showAggroCrown = true,
+        showTankStreak = true,
+        showThreatRace = true,
+        highlightPlayer = true,
+        showPets = false,
+        showTargetTarget = true,
+        dynamicThreatColors = true,
+        highlightAggroChanges = true,
+        showGapToAggro = true,
+        windowAlpha = 0.97,
+        barHeight = 18,
+        fontSize = 11,
+        maxRows = 12,
+        raidTopEnabled = true,
+        raidTopRows = 10,
+        raidAlwaysShowPlayer = true,
+        raidTankViewEnabled = false,
+        raidDangerViewEnabled = true,
+        showRaidPets = false,
+    },
     HEALER = {
         threatMode = "HEALER",
         useClassColors = true,
@@ -560,6 +669,9 @@ local DISPLAY_PRESETS = {
         showPercent = true,
         showThreatDelta = true,
         showTankMarker = true,
+        showAggroCrown = true,
+        showTankStreak = true,
+        showThreatRace = true,
         highlightPlayer = true,
         showPets = false,
         showTargetTarget = true,
@@ -582,6 +694,10 @@ function FT:ApplyLevel60RaidPreset()
     self.db.warningEnabled = true
     self.db.highThreatWarning = true
     self.db.etaWarningEnabled = true
+    self.db.tankLeadWarning = true
+    if self.db.highThreatThreshold == nil then self.db.highThreatThreshold = 90 end
+    if self.db.etaWarningThreshold == nil then self.db.etaWarningThreshold = 5 end
+    if self.db.tankLeadWarningThreshold == nil then self.db.tankLeadWarningThreshold = 5 end
     self.db.tankAggroLossWarning = true
     self.db.threatResetProtection = true
     self.db.tauntSwapDetection = true
@@ -592,6 +708,7 @@ function FT:ApplyLevel60RaidPreset()
     self.db.raidTopRows = 10
     self.db.raidAlwaysShowPlayer = true
     self.db.raidTankViewEnabled = true
+    self.db.raidDangerViewEnabled = false
 
     self.db.showRaidPets = false
     self.db.showPets = false
@@ -609,10 +726,15 @@ local PROFILE_KEYS = {
     "frameHeight",
     "autoShowInCombat",
     "soundEnabled",
+    "soundInSolo",
+    "soundVolume",
     "warningEnabled",
     "highThreatWarning",
     "etaWarningEnabled",
+    "tankLeadWarning",
     "highThreatThreshold",
+    "etaWarningThreshold",
+    "tankLeadWarningThreshold",
     "windowAlpha",
     "idleDimming",
     "idleAlpha",
@@ -629,6 +751,10 @@ local PROFILE_KEYS = {
     "showThreatETA",
     "showPercent",
     "showTankMarker",
+    "showAggroCrown",
+    "showTankStreak",
+    "showThreatRace",
+    "funMode",
     "showThreatDelta",
     "highlightPlayer",
     "showPets",
@@ -669,6 +795,7 @@ local PROFILE_KEYS = {
     "raidTopRows",
     "raidAlwaysShowPlayer",
     "raidTankViewEnabled",
+    "raidDangerViewEnabled",
     "showRaidPets",
 }
 
@@ -937,6 +1064,32 @@ function FT:NormalizeThreatThresholds()
     end
 end
 
+function FT:NormalizeWarningThresholds()
+    if not self.db then
+        return
+    end
+
+    local high = tonumber(self.db.highThreatThreshold) or 90
+    self.db.highThreatThreshold = math.max(50, math.min(99, math.floor(high + 0.5)))
+
+    local eta = tonumber(self.db.etaWarningThreshold) or 5
+    self.db.etaWarningThreshold = math.max(1, math.min(15, math.floor(eta + 0.5)))
+
+    local tankLead = tonumber(self.db.tankLeadWarningThreshold) or 5
+    self.db.tankLeadWarningThreshold = math.max(1, math.min(15, math.floor(tankLead + 0.5)))
+end
+
+function FT:NormalizeSoundSettings()
+    if not self.db then
+        return
+    end
+
+    self.db.soundInSolo = self.db.soundInSolo == true
+
+    local volume = tonumber(self.db.soundVolume) or 35
+    self.db.soundVolume = math.max(10, math.min(100, math.floor(volume + 0.5)))
+end
+
 function FT:GetThreatThresholds(mode)
     self:NormalizeThreatThresholds()
 
@@ -951,79 +1104,111 @@ function FT:GetThreatThresholds(mode)
     return self.db.dpsThreatYellow, self.db.dpsThreatOrange, self.db.dpsThreatRed
 end
 
-function FT:PlayWarningSound(forceTest)
-    if not forceTest and not self.db.soundEnabled then
+local WARNING_SOUND_IDS = {
+    AGGRO = 8959,       -- RAID_WARNING
+    HIGH = 8960,        -- READY_CHECK
+    ETA = 12867,        -- ALARM_CLOCK_WARNING_2
+    TANK_LEAD = 18871,  -- ALARM_CLOCK_WARNING_1
+    LOSS = 12889,       -- ALARM_CLOCK_WARNING_3
+}
+
+local WARNING_SOUND_KEYS = {
+    AGGRO = "RAID_WARNING",
+    HIGH = "READY_CHECK",
+    ETA = "ALARM_CLOCK_WARNING_2",
+    TANK_LEAD = "ALARM_CLOCK_WARNING_1",
+    LOSS = "ALARM_CLOCK_WARNING_3",
+}
+
+function FT:CanPlayCombatWarningSound(forceTest)
+    if forceTest then
+        return true
+    end
+
+    if not self.db or not self.db.soundEnabled then
         return false
     end
 
-    -- WoW's classic raid-warning sound. Prefer the named SoundKit when present.
-    local soundID = nil
+    if self.db.soundInSolo ~= true then
+        local inGroup = type(_G.IsInGroup) == "function" and IsInGroup()
+        local inRaid = type(_G.IsInRaid) == "function" and IsInRaid()
 
-    if _G.SOUNDKIT and SOUNDKIT.RAID_WARNING then
-        soundID = SOUNDKIT.RAID_WARNING
-    else
-        -- RAID_WARNING SoundKit ID used by WoW clients.
-        soundID = 8959
-    end
-
-    if type(_G.PlaySound) ~= "function" then
-        return false, self:L("SOUND_API_MISSING")
-    end
-
-    local ok, played = pcall(PlaySound, soundID, "Master")
-
-    if not ok then
-        return false, self:L("SOUND_API_ERROR")
-    end
-
-    -- Some client versions return nil even though playback was successfully requested.
-    if played == false then
-        return false, self:L("SOUND_REJECTED")
+        if not inGroup and not inRaid then
+            return false
+        end
     end
 
     return true
 end
 
+function FT:PlayAlertSound(kind)
+    kind = tostring(kind or "AGGRO"):upper()
+
+    local soundID = nil
+    local soundKey = WARNING_SOUND_KEYS[kind]
+    if soundKey and _G.SOUNDKIT and SOUNDKIT[soundKey] then
+        soundID = SOUNDKIT[soundKey]
+    else
+        soundID = WARNING_SOUND_IDS[kind] or WARNING_SOUND_IDS.AGGRO
+    end
+
+    self:NormalizeSoundSettings()
+    local volume = math.max(0.10, math.min(1.00, (tonumber(self.db and self.db.soundVolume) or 35) / 100))
+
+    -- WoW Forever 1.60.x exposes C_Sound.PlaySound with a per-playback
+    -- volume override. Use SFX instead of Master so the player's normal
+    -- sound-effect preferences remain meaningful.
+    if _G.C_Sound and type(C_Sound.PlaySound) == "function" then
+        local ok, played = pcall(C_Sound.PlaySound, soundID, "SFX", false, false, nil, volume)
+        if ok then
+            if played == false then
+                return false, self:L("SOUND_REJECTED")
+            end
+            return true
+        end
+    end
+
+    -- Compatibility fallback for clients that only expose the legacy alias.
+    -- The solo filter still applies even if per-sound volume is unavailable.
+    if type(_G.PlaySound) ~= "function" then
+        return false, self:L("SOUND_API_MISSING")
+    end
+
+    local ok, played = pcall(PlaySound, soundID, "SFX")
+    if not ok then
+        return false, self:L("SOUND_API_ERROR")
+    end
+    if played == false then
+        return false, self:L("SOUND_REJECTED")
+    end
+    return true
+end
+
+function FT:PlayCombatWarningSound(kind, forceTest)
+    if not self:CanPlayCombatWarningSound(forceTest) then
+        return false
+    end
+    return self:PlayAlertSound(kind)
+end
+
+function FT:PlayWarningSound(forceTest)
+    return self:PlayCombatWarningSound("AGGRO", forceTest)
+end
+
 function FT:PlayAggroLossSound(forceTest)
+    if not self:CanPlayCombatWarningSound(forceTest) then
+        return false
+    end
+
     if not forceTest and not self.db.tankAggroLossSound then
         return false
     end
 
-    local soundID = nil
-
-    -- Prefer a different alert sound from the normal RAID_WARNING when the
-    -- client exposes it. Fallback keeps the feature functional on Forever
-    -- clients with a smaller SoundKit table.
-    if _G.SOUNDKIT and SOUNDKIT.ALARM_CLOCK_WARNING_3 then
-        soundID = SOUNDKIT.ALARM_CLOCK_WARNING_3
-    elseif _G.SOUNDKIT and SOUNDKIT.READY_CHECK then
-        soundID = SOUNDKIT.READY_CHECK
-    elseif _G.SOUNDKIT and SOUNDKIT.RAID_WARNING then
-        soundID = SOUNDKIT.RAID_WARNING
-    else
-        soundID = 8959
-    end
-
-    if type(_G.PlaySound) ~= "function" then
-        return false, self:L("SOUND_API_MISSING")
-    end
-
-    local ok, played = pcall(PlaySound, soundID, "Master")
-
-    if not ok then
-        return false, self:L("SOUND_API_ERROR")
-    end
-
-    if played == false then
-        return false, self:L("SOUND_REJECTED")
-    end
-
-    return true
+    return self:PlayAlertSound("LOSS")
 end
 
 function FT:TestAggroLossSound()
     local success, reason = self:PlayAggroLossSound(true)
-
     if success then
         self:Print(self:L("AGGRO_LOSS_SOUND_TEST_OK"))
     else
@@ -1033,14 +1218,12 @@ end
 
 function FT:TestWarningSound()
     local success, reason = self:PlayWarningSound(true)
-
     if success then
         self:Print(self:L("SOUND_TEST_OK"))
     else
         self:Print(self:L("SOUND_TEST_FAILED", tostring(reason or self:L("UNKNOWN_ERROR"))))
     end
 end
-
 
 function FT:IsThreatFrameMouseOver()
     if not self.frame or not self.frame:IsShown() then
@@ -1272,6 +1455,8 @@ SlashCmdList.FOREVERTHREAT = function(msg)
         FT:SetLanguage("FR")
     elseif msg == "lang ko" or msg == "language ko" then
         FT:SetLanguage("KO")
+    elseif msg == "lang ru" or msg == "language ru" then
+        FT:SetLanguage("RU")
     elseif msg == "mode auto" then
         FT:SetThreatMode("AUTO")
     elseif msg == "mode tank" then
@@ -1296,6 +1481,12 @@ SlashCmdList.FOREVERTHREAT = function(msg)
         FT:ApplyDisplayPreset("STANDARD")
     elseif msg == "preset tank" then
         FT:ApplyDisplayPreset("TANK")
+    elseif msg == "preset dungeon" or msg == "preset dungeontank" or msg == "preset dungeon tank" then
+        FT:ApplyDisplayPreset("DUNGEON_TANK")
+    elseif msg == "preset raidtank" or msg == "preset raid tank" then
+        FT:ApplyDisplayPreset("RAID_TANK")
+    elseif msg == "preset raiddps" or msg == "preset raid dps" then
+        FT:ApplyDisplayPreset("RAID_DPS")
     elseif msg == "preset dps" then
         FT:ApplyDisplayPreset("DPS")
     elseif msg == "preset healer" or msg == "preset heal" then
@@ -1629,11 +1820,114 @@ events:SetScript("OnEvent", function(_, event, arg1)
             ForeverThreatDB.dbVersion = 28
         end
 
+        -- v1.8.0 native WoW meter visual migration.
+        if (ForeverThreatDB.dbVersion or 0) < 29 then
+            -- Move the old default ForeverThreat chrome to the native meter look.
+            -- Explicit Minimal / Blizzard choices are preserved; only the old
+            -- default ADDON style is migrated automatically.
+            if ForeverThreatDB.windowStyle == nil or ForeverThreatDB.windowStyle == "ADDON" then
+                ForeverThreatDB.windowStyle = "BLIZZARD"
+                ForeverThreatDB.barTexture = "BLIZZARD"
+                ForeverThreatDB.barStyle = "FLAT"
+                ForeverThreatDB.showHeader = true
+            end
+            ForeverThreatDB.dbVersion = 29
+        end
+
+        -- v1.9.5 Russian localization migration.
+        if (ForeverThreatDB.dbVersion or 0) < 30 then
+            local language = ForeverThreatDB.language
+            if language ~= "DE" and language ~= "EN" and language ~= "ES"
+                and language ~= "FR" and language ~= "KO" and language ~= "RU" then
+                ForeverThreatDB.language = FT.defaultLanguage
+            end
+            ForeverThreatDB.dbVersion = 30
+        end
+
+        -- v1.10.0 configurable warning thresholds.
+        if (ForeverThreatDB.dbVersion or 0) < 31 then
+            local high = tonumber(ForeverThreatDB.highThreatThreshold)
+            ForeverThreatDB.highThreatThreshold = math.max(50, math.min(99, math.floor((high or 90) + 0.5)))
+
+            local eta = tonumber(ForeverThreatDB.etaWarningThreshold)
+            ForeverThreatDB.etaWarningThreshold = math.max(1, math.min(15, math.floor((eta or 5) + 0.5)))
+            ForeverThreatDB.dbVersion = 31
+        end
+
+        -- v1.11.0 tank lead warning and dedicated warning sound cues.
+        if (ForeverThreatDB.dbVersion or 0) < 32 then
+            if ForeverThreatDB.tankLeadWarning == nil then
+                ForeverThreatDB.tankLeadWarning = true
+            end
+            local tankLead = tonumber(ForeverThreatDB.tankLeadWarningThreshold)
+            ForeverThreatDB.tankLeadWarningThreshold = math.max(1, math.min(15, math.floor((tankLead or 5) + 0.5)))
+            ForeverThreatDB.dbVersion = 32
+        end
+
+        -- v1.12.0 focused raid view / raid usability migration.
+        if (ForeverThreatDB.dbVersion or 0) < 33 then
+            if ForeverThreatDB.raidDangerViewEnabled == nil then
+                ForeverThreatDB.raidDangerViewEnabled = false
+            end
+            ForeverThreatDB.dbVersion = 33
+        end
+
+        -- v1.12.1 quieter warning defaults / solo sound control.
+        if (ForeverThreatDB.dbVersion or 0) < 34 then
+            if ForeverThreatDB.soundInSolo == nil then
+                ForeverThreatDB.soundInSolo = false
+            end
+
+            local volume = tonumber(ForeverThreatDB.soundVolume)
+            ForeverThreatDB.soundVolume = math.max(10, math.min(100, math.floor((volume or 35) + 0.5)))
+            ForeverThreatDB.dbVersion = 34
+        end
+
+        -- v1.12.2 optional Aggro Crown visual.
+        if (ForeverThreatDB.dbVersion or 0) < 35 then
+            if ForeverThreatDB.showAggroCrown == nil then
+                ForeverThreatDB.showAggroCrown = true
+            end
+            ForeverThreatDB.dbVersion = 35
+        end
+
+        -- v1.12.3 Clean Tanking Streak display.
+        if (ForeverThreatDB.dbVersion or 0) < 36 then
+            if ForeverThreatDB.showTankStreak == nil then
+                ForeverThreatDB.showTankStreak = true
+            end
+            ForeverThreatDB.dbVersion = 36
+        end
+
+        -- v1.12.4 Threat Race / Top 3 visual.
+        if (ForeverThreatDB.dbVersion or 0) < 37 then
+            if ForeverThreatDB.showThreatRace == nil then
+                ForeverThreatDB.showThreatRace = true
+            end
+            ForeverThreatDB.dbVersion = 37
+        end
+
+        -- v1.12.5 optional Danger Messages / Fun Mode.
+        if (ForeverThreatDB.dbVersion or 0) < 38 then
+            if ForeverThreatDB.funMode == nil then
+                ForeverThreatDB.funMode = false
+            end
+            ForeverThreatDB.dbVersion = 38
+        end
+
+        -- v1.13.0 Session Statistics are runtime-only; dbVersion bump keeps
+        -- migrations explicit without adding persistent combat-history data.
+        if (ForeverThreatDB.dbVersion or 0) < 39 then
+            ForeverThreatDB.dbVersion = 39
+        end
+
         FT.db = ForeverThreatDB
         if not FT:IsValidSkinStyle(FT.db.skinStyle) then
             FT.db.skinStyle = "ORANGE"
         end
         FT:NormalizeThreatThresholds()
+        FT:NormalizeWarningThresholds()
+        FT:NormalizeSoundSettings()
     elseif event == "PLAYER_LOGIN" then
         if not FT.db then
             ForeverThreatDB = ForeverThreatDB or {}

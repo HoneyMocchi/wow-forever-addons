@@ -1,0 +1,8 @@
+<Bindings>
+    <!-- Listed under AddOns > NeedRoll in the game's Key Bindings, with no
+         key by default. The Settings page sets the same binding
+         (UI/Settings.lua); its names are in Core/Init.lua. -->
+    <Binding name="NEEDROLL_TOGGLE" header="NEEDROLL" category="ADDONS">
+        NeedRoll_OnCompartmentClick()
+    </Binding>
+</Bindings>

@@ -4,6 +4,8 @@ local DEFAULT_ROW_HEIGHT = 20
 local ROW_GAP = 2
 local HEADER_HEIGHT = 55
 local COMPACT_HEADER_HEIGHT = 34
+local WOW_METER_HEADER_HEIGHT = 32
+local WOW_METER_ROW_GAP = 4
 local MIN_WIDTH = 183
 local MIN_HEIGHT = 95
 local MAX_WIDTH = 800
@@ -26,6 +28,34 @@ local TAUNT_SPELLS = {
 
 local TAUNT_SWAP_WINDOW = 2.5
 local THREAT_RESET_CONFIRM_TIME = 0.40
+
+local function HasAtlas(atlas)
+    if not atlas or not _G.C_Texture or type(C_Texture.GetAtlasInfo) ~= "function" then
+        return false
+    end
+    local ok, info = pcall(C_Texture.GetAtlasInfo, atlas)
+    return ok and info ~= nil
+end
+
+local function IsNativeMeterStyle()
+    return FT.db and FT.db.windowStyle == "BLIZZARD"
+end
+
+local function FormatMeterThreat(value)
+    if type(value) ~= "number" then
+        return "-"
+    end
+
+    local rounded = math.floor(math.max(0, value) + 0.5)
+    if type(_G.BreakUpLargeNumbers) == "function" then
+        local ok, text = pcall(BreakUpLargeNumbers, rounded)
+        if ok and text then
+            return tostring(text)
+        end
+    end
+
+    return FormatThreat(value)
+end
 
 local function SafeUnitGUID(unit)
     if type(_G.UnitGUID) ~= "function" then
@@ -62,7 +92,7 @@ end
 
 local function FormatThreat(value)
     if value == nil then
-        return "—"
+        return "-"
     end
 
     local absValue = math.abs(value)
@@ -78,7 +108,7 @@ end
 
 local function FormatDelta(value)
     if value == nil then
-        return "—"
+        return "-"
     end
 
     if math.abs(value) < 0.5 then
@@ -105,7 +135,7 @@ end
 
 local function FormatThreatGap(value)
     if value == nil then
-        return "—"
+        return "-"
     end
 
     if math.abs(value) < 0.5 then
@@ -118,7 +148,7 @@ end
 
 local function FormatTPS(value)
     if type(value) ~= "number" then
-        return "—"
+        return "-"
     end
 
     value = math.max(0, value)
@@ -335,7 +365,9 @@ function FT:UpdateThreatETA(data, tankEntry)
     end
 
     if not self.db
-        or (self.db.showThreatETA == false and self.db.etaWarningEnabled ~= true)
+        or (self.db.showThreatETA == false
+            and self.db.etaWarningEnabled ~= true
+            and self.db.tankLeadWarning ~= true)
         or not tankEntry then
         return
     end
@@ -366,9 +398,12 @@ function FT:UpdateThreatETA(data, tankEntry)
     tankEntry.etaIsLead = true
 end
 
-local ETA_WARNING_THRESHOLD = 5.0
-local ETA_WARNING_REARM_THRESHOLD = 7.0
 local ETA_WARNING_MIN_DROP = 0.05
+
+local function GetETAWarningThreshold()
+    local value = FT.db and tonumber(FT.db.etaWarningThreshold) or 5
+    return math.max(1, math.min(15, value or 5))
+end
 
 function FT:ResetETAWarningState()
     self.lastPlayerThreatEta = nil
@@ -405,15 +440,17 @@ function FT:CheckPlayerETAWarning(data, effectiveMode)
 
     local eta = playerEntry.threatEta
     local previous = self.lastPlayerThreatEta
+    local warningThreshold = GetETAWarningThreshold()
+    local rearmThreshold = warningThreshold + 2.0
 
-    if eta > ETA_WARNING_REARM_THRESHOLD then
+    if eta > rearmThreshold then
         self.etaWarningWarned = false
     end
 
     local isClosing = previous ~= nil and eta < (previous - ETA_WARNING_MIN_DROP)
 
     if not self.etaWarningWarned
-        and eta <= ETA_WARNING_THRESHOLD
+        and eta <= warningThreshold
         and isClosing then
         self:ShowLocalizedCombatWarning(
             "AGGRO_IN_TIME",
@@ -421,12 +458,79 @@ function FT:CheckPlayerETAWarning(data, effectiveMode)
             "",
             1.0, 0.32, 0.08,
             1.5,
-            true
+            "ETA"
         )
         self.etaWarningWarned = true
     end
 
     self.lastPlayerThreatEta = eta
+end
+
+local TANK_LEAD_WARNING_MIN_DROP = 0.05
+
+local function GetTankLeadWarningThreshold()
+    local value = FT.db and tonumber(FT.db.tankLeadWarningThreshold) or 5
+    return math.max(1, math.min(15, value or 5))
+end
+
+function FT:ResetTankLeadWarningState()
+    self.lastPlayerTankLeadEta = nil
+    self.tankLeadWarned = false
+end
+
+function FT:CheckPlayerTankLeadWarning(data, effectiveMode)
+    if not self.db or self.db.tankLeadWarning ~= true or self.db.warningEnabled ~= true then
+        self:ResetTankLeadWarningState()
+        return
+    end
+
+    if effectiveMode ~= "TANK" or not self:IsPlayerInCombat() then
+        self:ResetTankLeadWarningState()
+        return
+    end
+
+    local playerEntry
+    for _, entry in ipairs(data or {}) do
+        if self:IsPlayerThreatEntry(entry) then
+            playerEntry = entry
+            break
+        end
+    end
+
+    if not playerEntry
+        or playerEntry.etaIsLead ~= true
+        or type(playerEntry.threatEta) ~= "number"
+        or playerEntry.threatEta < 0 then
+        self:ResetTankLeadWarningState()
+        return
+    end
+
+    local lead = playerEntry.threatEta
+    local previous = self.lastPlayerTankLeadEta
+    local warningThreshold = GetTankLeadWarningThreshold()
+    local rearmThreshold = warningThreshold + 2.0
+
+    if lead > rearmThreshold then
+        self.tankLeadWarned = false
+    end
+
+    local isClosing = previous ~= nil and lead < (previous - TANK_LEAD_WARNING_MIN_DROP)
+
+    if not self.tankLeadWarned
+        and lead <= warningThreshold
+        and isClosing then
+        self:ShowLocalizedCombatWarning(
+            "TANK_LEAD_LOW",
+            { string.format("%.1f", lead) },
+            "",
+            1.0, 0.55, 0.08,
+            1.6,
+            "TANK_LEAD"
+        )
+        self.tankLeadWarned = true
+    end
+
+    self.lastPlayerTankLeadEta = lead
 end
 
 local BAR_TEXTURES = {
@@ -435,10 +539,18 @@ local BAR_TEXTURES = {
 }
 
 function FT:GetThreatHeaderHeight()
+    if IsNativeMeterStyle() then
+        return WOW_METER_HEADER_HEIGHT
+    end
+
     if self.db and self.db.showHeader == false then
         return COMPACT_HEADER_HEIGHT
     end
     return HEADER_HEIGHT
+end
+
+function FT:GetThreatRowGap()
+    return IsNativeMeterStyle() and WOW_METER_ROW_GAP or ROW_GAP
 end
 
 function FT:ApplyThreatWindowBackdrop()
@@ -446,19 +558,37 @@ function FT:ApplyThreatWindowBackdrop()
         return
     end
 
-    local style = self.db and self.db.windowStyle or "ADDON"
-    local backdrop
+    local style = self.db and self.db.windowStyle or "BLIZZARD"
 
     if style == "BLIZZARD" then
-        backdrop = {
-            bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
-            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-            tile = true,
-            tileSize = 16,
-            edgeSize = 12,
-            insets = { left = 3, right = 3, top = 3, bottom = 3 },
-        }
-    elseif style == "MINIMAL" then
+        self.frame:SetBackdrop(nil)
+
+        if self.frame.nativeBackground then
+            self.frame.nativeBackground:Show()
+            if HasAtlas("damagemeters-background") then
+                self.frame.nativeBackground:SetAtlas("damagemeters-background")
+            else
+                self.frame.nativeBackground:SetColorTexture(0, 0, 0, 0.92)
+            end
+            self.frame.nativeBackground:SetAlpha(0.55)
+        end
+
+        if self.frame.nativeHeader then
+            self.frame.nativeHeader:Show()
+            if HasAtlas("ui-damagemeters-header-bar") then
+                self.frame.nativeHeader:SetAtlas("ui-damagemeters-header-bar")
+            else
+                self.frame.nativeHeader:SetColorTexture(0.12, 0.10, 0.05, 0.98)
+            end
+        end
+        return
+    end
+
+    if self.frame.nativeBackground then self.frame.nativeBackground:Hide() end
+    if self.frame.nativeHeader then self.frame.nativeHeader:Hide() end
+
+    local backdrop
+    if style == "MINIMAL" then
         backdrop = {
             bgFile = "Interface\\Buttons\\WHITE8X8",
             edgeFile = "Interface\\Buttons\\WHITE8X8",
@@ -485,8 +615,14 @@ function FT:ApplyBarTexture(row)
         return
     end
 
+    local bar = row.bar or row
+    if IsNativeMeterStyle() and HasAtlas("UI-HUD-CoolDownManager-Bar") then
+        bar:SetStatusBarTexture("UI-HUD-CoolDownManager-Bar")
+        return
+    end
+
     local style = self.db and self.db.barTexture or "BLIZZARD"
-    row:SetStatusBarTexture(BAR_TEXTURES[style] or BAR_TEXTURES.BLIZZARD)
+    bar:SetStatusBarTexture(BAR_TEXTURES[style] or BAR_TEXTURES.BLIZZARD)
 end
 
 function FT:ApplyBarColor(row, r, g, b)
@@ -496,7 +632,8 @@ function FT:ApplyBarColor(row, r, g, b)
 
     self:ApplyBarTexture(row)
 
-    local texture = row:GetStatusBarTexture()
+    local bar = row.bar or row
+    local texture = bar:GetStatusBarTexture()
     local style = self.db and self.db.barStyle or "FLAT"
 
     if texture and type(texture.SetGradientAlpha) == "function" then
@@ -531,7 +668,7 @@ function FT:ApplyBarColor(row, r, g, b)
     end
 
     -- Safe fallback for Forever clients without Texture:SetGradientAlpha.
-    row:SetStatusBarColor(r, g, b, 0.82)
+    bar:SetStatusBarColor(r, g, b, IsNativeMeterStyle() and 1.0 or 0.82)
 end
 
 -- Apply only frame/window chrome and neutral row backgrounds.
@@ -543,20 +680,20 @@ function FT:ApplySkin()
         self:ApplyThreatWindowBackdrop()
 
         local bg = skin.background
-        local windowStyle = self.db and self.db.windowStyle or "ADDON"
-        if windowStyle == "BLIZZARD" then
-            self.frame:SetBackdropColor(0.12, 0.10, 0.08, bg[4])
-        elseif windowStyle == "MINIMAL" then
-            self.frame:SetBackdropColor(bg[1], bg[2], bg[3], 0.92)
-        else
-            self.frame:SetBackdropColor(bg[1], bg[2], bg[3], bg[4])
-        end
+        local windowStyle = self.db and self.db.windowStyle or "BLIZZARD"
+        if windowStyle ~= "BLIZZARD" then
+            if windowStyle == "MINIMAL" then
+                self.frame:SetBackdropColor(bg[1], bg[2], bg[3], 0.92)
+            else
+                self.frame:SetBackdropColor(bg[1], bg[2], bg[3], bg[4])
+            end
 
-        local border = skin.border
-        if windowStyle == "MINIMAL" then
-            self.frame:SetBackdropBorderColor(border[1], border[2], border[3], 0.35)
-        else
-            self.frame:SetBackdropBorderColor(border[1], border[2], border[3], border[4])
+            local border = skin.border
+            if windowStyle == "MINIMAL" then
+                self.frame:SetBackdropBorderColor(border[1], border[2], border[3], 0.35)
+            else
+                self.frame:SetBackdropBorderColor(border[1], border[2], border[3], border[4])
+            end
         end
         if self.frame.skinTitle then
             self.frame.skinTitle:SetTextColor(skin.title[1], skin.title[2], skin.title[3])
@@ -566,8 +703,18 @@ function FT:ApplySkin()
     if self.rows then
         for _, row in ipairs(self.rows) do
             if row.bg then
-                local c = skin.rowBackground
-                row.bg:SetColorTexture(c[1], c[2], c[3], c[4])
+                if IsNativeMeterStyle() and HasAtlas("ui-damagemeters-bar-shadowbg") then
+                    row.bg:SetAtlas("ui-damagemeters-bar-shadowbg")
+                    row.bg:Show()
+                    if row.nativeEdge and HasAtlas("ui-damagemeters-bar-shadowedge") then
+                        row.nativeEdge:SetAtlas("ui-damagemeters-bar-shadowedge")
+                        row.nativeEdge:Show()
+                    end
+                else
+                    local c = skin.rowBackground
+                    row.bg:SetColorTexture(c[1], c[2], c[3], c[4])
+                    if row.nativeEdge then row.nativeEdge:Hide() end
+                end
             end
             if row.playerHighlight then
                 local c = skin.playerHighlight
@@ -586,63 +733,131 @@ function FT:ApplySkin()
 end
 
 function FT:CreateRow(parent, index)
-    local row = CreateFrame("StatusBar", nil, parent)
+    local row = CreateFrame("Frame", nil, parent)
     row:SetHeight(self.db.barHeight or DEFAULT_ROW_HEIGHT)
-    self:ApplyBarTexture(row)
-    row:SetMinMaxValues(0, 100)
-    row:SetValue(0)
 
-    row.bg = row:CreateTexture(nil, "BACKGROUND")
-    row.bg:SetAllPoints()
+    row.icon = row:CreateTexture(nil, "ARTWORK")
+    row.icon:SetSize(24, 16)
+    row.icon:SetPoint("LEFT", row, "LEFT", 0, 0)
+    row.icon:Hide()
+
+    row.tankMarker = CreateFrame("Frame", nil, row)
+    row.tankMarker:SetSize(12, 12)
+    row.tankMarker:SetPoint("BOTTOMRIGHT", row.icon, "BOTTOMRIGHT", 2, -2)
+    row.tankMarker:SetFrameLevel(row:GetFrameLevel() + 4)
+    row.tankMarker:Hide()
+    row.tankMarkerTexture = row.tankMarker:CreateTexture(nil, "OVERLAY")
+    row.tankMarkerTexture:SetAllPoints()
+    row.tankMarkerTexture:SetTexture("Interface\\GroupFrame\\UI-Group-MainTankIcon")
+
+    -- Small optional visual gimmick: the current aggro holder wears the
+    -- standard WoW group-leader crown above the class icon.
+    row.aggroCrown = CreateFrame("Frame", nil, row)
+    row.aggroCrown:SetSize(13, 13)
+    row.aggroCrown:SetPoint("TOPRIGHT", row.icon, "TOPRIGHT", 2, 4)
+    row.aggroCrown:SetFrameLevel(row:GetFrameLevel() + 5)
+    row.aggroCrown:Hide()
+    row.aggroCrownTexture = row.aggroCrown:CreateTexture(nil, "OVERLAY")
+    row.aggroCrownTexture:SetAllPoints()
+    row.aggroCrownTexture:SetTexture("Interface\\GroupFrame\\UI-Group-LeaderIcon")
+
+    row.bar = CreateFrame("StatusBar", nil, row)
+    row.bar:SetAllPoints(row)
+    row.bar:SetMinMaxValues(0, 100)
+    row.bar:SetValue(0)
+    self:ApplyBarTexture(row)
+
+    row.bg = row.bar:CreateTexture(nil, "BACKGROUND")
+    row.bg:SetPoint("TOPLEFT", row.bar, "TOPLEFT", -2, 2)
+    row.bg:SetPoint("BOTTOMRIGHT", row.bar, "BOTTOMRIGHT", 2, -2)
     row.bg:SetColorTexture(0.045, 0.045, 0.045, 0.95)
 
-    row.playerHighlight = row:CreateTexture(nil, "ARTWORK")
+    row.nativeEdge = row.bar:CreateTexture(nil, "OVERLAY", nil, 1)
+    row.nativeEdge:SetPoint("TOPLEFT", row.bar, "TOPLEFT", -2, 2)
+    row.nativeEdge:SetPoint("BOTTOMRIGHT", row.bar, "BOTTOMRIGHT", 2, -2)
+    row.nativeEdge:Hide()
+
+    row.playerHighlight = row.bar:CreateTexture(nil, "ARTWORK")
     row.playerHighlight:SetAllPoints()
     row.playerHighlight:SetColorTexture(1.0, 0.82, 0.0, 0.12)
     row.playerHighlight:Hide()
 
-    row.aggroFlash = row:CreateTexture(nil, "OVERLAY")
+    row.raidFocusHighlight = row.bar:CreateTexture(nil, "ARTWORK", nil, 1)
+    row.raidFocusHighlight:SetAllPoints()
+    row.raidFocusHighlight:SetColorTexture(1.0, 0.55, 0.08, 0.14)
+    row.raidFocusHighlight:Hide()
+
+    row.threatRaceHighlight = row.bar:CreateTexture(nil, "OVERLAY", nil, 1)
+    row.threatRaceHighlight:SetAllPoints()
+    row.threatRaceHighlight:Hide()
+
+    row.aggroFlash = row.bar:CreateTexture(nil, "OVERLAY", nil, 2)
     row.aggroFlash:SetAllPoints()
     row.aggroFlash:SetColorTexture(1.0, 0.18, 0.04, 0.36)
     row.aggroFlash:Hide()
 
-    row.rank = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    local textFrame = CreateFrame("Frame", nil, row.bar)
+    textFrame:SetAllPoints()
+    textFrame:SetFrameLevel(row.bar:GetFrameLevel() + 3)
+    row.textFrame = textFrame
+
+    row.rank = textFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     row.rank:SetWidth(18)
     row.rank:SetJustifyH("RIGHT")
 
-    row.name = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.name = textFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     row.name:SetJustifyH("LEFT")
     row.name:SetWordWrap(false)
 
-    row.threat = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.threat = textFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     row.threat:SetWidth(48)
     row.threat:SetJustifyH("RIGHT")
 
-    row.tps = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.tps = textFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     row.tps:SetWidth(56)
     row.tps:SetJustifyH("RIGHT")
 
-    row.eta = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.eta = textFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     row.eta:SetWidth(62)
     row.eta:SetJustifyH("RIGHT")
 
-    row.delta = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.delta = textFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     row.delta:SetWidth(64)
     row.delta:SetJustifyH("RIGHT")
 
-    row.percent = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.percent = textFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     row.percent:SetWidth(38)
     row.percent:SetJustifyH("RIGHT")
 
+    local headerHeight = self:GetThreatHeaderHeight()
     if index == 1 then
-        row:SetPoint("TOPLEFT", parent, "TOPLEFT", 10, -HEADER_HEIGHT)
-        row:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -10, -HEADER_HEIGHT)
+        row:SetPoint("TOPLEFT", parent, "TOPLEFT", 10, -headerHeight)
+        row:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -10, -headerHeight)
     else
-        row:SetPoint("TOPLEFT", self.rows[index - 1], "BOTTOMLEFT", 0, -ROW_GAP)
-        row:SetPoint("TOPRIGHT", self.rows[index - 1], "BOTTOMRIGHT", 0, -ROW_GAP)
+        local gap = self:GetThreatRowGap()
+        row:SetPoint("TOPLEFT", self.rows[index - 1], "BOTTOMLEFT", 0, -gap)
+        row:SetPoint("TOPRIGHT", self.rows[index - 1], "BOTTOMRIGHT", 0, -gap)
     end
 
     return row
+end
+
+local function ApplyNativeRowIcon(row, entry)
+    if not row or not row.icon or not entry then
+        return
+    end
+
+    local atlas = entry.classToken and ("classicon-" .. string.lower(entry.classToken))
+    if atlas and HasAtlas(atlas) then
+        row.icon:SetAtlas(atlas)
+        row.icon:SetTexCoord(0, 1, 0, 1)
+    elseif entry.isPet then
+        row.icon:SetTexture("Interface\\Icons\\Ability_Hunter_BeastCall")
+        row.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+    else
+        row.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+        row.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+    end
 end
 
 function FT:GetEffectiveUpdateInterval()
@@ -703,6 +918,16 @@ function FT:CreateUI()
     frame:SetBackdropBorderColor(0.55, 0.32, 0.12, 1)
     frame:SetAlpha(self.db.windowAlpha or 0.97)
 
+    frame.nativeBackground = frame:CreateTexture(nil, "BACKGROUND")
+    frame.nativeBackground:SetAllPoints()
+    frame.nativeBackground:Hide()
+
+    frame.nativeHeader = frame:CreateTexture(nil, "BACKGROUND", nil, 1)
+    frame.nativeHeader:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
+    frame.nativeHeader:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 0)
+    frame.nativeHeader:SetHeight(WOW_METER_HEADER_HEIGHT)
+    frame.nativeHeader:Hide()
+
     frame:ClearAllPoints()
     frame:SetPoint(
         self.db.point or "CENTER",
@@ -741,7 +966,7 @@ function FT:CreateUI()
         FT.db.y = y or 0
     end)
 
-    local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalMed1")
     title:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, -8)
     title:SetText("FOREVERTHREAT")
     title:SetTextColor(1.0, 0.55, 0.16)
@@ -754,6 +979,7 @@ function FT:CreateUI()
     frame.target:SetText(FT:L("TARGET_FORMAT", FT:L("NO_TARGET")))
 
     local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
+    self.closeButton = close
     close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -1, -1)
     close:SetScript("OnClick", function()
         FT.db.visible = false
@@ -779,6 +1005,89 @@ function FT:CreateUI()
     configButton:SetScript("OnLeave", function()
         GameTooltip:Hide()
     end)
+
+    local nativeMinimize = CreateFrame("Button", nil, frame)
+    self.nativeMinimizeButton = nativeMinimize
+    nativeMinimize:SetSize(18, 19)
+    nativeMinimize:ClearAllPoints()
+    nativeMinimize:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -57, -6)
+    if HasAtlas("ui-questtrackerbutton-red-highlight") and nativeMinimize.SetHighlightAtlas then
+        nativeMinimize:SetHighlightAtlas("ui-questtrackerbutton-red-highlight", "ADD")
+    else
+        local minus = nativeMinimize:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        minus:SetPoint("CENTER", 0, 1)
+        minus:SetText("-")
+        minus:SetTextColor(1.0, 0.35, 0.15)
+        nativeMinimize.fallbackText = minus
+    end
+    nativeMinimize:SetScript("OnClick", function()
+        FT.db.visible = false
+        frame:Hide()
+    end)
+    nativeMinimize:Hide()
+
+    local nativeSettings = CreateFrame("Button", nil, frame)
+    self.nativeSettingsButton = nativeSettings
+    nativeSettings:SetSize(27, 27)
+    nativeSettings:ClearAllPoints()
+    nativeSettings:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -3, -3)
+    if HasAtlas("common-dropdown-a-button-settings-shadowless") and nativeSettings.SetNormalAtlas then
+        nativeSettings:SetNormalAtlas("common-dropdown-a-button-settings-shadowless")
+        if HasAtlas("common-dropdown-a-button-settings-pressed-shadowless") then
+            nativeSettings:SetPushedAtlas("common-dropdown-a-button-settings-pressed-shadowless")
+        end
+        if HasAtlas("common-dropdown-a-button-settings-hover-shadowless") then
+            nativeSettings:SetHighlightAtlas("common-dropdown-a-button-settings-hover-shadowless")
+        end
+    else
+        nativeSettings:SetNormalTexture("Interface\\Buttons\\UI-OptionsButton")
+    end
+    nativeSettings:SetScript("OnClick", function()
+        if FT.OpenConfig then FT:OpenConfig("display") end
+    end)
+    nativeSettings:Hide()
+
+    local sourceButton = CreateFrame("Button", nil, frame, "BackdropTemplate")
+    self.nativeSourceButton = sourceButton
+    sourceButton:SetSize(20, 20)
+    sourceButton:ClearAllPoints()
+    sourceButton:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -34, -6)
+    sourceButton:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8X8",
+        edgeFile = "Interface\\Buttons\\WHITE8X8",
+        edgeSize = 1,
+    })
+    sourceButton:SetBackdropColor(0.04, 0.04, 0.04, 0.85)
+    sourceButton:SetBackdropBorderColor(0.42, 0.34, 0.15, 1)
+    sourceButton.text = sourceButton:CreateFontString(nil, "OVERLAY", "GameFontNormalMed1")
+    sourceButton.text:SetAllPoints()
+    sourceButton.text:SetJustifyH("CENTER")
+    sourceButton:SetScript("OnClick", function()
+        local nextSource = FT.db.threatSource == "FOCUS" and "TARGET" or "FOCUS"
+        FT:SetThreatSource(nextSource)
+    end)
+    sourceButton:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+        GameTooltip:AddLine(FT:L("THREAT_SOURCE_TITLE"), 1.0, 0.82, 0.25)
+        GameTooltip:AddLine(FT:L("SOURCE_TARGET") .. " / " .. FT:L("SOURCE_FOCUS"), 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    sourceButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    sourceButton:Hide()
+
+    local titleButton = CreateFrame("Button", nil, frame)
+    self.nativeTitleButton = titleButton
+    titleButton:SetSize(20, 22)
+    titleButton:ClearAllPoints()
+    titleButton:SetPoint("TOPLEFT", frame, "TOPLEFT", 2, -4)
+    titleButton.text = titleButton:CreateFontString(nil, "OVERLAY", "GameFontNormalMed1")
+    titleButton.text:SetAllPoints()
+    titleButton.text:SetText("v")
+    titleButton.text:SetTextColor(1.0, 0.82, 0.0)
+    titleButton:SetScript("OnClick", function()
+        if FT.OpenConfig then FT:OpenConfig("display") end
+    end)
+    titleButton:Hide()
 
     local resizeGrip = CreateFrame("Button", nil, frame)
     self.resizeGrip = resizeGrip
@@ -843,6 +1152,8 @@ function FT:CreateUI()
 
     self.warningFrame = warningFrame
     self.warningDuration = 0
+
+    self:ResetSessionStatistics()
     self.lastAggroState = false
     self.highThreatWarned = false
     self.lastTargetingPlayer = false
@@ -865,6 +1176,36 @@ function FT:CreateUI()
             FT.currentWarningKey = nil
             FT.currentWarningArgs = nil
             FT.currentWarningSuffix = nil
+        end
+    end)
+
+    local funFrame = CreateFrame("Frame", "ForeverThreatFunFrame", UIParent)
+    funFrame:SetSize(440, 52)
+    funFrame:SetPoint("CENTER", UIParent, "CENTER", 0, 62)
+    funFrame:SetFrameStrata("HIGH")
+    funFrame:Hide()
+
+    funFrame.text = funFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    funFrame.text:SetPoint("CENTER")
+    funFrame.text:SetText("")
+    funFrame.text:SetTextColor(1.0, 0.72, 0.20)
+    funFrame.text:SetShadowOffset(2, -2)
+    funFrame.text:SetShadowColor(0, 0, 0, 1)
+
+    self.funFrame = funFrame
+    self.funDuration = 0
+    self.funDangerActive = false
+    self.funDangerLevel = nil
+    self.currentFunKey = nil
+
+    funFrame:SetScript("OnUpdate", function(self, elapsed)
+        FT.funDuration = (FT.funDuration or 0) - elapsed
+
+        if FT.funDuration <= 0 then
+            self:Hide()
+            self.text:SetText("")
+            FT.funDuration = 0
+            FT.currentFunKey = nil
         end
     end)
 
@@ -931,6 +1272,9 @@ function FT:CreateUI()
             FT.threatDirty = true
 
         elseif event == "PLAYER_REGEN_DISABLED" then
+            FT.cleanTankingStartedAt = nil
+            FT.cleanTankingCurrent = 0
+
             if FT.testMode then
                 FT.testMode = false
             end
@@ -940,6 +1284,8 @@ function FT:CreateUI()
             FT.lastTargetingPlayer = false
             FT.hasSeenNonPlayerTank = false
             FT.highThreatWarned = false
+            FT.funDangerActive = false
+            FT.funDangerLevel = nil
             FT.lastAggroHolderName = nil
             FT.lastAggroHolderWasPlayer = nil
             FT.lastEffectiveThreatMode = nil
@@ -960,10 +1306,19 @@ function FT:CreateUI()
             end
 
         elseif event == "PLAYER_REGEN_ENABLED" then
+            FT:EndCleanTankingStreak()
             FT.lastAggroState = false
             FT.lastTargetingPlayer = false
             FT.hasSeenNonPlayerTank = false
             FT.highThreatWarned = false
+            FT.funDangerActive = false
+            FT.funDangerLevel = nil
+            FT.funDuration = 0
+            if FT.funFrame then
+                FT.funFrame:Hide()
+                FT.funFrame.text:SetText("")
+                FT.currentFunKey = nil
+            end
             FT.warningDuration = 0
             FT.lastAggroHolderName = nil
             FT.lastAggroHolderWasPlayer = nil
@@ -1031,6 +1386,7 @@ function FT:ClearThreatDisplay()
     self.hasSeenNonPlayerTank = false
     self.highThreatWarned = false
     self:ResetETAWarningState()
+    self:ResetTankLeadWarningState()
     self.lastAggroHolderName = nil
     self.lastAggroHolderWasPlayer = nil
     self.aggroFlashName = nil
@@ -1046,11 +1402,15 @@ function FT:ClearThreatDisplay()
     end
 
     for _, row in ipairs(self.rows or {}) do
-        row:SetValue(0)
+        row.bar:SetValue(0)
         row.rank:SetText("")
         row.name:SetText("")
         row.playerHighlight:Hide()
+        if row.raidFocusHighlight then row.raidFocusHighlight:Hide() end
+        if row.threatRaceHighlight then row.threatRaceHighlight:Hide() end
         row.aggroFlash:Hide()
+        if row.tankMarker then row.tankMarker:Hide() end
+        if row.aggroCrown then row.aggroCrown:Hide() end
 
         if row.threat then row.threat:SetText("") end
         if row.tps then row.tps:SetText("") end
@@ -1073,7 +1433,8 @@ function FT:ShowCombatWarning(text, r, g, b, duration, playSound)
     self.warningFrame:Show()
 
     if playSound then
-        self:PlayWarningSound()
+        local soundKind = type(playSound) == "string" and playSound or "AGGRO"
+        self:PlayCombatWarningSound(soundKind, false)
     end
 end
 
@@ -1097,20 +1458,96 @@ function FT:ShowLocalizedCombatWarning(key, args, suffix, r, g, b, duration, pla
 end
 
 function FT:RefreshCombatWarningLocale()
-    if not self.warningFrame or not self.warningFrame:IsShown() or not self.currentWarningKey then
+    if self.warningFrame and self.warningFrame:IsShown() and self.currentWarningKey then
+        local args = self.currentWarningArgs or {}
+        local unpackArgs = _G.unpack or table.unpack
+        local text
+        if #args > 0 and unpackArgs then
+            text = self:L(self.currentWarningKey, unpackArgs(args))
+        else
+            text = self:L(self.currentWarningKey)
+        end
+
+        self.warningFrame.text:SetText((text or "") .. (self.currentWarningSuffix or ""))
+    end
+
+    if self.funFrame and self.funFrame:IsShown() and self.currentFunKey then
+        self.funFrame.text:SetText(self:L(self.currentFunKey))
+    end
+end
+
+function FT:ShowFunDangerMessage(key, duration)
+    if not self.db or self.db.funMode ~= true or not self.funFrame then
         return
     end
 
-    local args = self.currentWarningArgs or {}
-    local unpackArgs = _G.unpack or table.unpack
-    local text
-    if #args > 0 and unpackArgs then
-        text = self:L(self.currentWarningKey, unpackArgs(args))
-    else
-        text = self:L(self.currentWarningKey)
+    self.currentFunKey = key
+    self.funFrame.text:SetText(self:L(key))
+    self.funDuration = duration or 1.7
+    self.funFrame:Show()
+end
+
+function FT:ResetFunDangerState()
+    self.funDangerActive = false
+    self.funDangerLevel = nil
+end
+
+function FT:CheckFunDangerMessage(data, effectiveMode)
+    if not self.db
+        or self.db.funMode ~= true
+        or effectiveMode == "TANK"
+        or not self:IsPlayerInCombat()
+        or (not IsInGroup() and not IsInRaid()) then
+        self:ResetFunDangerState()
+        return
     end
 
-    self.warningFrame.text:SetText((text or "") .. (self.currentWarningSuffix or ""))
+    local playerEntry
+    local someoneElseHasAggro = false
+
+    for _, entry in ipairs(data or {}) do
+        if self:IsPlayerThreatEntry(entry) then
+            playerEntry = entry
+        elseif entry.isAggroHolder
+            or entry.targetTarget
+            or entry.isTanking
+            or (entry.status ~= nil and entry.status >= 2) then
+            someoneElseHasAggro = true
+        end
+    end
+
+    if not playerEntry or not someoneElseHasAggro then
+        self:ResetFunDangerState()
+        return
+    end
+
+    if playerEntry.isAggroHolder or playerEntry.targetTarget then
+        self:ResetFunDangerState()
+        return
+    end
+
+    local scaled = tonumber(playerEntry.scaled)
+    if not scaled then
+        self:ResetFunDangerState()
+        return
+    end
+
+    if scaled >= 99 then
+        if self.funDangerLevel ~= "CRITICAL" then
+            self:ShowFunDangerMessage("FUN_ONE_CRIT_AWAY", 1.8)
+            self.funDangerActive = true
+            self.funDangerLevel = "CRITICAL"
+        end
+    elseif scaled >= 97 then
+        if not self.funDangerActive then
+            self:ShowFunDangerMessage("FUN_LIVING_DANGEROUSLY", 1.8)
+            self.funDangerActive = true
+            self.funDangerLevel = "DANGER"
+        end
+    elseif self.funDangerActive and scaled < 90 then
+        self:ShowFunDangerMessage("FUN_THAT_WAS_CLOSE", 1.6)
+        self:ResetFunDangerState()
+    end
 end
 
 function FT:CheckPlayerThreatWarning(data, sourceUnit, effectiveMode)
@@ -1158,24 +1595,25 @@ function FT:CheckPlayerThreatWarning(data, sourceUnit, effectiveMode)
         and not self.lastTargetingPlayer
         and self.hasSeenNonPlayerTank then
 
-        self:ShowLocalizedCombatWarning("AGGRO", {}, "!", 1.0, 0.12, 0.05, 1.8, true)
+        self:ShowLocalizedCombatWarning("AGGRO", {}, "!", 1.0, 0.12, 0.05, 1.8, "AGGRO")
         self.highThreatWarned = false
     end
 
-    local _, _, redThreshold = self:GetThreatThresholds(effectiveMode or "DPS")
+    local warningThreshold = tonumber(self.db.highThreatThreshold) or 90
+    warningThreshold = math.max(50, math.min(99, warningThreshold))
 
     if not targetingPlayer
         and effectiveMode ~= "TANK"
         and self.db.highThreatWarning
         and playerEntry.scaled ~= nil
-        and playerEntry.scaled >= redThreshold
+        and playerEntry.scaled >= warningThreshold
         and not self.highThreatWarned then
 
-        self:ShowLocalizedCombatWarning("HIGH_THREAT_WARNING", {}, "", 1.0, 0.65, 0.05, 1.4, false)
+        self:ShowLocalizedCombatWarning("HIGH_THREAT_WARNING", {}, "", 1.0, 0.65, 0.05, 1.4, "HIGH")
         self.highThreatWarned = true
 
     elseif playerEntry.scaled ~= nil
-        and playerEntry.scaled < math.max(0, redThreshold - 10) then
+        and playerEntry.scaled < math.max(0, warningThreshold - 10) then
 
         self.highThreatWarned = false
     end
@@ -1316,6 +1754,145 @@ function FT:IsRecentTauntSwap(tankEntry)
     return true
 end
 
+local function FormatStreakTime(seconds)
+    seconds = math.max(0, math.floor((tonumber(seconds) or 0) + 0.5))
+    local minutes = math.floor(seconds / 60)
+    local remaining = seconds % 60
+
+    if minutes >= 60 then
+        local hours = math.floor(minutes / 60)
+        minutes = minutes % 60
+        return string.format("%d:%02d:%02d", hours, minutes, remaining)
+    end
+
+    return string.format("%d:%02d", minutes, remaining)
+end
+
+function FT:EndCleanTankingStreak()
+    if self.cleanTankingStartedAt then
+        local elapsed = math.max(0, GetTime() - self.cleanTankingStartedAt)
+        self.cleanTankingBest = math.max(tonumber(self.cleanTankingBest) or 0, elapsed)
+    end
+
+    self.cleanTankingStartedAt = nil
+    self.cleanTankingCurrent = 0
+end
+
+function FT:UpdateCleanTankingStreak(tankEntry, effectiveMode)
+    if not self.db or self.db.showTankStreak ~= true then
+        self:EndCleanTankingStreak()
+        return
+    end
+
+    local currentIsPlayer = tankEntry and self:IsPlayerThreatEntry(tankEntry) or false
+    local shouldRun = self:IsPlayerInCombat()
+        and effectiveMode == "TANK"
+        and currentIsPlayer
+
+    if shouldRun then
+        if not self.cleanTankingStartedAt then
+            self.cleanTankingStartedAt = GetTime()
+        end
+
+        local elapsed = math.max(0, GetTime() - self.cleanTankingStartedAt)
+        self.cleanTankingCurrent = elapsed
+        self.cleanTankingBest = math.max(tonumber(self.cleanTankingBest) or 0, elapsed)
+    else
+        self:EndCleanTankingStreak()
+    end
+end
+
+function FT:GetCleanTankingStreakText(effectiveMode)
+    if not self.db or self.db.showTankStreak ~= true or effectiveMode ~= "TANK" then
+        return nil
+    end
+
+    local current = tonumber(self.cleanTankingCurrent) or 0
+    local best = tonumber(self.cleanTankingBest) or 0
+
+    if self.cleanTankingStartedAt and current > 0 then
+        return self:L(
+            "TANK_STREAK_ACTIVE_FORMAT",
+            FormatStreakTime(current),
+            FormatStreakTime(best)
+        )
+    elseif best > 0 then
+        return self:L("TANK_STREAK_BEST_FORMAT", FormatStreakTime(best))
+    end
+
+    return nil
+end
+
+function FT:ResetSessionStatistics()
+    self.sessionStats = {
+        startedAt = GetTime(),
+        aggroGained = 0,
+        aggroLost = 0,
+        tankSwaps = 0,
+        bestThreatRank = nil,
+        highestThreatPercent = 0,
+        longestTankLead = 0,
+        closestTimeToAggro = nil,
+    }
+
+    -- Clean Tanking Streak is also a runtime/session value.
+    self.cleanTankingBest = 0
+    self.cleanTankingStartedAt = nil
+    self.cleanTankingCurrent = 0
+
+    if self.RefreshSessionStatistics then
+        self:RefreshSessionStatistics()
+    end
+end
+
+function FT:GetSessionStatistics()
+    if not self.sessionStats then
+        self:ResetSessionStatistics()
+    end
+    return self.sessionStats
+end
+
+function FT:UpdateSessionStatistics(data, effectiveMode)
+    if self.testMode or not self:IsPlayerInCombat() then
+        return
+    end
+
+    local stats = self:GetSessionStatistics()
+    local playerEntry
+
+    for _, entry in ipairs(data or {}) do
+        if self:IsPlayerThreatEntry(entry) then
+            playerEntry = entry
+            break
+        end
+    end
+
+    if not playerEntry then
+        return
+    end
+
+    local rank = tonumber(playerEntry.threatRank)
+    if rank and rank > 0 and (stats.bestThreatRank == nil or rank < stats.bestThreatRank) then
+        stats.bestThreatRank = rank
+    end
+
+    local scaled = tonumber(playerEntry.scaled)
+    if scaled and scaled > (stats.highestThreatPercent or 0) then
+        stats.highestThreatPercent = math.min(100, scaled)
+    end
+
+    local eta = tonumber(playerEntry.threatEta)
+    if effectiveMode == "TANK" and playerEntry.etaIsLead == true then
+        if eta and eta >= 0 and eta > (stats.longestTankLead or 0) then
+            stats.longestTankLead = eta
+        end
+    elseif eta and eta >= 0 and not playerEntry.isAggroHolder then
+        if stats.closestTimeToAggro == nil or eta < stats.closestTimeToAggro then
+            stats.closestTimeToAggro = eta
+        end
+    end
+end
+
 function FT:TrackAggroHolder(tankEntry, effectiveMode)
     local currentName = tankEntry and tankEntry.name or nil
     local currentIsPlayer = tankEntry and self:IsPlayerThreatEntry(tankEntry) or false
@@ -1342,16 +1919,25 @@ function FT:TrackAggroHolder(tankEntry, effectiveMode)
         and not currentIsPlayer
         and self.lastEffectiveThreatMode == "TANK"
 
+    if changed and currentIsPlayer then
+        local stats = self:GetSessionStatistics()
+        stats.aggroGained = (stats.aggroGained or 0) + 1
+    end
+
     if lostAggroAsTank then
         local plannedTankSwap = self:IsRecentTauntSwap(tankEntry)
+        local stats = self:GetSessionStatistics()
 
         if plannedTankSwap then
+            stats.tankSwaps = (stats.tankSwaps or 0) + 1
             -- A successful taunt by the new aggro holder is treated as an
             -- intentional tank swap: no red loss warning and no loss sound.
             if self.db.showTankSwapMessage then
                 self:ShowLocalizedCombatWarning("TANK_SWAP", { currentName }, "", 0.35, 0.82, 1.0, 1.4, false)
             end
         else
+            stats.aggroLost = (stats.aggroLost or 0) + 1
+
             if self.db.tankAggroLossWarning then
                 self:ShowLocalizedCombatWarning("TANK_AGGRO_LOST", { currentName }, "", 1.0, 0.18, 0.08, 2.0, false)
             end
@@ -1589,31 +2175,75 @@ function FT:RefreshLayout()
         return
     end
 
+    local native = IsNativeMeterStyle()
     local rowHeight = self.db.barHeight or DEFAULT_ROW_HEIGHT
     local fontSize = self.db.fontSize or 12
     local headerHeight = self:GetThreatHeaderHeight()
+    local rowGap = self:GetThreatRowGap()
 
-    if self.frame.skinTitle then
-        if self.db.showHeader == false then
-            self.frame.skinTitle:Hide()
-        else
+    if native then
+        if self.frame.skinTitle then
             self.frame.skinTitle:Show()
+            self.frame.skinTitle:SetFontObject(_G.GameFontNormalMed1 or GameFontNormal)
+            self.frame.skinTitle:ClearAllPoints()
+            self.frame.skinTitle:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 23, -9)
+            self.frame.skinTitle:SetPoint("TOPRIGHT", self.frame, "TOPRIGHT", -82, -9)
+            self.frame.skinTitle:SetJustifyH("LEFT")
+            self.frame.skinTitle:SetWordWrap(false)
         end
-    end
+        if self.frame.target then self.frame.target:Hide() end
+        if self.configButton then self.configButton:Hide() end
+        if self.closeButton then self.closeButton:Hide() end
+        if self.nativeMinimizeButton then self.nativeMinimizeButton:Show() end
+        if self.nativeSettingsButton then self.nativeSettingsButton:Show() end
+        if self.nativeSourceButton then
+            self.nativeSourceButton:Show()
+            self.nativeSourceButton.text:SetText(self.db.threatSource == "FOCUS" and "F" or "T")
+        end
+        if self.nativeTitleButton then self.nativeTitleButton:Show() end
+    else
+        if self.nativeMinimizeButton then self.nativeMinimizeButton:Hide() end
+        if self.nativeSettingsButton then self.nativeSettingsButton:Hide() end
+        if self.nativeSourceButton then self.nativeSourceButton:Hide() end
+        if self.nativeTitleButton then self.nativeTitleButton:Hide() end
+        if self.configButton then self.configButton:Show() end
+        if self.closeButton then self.closeButton:Show() end
 
-    if self.frame.target then
-        self.frame.target:ClearAllPoints()
-        if self.db.showHeader == false then
-            self.frame.target:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 10, -9)
-        else
-            self.frame.target:SetPoint("TOPLEFT", self.frame.skinTitle, "BOTTOMLEFT", 0, -3)
+        if self.frame.skinTitle then
+            self.frame.skinTitle:SetText("FOREVERTHREAT")
+            self.frame.skinTitle:ClearAllPoints()
+            self.frame.skinTitle:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 10, -8)
+            if self.db.showHeader == false then
+                self.frame.skinTitle:Hide()
+            else
+                self.frame.skinTitle:Show()
+            end
         end
-        self.frame.target:SetPoint("RIGHT", self.frame, "RIGHT", -62, 0)
+
+        if self.frame.target then
+            self.frame.target:Show()
+            self.frame.target:ClearAllPoints()
+            if self.db.showHeader == false then
+                self.frame.target:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 10, -9)
+            else
+                self.frame.target:SetPoint("TOPLEFT", self.frame.skinTitle, "BOTTOMLEFT", 0, -3)
+            end
+            self.frame.target:SetPoint("RIGHT", self.frame, "RIGHT", -62, 0)
+        end
     end
 
     for i, row in ipairs(self.rows) do
         self:ApplyBarTexture(row)
         row:SetHeight(rowHeight)
+
+        local fontObject = native and (_G.NumberFontNormal or GameFontHighlightSmall) or GameFontHighlightSmall
+        row.rank:SetFontObject(fontObject)
+        row.name:SetFontObject(fontObject)
+        row.threat:SetFontObject(fontObject)
+        row.tps:SetFontObject(fontObject)
+        row.eta:SetFontObject(fontObject)
+        row.delta:SetFontObject(fontObject)
+        row.percent:SetFontObject(fontObject)
 
         ApplyFontSize(row.rank, fontSize)
         ApplyFontSize(row.name, fontSize)
@@ -1623,41 +2253,71 @@ function FT:RefreshLayout()
         ApplyFontSize(row.delta, fontSize)
         ApplyFontSize(row.percent, fontSize)
 
+        row.icon:ClearAllPoints()
+        row.bar:ClearAllPoints()
+
+        if native then
+            row.icon:SetSize(24, math.min(18, rowHeight))
+            row.icon:SetPoint("LEFT", row, "LEFT", 0, 0)
+            row.icon:Show()
+            row.bar:SetPoint("TOPLEFT", row.icon, "TOPRIGHT", 0, -1)
+            row.bar:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -4, 1)
+        else
+            row.icon:Hide()
+            row.tankMarker:Hide()
+            if row.aggroCrown then row.aggroCrown:Hide() end
+            row.bar:SetAllPoints(row)
+        end
+
         row.rank:ClearAllPoints()
-        row.rank:SetPoint("LEFT", row, "LEFT", 5, 0)
+        row.rank:SetPoint("LEFT", row.bar, "LEFT", native and 2 or 5, 0)
 
-        local rightOffset = 6
+        local rightOffset = native and 3 or 6
         local frameWidth = self.frame:GetWidth() or 274
-        local showPercentColumn = self.db.showPercent
-        local showETAColumn = self.db.showThreatETA and frameWidth >= 220
 
-        -- Endgame priority: percentage and ETA stay visible first. TPS, delta
-        -- and raw threat return progressively as the window is widened.
-        local tpsThreshold = showETAColumn and 300 or 220
-        local deltaThreshold = 220
-        if self.db.showThreatETA then deltaThreshold = deltaThreshold + 100 end
-        if self.db.showTPS then deltaThreshold = deltaThreshold + 110 end
+        local showPercentColumn
+        local showETAColumn
+        local showTPSColumn
+        local showDeltaColumn
+        local showThreatColumn
 
-        local threatThreshold = 270
-        if self.db.showThreatETA then threatThreshold = threatThreshold + 100 end
-        if self.db.showTPS then threatThreshold = threatThreshold + 110 end
-
-        local showTPSColumn = self.db.showTPS and frameWidth >= tpsThreshold
-        local showDeltaColumn = self.db.showThreatDelta and frameWidth >= deltaThreshold
-        local showThreatColumn = self.db.showThreatValue and frameWidth >= threatThreshold
+        if native then
+            -- In the WoW meter look, raw threat + percentage share the native
+            -- right-aligned value field. Extra analytics appear as the window grows.
+            showPercentColumn = self.db.showPercent or self.db.showThreatValue
+            showETAColumn = self.db.showThreatETA and frameWidth >= 330
+            showTPSColumn = self.db.showTPS and frameWidth >= 400
+            showDeltaColumn = self.db.showThreatDelta and frameWidth >= 480
+            showThreatColumn = false
+            row.percent:SetWidth(104)
+        else
+            showPercentColumn = self.db.showPercent
+            showETAColumn = self.db.showThreatETA and frameWidth >= 220
+            local tpsThreshold = showETAColumn and 300 or 220
+            local deltaThreshold = 220
+            if self.db.showThreatETA then deltaThreshold = deltaThreshold + 100 end
+            if self.db.showTPS then deltaThreshold = deltaThreshold + 110 end
+            local threatThreshold = 270
+            if self.db.showThreatETA then threatThreshold = threatThreshold + 100 end
+            if self.db.showTPS then threatThreshold = threatThreshold + 110 end
+            showTPSColumn = self.db.showTPS and frameWidth >= tpsThreshold
+            showDeltaColumn = self.db.showThreatDelta and frameWidth >= deltaThreshold
+            showThreatColumn = self.db.showThreatValue and frameWidth >= threatThreshold
+            row.percent:SetWidth(38)
+        end
 
         row.percent:ClearAllPoints()
         if showPercentColumn then
-            row.percent:SetPoint("RIGHT", row, "RIGHT", -rightOffset, 0)
+            row.percent:SetPoint("RIGHT", row.bar, "RIGHT", -rightOffset, 0)
             row.percent:Show()
-            rightOffset = rightOffset + 42
+            rightOffset = rightOffset + (native and 108 or 42)
         else
             row.percent:Hide()
         end
 
         row.eta:ClearAllPoints()
         if showETAColumn then
-            row.eta:SetPoint("RIGHT", row, "RIGHT", -rightOffset, 0)
+            row.eta:SetPoint("RIGHT", row.bar, "RIGHT", -rightOffset, 0)
             row.eta:Show()
             rightOffset = rightOffset + 68
         else
@@ -1666,7 +2326,7 @@ function FT:RefreshLayout()
 
         row.tps:ClearAllPoints()
         if showTPSColumn then
-            row.tps:SetPoint("RIGHT", row, "RIGHT", -rightOffset, 0)
+            row.tps:SetPoint("RIGHT", row.bar, "RIGHT", -rightOffset, 0)
             row.tps:Show()
             rightOffset = rightOffset + 62
         else
@@ -1675,7 +2335,7 @@ function FT:RefreshLayout()
 
         row.delta:ClearAllPoints()
         if showDeltaColumn then
-            row.delta:SetPoint("RIGHT", row, "RIGHT", -rightOffset, 0)
+            row.delta:SetPoint("RIGHT", row.bar, "RIGHT", -rightOffset, 0)
             row.delta:Show()
             rightOffset = rightOffset + 68
         else
@@ -1684,7 +2344,7 @@ function FT:RefreshLayout()
 
         row.threat:ClearAllPoints()
         if showThreatColumn then
-            row.threat:SetPoint("RIGHT", row, "RIGHT", -rightOffset, 0)
+            row.threat:SetPoint("RIGHT", row.bar, "RIGHT", -rightOffset, 0)
             row.threat:Show()
             rightOffset = rightOffset + 52
         else
@@ -1692,16 +2352,16 @@ function FT:RefreshLayout()
         end
 
         row.name:ClearAllPoints()
-        row.name:SetPoint("LEFT", row.rank, "RIGHT", 7, 0)
-        row.name:SetPoint("RIGHT", row, "RIGHT", -rightOffset, 0)
+        row.name:SetPoint("LEFT", row.rank, "RIGHT", 4, 0)
+        row.name:SetPoint("RIGHT", row.bar, "RIGHT", -rightOffset, 0)
 
         row:ClearAllPoints()
         if i == 1 then
-            row:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 10, -headerHeight)
-            row:SetPoint("TOPRIGHT", self.frame, "TOPRIGHT", -10, -headerHeight)
+            row:SetPoint("TOPLEFT", self.frame, "TOPLEFT", native and 5 or 10, -(headerHeight + (native and 2 or 0)))
+            row:SetPoint("TOPRIGHT", self.frame, "TOPRIGHT", native and -1 or -10, -(headerHeight + (native and 2 or 0)))
         else
-            row:SetPoint("TOPLEFT", self.rows[i - 1], "BOTTOMLEFT", 0, -ROW_GAP)
-            row:SetPoint("TOPRIGHT", self.rows[i - 1], "BOTTOMRIGHT", 0, -ROW_GAP)
+            row:SetPoint("TOPLEFT", self.rows[i - 1], "BOTTOMLEFT", 0, -rowGap)
+            row:SetPoint("TOPRIGHT", self.rows[i - 1], "BOTTOMRIGHT", 0, -rowGap)
         end
     end
 
@@ -1758,7 +2418,16 @@ function FT:Refresh()
 
     local isFocus = not self.testMode and sourceUnit == "focus"
 
-    if targetTargetName then
+    if IsNativeMeterStyle() then
+        if targetTargetName and self.db.showTargetTarget then
+            self.frame.skinTitle:SetText(self:L("METER_TITLE_WITH_TARGET_FORMAT", targetName, targetTargetName))
+        else
+            self.frame.skinTitle:SetText(self:L("METER_TITLE_FORMAT", targetName))
+        end
+        if self.nativeSourceButton then
+            self.nativeSourceButton.text:SetText(isFocus and "F" or "T")
+        end
+    elseif targetTargetName then
         self.frame.target:SetText(self:L(
             isFocus and "FOCUS_WITH_TARGET_FORMAT" or "TARGET_WITH_TARGET_FORMAT",
             targetName,
@@ -1774,6 +2443,23 @@ function FT:Refresh()
     local effectiveMode = self:GetEffectiveThreatMode(tankEntry)
 
     if not self.testMode then
+        self:UpdateCleanTankingStreak(tankEntry, effectiveMode)
+    else
+        self:EndCleanTankingStreak()
+    end
+
+    local tankStreakText = self:GetCleanTankingStreakText(effectiveMode)
+    if tankStreakText then
+        if IsNativeMeterStyle() and self.frame.skinTitle then
+            local currentHeader = self.frame.skinTitle:GetText() or ""
+            self.frame.skinTitle:SetText(currentHeader .. "  |  " .. tankStreakText)
+        elseif self.frame.target and self.frame.target:IsShown() then
+            local currentTarget = self.frame.target:GetText() or ""
+            self.frame.target:SetText(currentTarget .. "  |  " .. tankStreakText)
+        end
+    end
+
+    if not self.testMode then
         local threatState = self:UpdateThreatResetState(data, sourceUnit)
 
         -- During a confirmed/pending reset there is no reliable aggro holder.
@@ -1781,28 +2467,46 @@ function FT:Refresh()
         if threatState == "ACTIVE" then
             self:TrackAggroHolder(tankEntry, effectiveMode)
             self:CheckPlayerThreatWarning(data, sourceUnit, effectiveMode)
+            self:CheckFunDangerMessage(data, effectiveMode)
         elseif threatState == "RESET" then
             self.threatDirty = true
         end
 
         self:UpdateTPS(data, sourceUnit)
         self:UpdateThreatETA(data, tankEntry)
+        self:UpdateSessionStatistics(data, effectiveMode)
 
         if threatState == "ACTIVE" then
             self:CheckPlayerETAWarning(data, effectiveMode)
+            self:CheckPlayerTankLeadWarning(data, effectiveMode)
         else
             self:ResetETAWarningState()
+            self:ResetTankLeadWarningState()
+            self:ResetFunDangerState()
         end
     end
 
     local rowHeight = self.db.barHeight or DEFAULT_ROW_HEIGHT
     local headerHeight = self:GetThreatHeaderHeight()
     local availableHeight = math.max(rowHeight, self.frame:GetHeight() - headerHeight - 10)
-    local maxVisibleRows = math.floor(availableHeight / (rowHeight + ROW_GAP))
+    local maxVisibleRows = math.floor(availableHeight / (rowHeight + self:GetThreatRowGap()))
     maxVisibleRows = math.max(1, math.min(#self.rows, self.db.maxRows or 15, maxVisibleRows))
 
     local displayData = self:GetDisplayThreatData(data, maxVisibleRows, effectiveMode)
     local skinPalette = self:GetSkinPalette()
+
+    local raidFocusView = IsInRaid() and self.db
+        and (self.db.raidDangerViewEnabled or (self.db.raidTankViewEnabled and effectiveMode == "TANK"))
+    local nextAggroKey = nil
+
+    if raidFocusView then
+        for _, candidate in ipairs(data) do
+            if not candidate.isAggroHolder and not candidate.isPet then
+                nextAggroKey = candidate.unit or candidate.name
+                break
+            end
+        end
+    end
 
     local visible = 0
     local entriesToShow = math.min(#displayData, maxVisibleRows)
@@ -1811,6 +2515,22 @@ function FT:Refresh()
         local entry = displayData[i]
         local row = self.rows[i]
         visible = visible + 1
+
+        local entryKey = entry.unit or entry.name
+        local isRaidAggroFocus = raidFocusView and entry.isAggroHolder
+        local isRaidNextFocus = raidFocusView and nextAggroKey ~= nil and entryKey == nextAggroKey
+
+        if row.raidFocusHighlight then
+            if isRaidAggroFocus then
+                row.raidFocusHighlight:SetColorTexture(1.0, 0.82, 0.0, 0.18)
+                row.raidFocusHighlight:Show()
+            elseif isRaidNextFocus then
+                row.raidFocusHighlight:SetColorTexture(1.0, 0.35, 0.08, 0.16)
+                row.raidFocusHighlight:Show()
+            else
+                row.raidFocusHighlight:Hide()
+            end
+        end
 
         local r, g, b
         local dynamicR, dynamicG, dynamicB = GetDynamicThreatColor(entry, effectiveMode)
@@ -1828,18 +2548,59 @@ function FT:Refresh()
         end
 
         self:ApplyBarColor(row, r, g, b)
-        row:SetValue(self:GetBarValue(entry))
+        row.bar:SetValue(self:GetBarValue(entry))
+
+        if IsNativeMeterStyle() then
+            ApplyNativeRowIcon(row, entry)
+            row.tankMarker:SetShown(self.db.showTankMarker and entry.isAggroHolder)
+            if row.aggroCrown then
+                row.aggroCrown:SetShown(self.db.showAggroCrown and entry.isAggroHolder)
+            end
+        else
+            row.tankMarker:Hide()
+            if row.aggroCrown then row.aggroCrown:Hide() end
+        end
 
         local flashActive = self.db.highlightAggroChanges
             and self.aggroFlashName == entry.name
             and (self.aggroFlashUntil or 0) > GetTime()
+
+        local threatRank = tonumber(entry.threatRank) or i
+        local raceActive = self.db.showThreatRace == true
+            and threatRank >= 1
+            and threatRank <= 3
+
+        if row.threatRaceHighlight then
+            if raceActive then
+                if threatRank == 1 then
+                    row.threatRaceHighlight:SetColorTexture(1.0, 0.82, 0.0, 0.13)
+                elseif threatRank == 2 then
+                    row.threatRaceHighlight:SetColorTexture(0.75, 0.78, 0.84, 0.11)
+                else
+                    row.threatRaceHighlight:SetColorTexture(0.78, 0.43, 0.20, 0.10)
+                end
+                row.threatRaceHighlight:Show()
+            else
+                row.threatRaceHighlight:Hide()
+            end
+        end
 
         if flashActive then
             row.aggroFlash:Show()
             row.rank:SetText("|cffff3b1f!|r")
         else
             row.aggroFlash:Hide()
-            row.rank:SetText(tostring(entry.threatRank or i) .. ".")
+            if raceActive then
+                if threatRank == 1 then
+                    row.rank:SetText("|cffffd200#1|r")
+                elseif threatRank == 2 then
+                    row.rank:SetText("|cffc7ccd6#2|r")
+                else
+                    row.rank:SetText("|cffc77c48#3|r")
+                end
+            else
+                row.rank:SetText(tostring(threatRank) .. ".")
+            end
         end
 
         local prefix = ""
@@ -1848,7 +2609,7 @@ function FT:Refresh()
             prefix = prefix .. "|cffff5a1f[!]|r "
         end
 
-        if self.db.showTankMarker and entry.isAggroHolder then
+        if not IsNativeMeterStyle() and self.db.showTankMarker and entry.isAggroHolder then
             prefix = prefix .. "|cffffd200[T]|r "
         end
 
@@ -1874,6 +2635,10 @@ function FT:Refresh()
 
         if flashActive then
             row.name:SetTextColor(1.0, 0.55, 0.12)
+        elseif isRaidAggroFocus then
+            row.name:SetTextColor(1.0, 0.82, 0.0)
+        elseif isRaidNextFocus then
+            row.name:SetTextColor(1.0, 0.48, 0.18)
         elseif self:IsPlayerThreatEntry(entry) and self.db.highlightPlayer then
             row.name:SetTextColor(1.0, 0.90, 0.35)
         else
@@ -1927,7 +2692,22 @@ function FT:Refresh()
         end
 
         if row.percent:IsShown() then
-            row.percent:SetText(self:GetThreatLabel(entry))
+            if IsNativeMeterStyle() then
+                local hasThreat = self.db.showThreatValue and type(entry.rawThreat) == "number"
+                local hasPercent = self.db.showPercent and type(entry.scaled) == "number"
+
+                if hasThreat and hasPercent then
+                    row.percent:SetText(string.format("%s (%.1f)", FormatMeterThreat(entry.rawThreat), entry.scaled))
+                elseif hasThreat then
+                    row.percent:SetText(FormatMeterThreat(entry.rawThreat))
+                elseif hasPercent then
+                    row.percent:SetText(string.format("%.1f%%", entry.scaled))
+                else
+                    row.percent:SetText(self:GetThreatLabel(entry))
+                end
+            else
+                row.percent:SetText(self:GetThreatLabel(entry))
+            end
 
             if entry.isAggroHolder then
                 row.percent:SetTextColor(1.0, 0.82, 0.0)
@@ -1945,19 +2725,28 @@ function FT:Refresh()
 
     for i = visible + 1, #self.rows do
         self.rows[i].aggroFlash:Hide()
+        if self.rows[i].threatRaceHighlight then self.rows[i].threatRaceHighlight:Hide() end
         self.rows[i]:Hide()
     end
 
     if visible == 0 then
         local row = self.rows[1]
 
-        row:SetStatusBarColor(0.22, 0.22, 0.22, 0.70)
-        row:SetValue(0)
+        row.bar:SetStatusBarColor(0.22, 0.22, 0.22, 0.70)
+        row.bar:SetValue(0)
         row.rank:SetText("")
         row.name:SetText(self:L("NO_THREAT_DATA"))
         row.name:SetTextColor(1, 1, 1)
         row.playerHighlight:Hide()
+        if row.raidFocusHighlight then row.raidFocusHighlight:Hide() end
+        if row.threatRaceHighlight then row.threatRaceHighlight:Hide() end
         row.aggroFlash:Hide()
+        if row.tankMarker then row.tankMarker:Hide() end
+        if row.aggroCrown then row.aggroCrown:Hide() end
+        if row.icon and IsNativeMeterStyle() then
+            row.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+            row.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+        end
 
         if row.threat:IsShown() then
             row.threat:SetText("")
@@ -1976,7 +2765,7 @@ function FT:Refresh()
         end
 
         if row.percent:IsShown() then
-            row.percent:SetText("—")
+            row.percent:SetText("-")
             row.percent:SetTextColor(1, 1, 1)
         end
 
