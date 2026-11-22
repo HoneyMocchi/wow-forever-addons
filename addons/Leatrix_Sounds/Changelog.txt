@@ -1,8 +1,11 @@
-﻿1.60.30 - 11th November 2026
+﻿1.60.31 - 18th November 2026
+- Sounds updated to 1.60.1.70938 (Nov 12 2026) (16001).
+
+1.60.30 - 11th November 2026
 - Added support for the 'Show info card' sounds button in the latest release of Leatrix Plus.
 - Added a new option 'Set keybindings' which replaces the previous way of setting addon related keybindings.
 - The 'Show sounds' context menu option will now never appear during combat or while addon restrictions are in place (such as during instanced encounters).
-- Sounds updated to 1.60.1.70888 (Nov  9 2026) (16001).
+- Sounds updated to 1.60.1.70888 (Nov 9 2026) (16001).
 
 1.60.27 - 5th November 2026
 - Added a 'Show mount sounds' feature.  Right-click a mount in the mount journal and click 'Show mount sounds'.  Then you can listen to and mute any of the sounds.
