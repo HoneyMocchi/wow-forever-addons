@@ -53,3 +53,4 @@
 - Leatrix Sounds 1.60.31 및 Myslot 6.3.1에 기존 수정 사항을 병합했다.
 
 - NeedRoll 1.9.0 및 ForeverThreat 1.13.0에 기존 한글 수정을 병합했다. NeedRoll 기존 로컬 추가 지도 파일도 보존했다.
+- 기존에 설치된 FindParty 0.7, MobSpot 1.1.1 및 사용자 한국어 보완 모듈 ForeverKorean을 배포 후보에 등록했다.

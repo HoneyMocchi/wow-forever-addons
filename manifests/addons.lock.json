@@ -979,6 +979,38 @@
       "source_archive_sha256": "1e0190fa93110b257e964ad76e1681f697fb7948a130f19d435e0b1394d12a7b"
     },
     {
+      "id": "FindParty",
+      "files": {
+        "activated.tga": "a703dad63cf45ec00560e99a6a24d68d884129191b5ebd3e6b0375b916f602c3",
+        "bellActivated.tga": "23b3d354531ec821c37a63a8af902b37c163c14ab5e140b4753d73232e77ed23",
+        "bellDeactivated.tga": "e13c9e2e206d960017c0884b8d9e78465b6070454e065126c9ffe23fb1fa175f",
+        "Bindings.xml": "dd64b58eb1b7e52e5b5c4ee3313c78c1d2e28561d21d7bb742776f5fb0add27d",
+        "deactivated.tga": "1b8f788bebd2da5b7b92eb2efcb4fbb54d06a96fadf8ccf7ac3577ffb89d25d7",
+        "FindParty.lua": "c6b63184649637c29aad5497f1a18a7782583d8e9cc3adadca6a258000f0517e",
+        "FindParty.ogg": "2ee86c30cba7aeea3d3f8bae9cd68cf26f833f4c5050db94d739e90c0a0ef955",
+        "FindParty.toc": "219dc462a3d6ab18c95af9f3ff063319ae2888b4c5cc68faf895b5087960b606",
+        "FindParty.wav": "a7e7efdb5658c9bed545a1cfd1be564ce4b3eee669467dcb86fb2ea3ec4a2234",
+        "FindParty.xml": "5fdfd0fc2167e70265f48944b5793339ef8ad8935d587f6e2205e586957c91b2",
+        "FindParty_logo.tga": "9a04cc4121b6b4c363633ca305c09f7005e094441183a79ac76b0649c82e7099",
+        "keywords.kr.lua": "354703725c749330720166084e551ca34cff2bcdde7717d037df3005789f0822",
+        "Lib/CallbackHandler-1.0.lua": "074ae1ebb51175f0ce8ca43ed3db151f84a9d5615aee7a48cd35042a5854711d",
+        "Lib/LibDataBroker-1.1.lua": "f3d4758f2060215492c9764b1d7dc2a336826d4cd253cd54ff9ff7c6d78f04e2",
+        "Lib/LibStub.lua": "02d25b7433af734b59f0c4571bfaa73b2b660992d71d2fb6a8809b32de3f964c",
+        "License.txt": "e2566840a0be32fbaba3b594e49f290f7afbf91fb24b7b4b9fb55d26a5aadb7d",
+        "localization.kr.lua": "95282a36559de999e819b1502b6bc21af98c0b2507386eb5170dad4e4f0f8be9",
+        "README.md": "990b0bc84b82b616216a358d4bab960130cc08acf8ad62a7654de08c0b427f46",
+        "SIM-Icon.tga": "98c1cdc942ec4c43db3f07576067d10188f839ecf6443826be984413c7595fd0",
+        "whitepixel.tga": "64c0b1308a604ac93af1b8f6fc77543ef531e79c85e3a6c30db8a70964c12e40"
+      },
+      "version": "0.7",
+      "interface": "16001",
+      "dependencies": "",
+      "source_url": "https://www.curseforge.com/wow/addons/findparty-forever-classic",
+      "source_file_id": 9622983,
+      "source_archive_sha256": "cbe4e5590edccbdb8f705d722172d56105512fb3c1f6296c3e46eb1b56d46c06",
+      "upstream_status": "available"
+    },
+    {
       "id": "ForeverAuras",
       "version": "1.4.6",
       "interface": "16001",
@@ -3904,6 +3936,18 @@
       "source_archive_sha256": "ac912ab68b13c6f90f537213dfbce58cf297196a20b93c5708eb2d04703b7355"
     },
     {
+      "id": "ForeverKorean",
+      "files": {
+        "ForeverKorean.toc": "a9b1f6a79d909dbb5035126cee5cca49392b324bf8356fa61022f1678b69fe64",
+        "NpcCorrections.lua": "8be6ac0319c829880cb30acbaf22051d1c2b2724b59ba5833d0f3d801505bbff"
+      },
+      "version": "2026.11.15.1",
+      "interface": "16001",
+      "dependencies": "QuestieDB",
+      "source_url": null,
+      "upstream_status": "unverified"
+    },
+    {
       "id": "ForeverLootMover",
       "version": "1.2",
       "interface": "16001",
@@ -4321,6 +4365,36 @@
       "files": {
         "MacroToolkitIcons.toc": "646c1f91c765cc872adf3684168be05330a6a1aee2c1ada8bf37d16042fcc06f"
       }
+    },
+    {
+      "id": "MobSpot",
+      "files": {
+        "Alert.lua": "cfe6222139e40e7abc43900d5f43869ceaa89d2ca0aa5b20d8cc933e9cba5daa",
+        "Bindings.xml": "938c73e88b6640c8d111f8ab363d72de39f22a58262852cdbd097fe66c26f540",
+        "CHANGELOG.md": "76df28ca6365091113b91a618f6fee04f3236915ca8bbaca8c8772e8189480d9",
+        "Core.lua": "6e7521e70ba3eeee29cb285deeb0163632308c544ee492fc18d08e07087a4c27",
+        "Libs/CallbackHandler-1.0/CallbackHandler-1.0.lua": "d8a175f5823a999d8a188ee5e8e1133c393fd8c25b71931ab929d4691eff750b",
+        "Libs/LibDataBroker-1.1/LibDataBroker-1.1.lua": "d79b3eada649684543bbbc3c511c2515e16d644f198fa991a201ee64d045b0f2",
+        "Libs/LibDBIcon-1.0/LibDBIcon-1.0.lua": "bd9249c720b511f1ca23f45ac1117c079b054060d764550efe04875d8d9e26bc",
+        "Libs/LibSharedMedia-3.0/LibSharedMedia-3.0.lua": "c9cc19632d2f6a72edd0331fe18b3ce7c4d01e30d998569fd59577cc6108fa3f",
+        "Libs/LibStub/LibStub.lua": "1ce4b08ccf3c23d81a787885daf37bf3717366c1f1e2ef38cc8d47c79af4da39",
+        "LICENSE": "251ca119d2d0ccb508bc386a511fc8a83356977bf77a98c3d3481e0e006688f1",
+        "Marker.lua": "82da0b8baca9b5cfecd69165d8c3c478acff7c536444a3a08a8941db8cf8f555",
+        "Minimap.lua": "3a1668b0a0e6ae65e0024d6f14f1705950e58e4a64a64438ea73a52d445949f9",
+        "MobSpot.toc": "f195d029ea7bfdafb9c2f6aebdcddb351cdfb9ebc2d8e6c886396202c5d6e380",
+        "Options.lua": "57288435e6a9a72b7827cb39da7d8efd3b0d1a17fc27a07e3de2131c76b889de",
+        "README.md": "7f766243f3c5e33de8f55eceb24e77545954862354024139f60100fc50b00a66",
+        "Scan.lua": "efa51022fefecf56623486ef79c7f64a027c7d2e20613b22957b7892b2a7056c",
+        "WhatsNew.lua": "b97f52bef99365568c76f25756ecbf0c73136443a0b62683736c6792bc94f322",
+        "WhatsNewData.lua": "bd81e5be8693ea50ebab96e6d0345dc6d8de37a48d94075dc65703470baeb223"
+      },
+      "version": "1.1.1",
+      "interface": "16001",
+      "dependencies": "",
+      "source_url": "https://www.curseforge.com/wow/addons/mobspot",
+      "source_file_id": 9586994,
+      "source_archive_sha256": "920cf41fde8353ef2d403357118c88edd75ff69394a9cb0e17c3c6f984215884",
+      "upstream_status": "available"
     },
     {
       "id": "Myslot",
