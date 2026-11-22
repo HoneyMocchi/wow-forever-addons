@@ -124,6 +124,28 @@ local function Learned(questID)
 end
 FDJ.LearnedQuestText = Learned
 
+-- objdone (2.0.13, M 18 Nov 2026, Strange Pylons with the western pylon
+-- found: "my quest log says I found the Western pylon, but our quest log in
+-- the journal does not"): whether a quest's objective i is done: the
+-- game's list, and its quest log's own line when the list does not say so.
+-- A done line without a count ("Western pylon found") gets the game's
+-- "(Complete)" after it (FDJ.ObjectiveDoneText), as in the quest log.
+function FDJ.ObjectiveDone(questID, i, objective)
+    if type(objective) == "table" and objective.finished == true then return true end
+    if not (questID and i and C_QuestLog and C_QuestLog.GetLogIndexForQuestID) then return false end
+    if type(GetQuestLogLeaderBoard) ~= "function" then return false end
+    local okI, index = pcall(C_QuestLog.GetLogIndexForQuestID, questID)
+    if not okI or type(index) ~= "number" or index <= 0 then return false end
+    local ok, _, _, finished = pcall(GetQuestLogLeaderBoard, i, index)
+    return ok and (finished == true or finished == 1)
+end
+function FDJ.ObjectiveDoneText(text, done)
+    if not done or type(text) ~= "string" or text:find("%d+%s*/%s*%d+") then return text end
+    local word = type(COMPLETE) == "string" and COMPLETE or "Complete"
+    if text:find(word, 1, true) then return text end
+    return text .. " (" .. word .. ")"
+end
+
 local function ProgressLines(questID)
     if not (questID and C_QuestLog and C_QuestLog.GetLogIndexForQuestID and C_QuestLog.GetQuestObjectives) then return nil end
     local okI, index = pcall(C_QuestLog.GetLogIndexForQuestID, questID)
@@ -145,11 +167,12 @@ local function ProgressLines(questID)
         return #translated > 0 and table.concat(translated, "\n") or nil
     end
     local lines = {}
-    for _, o in ipairs(objectives) do
+    for i, o in ipairs(objectives) do
         local text = type(o) == "table" and Str(o.text)
         if text then
-            local finished = o.finished
+            local finished = FDJ.ObjectiveDone(questID, i, o) -- objdone
             text, finished = FDJ.ObjectiveLineOverride(questID, text, finished) -- glowingshard
+            text = FDJ.ObjectiveDoneText(text, finished)
             -- Finished objectives are muted, like the game's quest log.
             lines[#lines + 1] = finished and ("|cff6e5c40" .. text .. "|r") or text
         end
@@ -670,7 +693,7 @@ do
                     return
                 end
                 if GameTooltip then GameTooltip:Hide() end
-                if PlaySound and SOUNDKIT and SOUNDKIT.IG_CHARACTER_INFO_OPEN then pcall(PlaySound, SOUNDKIT.IG_CHARACTER_INFO_OPEN) end
+                if PlaySound then pcall(PlaySound, (SOUNDKIT and SOUNDKIT.IG_ABILITY_PAGE_TURN) or 836) end -- tabsound (2.0.11): the journal's opening page sound
                 FDJ.OpenSleepingBagChain()
             end)
             b:SetScript("OnEnter", function(self)
@@ -877,11 +900,32 @@ do
         return list
     end
 
+    -- trackpull (2.0.50) took Track (these windows) off the dungeons; that
+    -- was a misunderstanding. trackback (2.0.6): Track is on every dungeon's
+    -- quest list again, as in 2.0.5. What stays out of the release is only
+    -- the dungeon route, the arrow guide (vault "route"); the waypoint arrow
+    -- still follows only the chain pages (FollowChains).
+    local function Trackable(name)
+        local d = name and FDJ.DB and FDJ.DB[name]
+        if not d then return false end
+        return true
+    end
+
     local function IsTracked(name)
+        if not Trackable(name) then return false end
         for _, tracked in ipairs(TrackedList()) do
             if tracked == name then return true end
         end
         return false
+    end
+
+    -- The tracked ones that can be shown (trackpull, 2.0.50).
+    local function ShownTracked()
+        local list = {}
+        for _, name in ipairs(TrackedList()) do
+            if Trackable(name) then list[#list + 1] = name end
+        end
+        return list
     end
 
     -- Windows folded down to their title bar, by dungeon.
@@ -921,6 +965,7 @@ do
         for _, quest in ipairs(dungeon.quests or {}) do
             if type(quest) == "table" and type(quest.id) == "number" and quest.name
                 and not quest.repeatable and not quest.hideFromMainList and Matches(quest, faction)
+                and (not FDJ.QuestCountsForCharacter or FDJ.QuestCountsForCharacter(quest)) -- otherclass (2.0.8)
                 and not (FDJ.IsQuestUnavailable and FDJ.IsQuestUnavailable(quest)) -- notavailable (2.0.4), raceunavailable (2.0.9)
                 and not (FDJ.RPGQuestHidden and FDJ.RPGQuestHidden(name, quest)) then -- RPG Mode: unlocked ones only
                 list[#list + 1] = quest
@@ -998,11 +1043,11 @@ do
                     for _, line in ipairs(own) do lines[#lines + 1] = { CountFirst(line[1]), line[2] } end
                     return lines
                 end
-                for _, objective in ipairs(list) do
+                for i, objective in ipairs(list) do
                     local text = type(objective) == "table" and Plain(objective.text) or nil
                     if type(text) == "string" and text ~= "" then
-                        local named, done = FDJ.ObjectiveLineOverride(id, text, objective.finished == true) -- glowingshard
-                        lines[#lines + 1] = { named ~= text and named or CountFirst(text), done }
+                        local named, done = FDJ.ObjectiveLineOverride(id, text, FDJ.ObjectiveDone(id, i, objective)) -- glowingshard (objdone)
+                        lines[#lines + 1] = { FDJ.ObjectiveDoneText(named ~= text and named or CountFirst(text), done), done }
                     end
                 end
                 if #lines == 0 and #list == 0 and LogIndex(id) then
@@ -1410,6 +1455,8 @@ do
                 for i, s in ipairs(FDJ.QUEST_PREREQ_CHAINS[quest.id] or {}) do
                     if s == step then stepIndex = i break end
                 end
+                -- choicestep (2.0.37): a choice of quests is one number.
+                if stepIndex and FDJ.ChainStepNumber then stepIndex = FDJ.ChainStepNumber(FDJ.QUEST_PREREQ_CHAINS[quest.id], stepIndex) end
                 info.stepLabel = stepIndex and (stepIndex .. ". " .. info.stepName) or info.stepName
                 -- No chain glyph of its own: the quest's chain icon says it.
                 local parts = { Hex(GOLD) .. info.stepLabel .. "|r" }
@@ -1434,11 +1481,41 @@ do
     -- the player is on (! where to pick it up, ? in the log), the ones after.
     local function ChainSteps(info)
         local out, current = {}, false
-        for index, step in ipairs(info.chain or {}) do
+        local chain = info.chain or {}
+        local index = 1
+        while index <= #chain do
+            local step = chain[index]
+            -- pickone (2.0.42): a choice of quests (choicestep, 2.0.37) is
+            -- "1. Pick one of the following quests:" with its quests under
+            -- it ("- Master Feardred"); once one of them is in the log, that
+            -- one alone; once one is handed in, the line alone (ticked).
+            local last, combined = index, nil
+            if type(step) == "table" and step.choice ~= nil and FDJ.ChainChoiceEnd then
+                last = FDJ.ChainChoiceEnd(chain, index)
+                if last > index then
+                    local pick
+                    for k = index, last do
+                        local s = chain[k]
+                        if type(s) == "table" and type(s.id) == "number" and InLog(s.id) and not TurnedIn(s.id) then pick = s break end
+                    end
+                    if pick then
+                        step = pick
+                    else
+                        local names = {}
+                        for k = index, last do
+                            local s = chain[k]
+                            if type(s) == "table" then names[#names + 1] = Field(s.id, "name", s.name or "") end
+                        end
+                        combined = names
+                    end
+                end
+            end
             if type(step) == "table" then
                 local id = step.id
                 local details = (id and FDJ.QUEST_PREREQ_DETAILS and FDJ.QUEST_PREREQ_DETAILS[id]) or {}
-                local entry = { step = step, index = index, details = details, name = Field(id, "name", step.name or "") }
+                local entry = { step = step, index = index, details = details, name = combined and T("CHAIN_PICK_ONE") or Field(id, "name", step.name or ""), combined = combined ~= nil }
+                if combined then entry.arrowName = combined[1] end -- the arrow: the quest's own name
+                entry.label = ((FDJ.ChainStepNumber and FDJ.ChainStepNumber(chain, index)) or index) .. ". "
                 if step.itemStep or type(id) ~= "number" then
                     entry.state = "item"
                 elseif TurnedIn(id) then
@@ -1451,6 +1528,13 @@ do
                         entry.state = "ready"
                     else
                         entry.state = "log"
+                        -- stepgoto (2.1.1, M 20 Nov 2026, Test of Lore: "it's
+                        -- not sending me to the objective"): a step done
+                        -- somewhere else first (details.objectiveMap: the
+                        -- book in Ashenvale) shows that place until it is
+                        -- done, as a quest of the list does (The Glowing Shard).
+                        local goTo = details.objectiveMap
+                        if type(goTo) == "table" and goTo.mapID then entry.turnin, entry.goTo = goTo, true end
                     end
                 elseif not current then
                     current = true
@@ -1459,11 +1543,24 @@ do
                 else
                     entry.state = "later"
                 end
+                -- the choice's quests under its line, while it is to do
+                if combined and entry.state ~= "done" then
+                    entry.parts = {}
+                    for _, name in ipairs(combined) do entry.parts[#entry.parts + 1] = "   " .. Hex(entry.state == "next" and TODO or GREY) .. "- " .. name .. "|r" end
+                end
                 out[#out + 1] = entry
             end
+            index = last + 1
         end
         return out
     end
+
+    -- dungeonroute: the dungeon Route (arrow guide) is not in the release
+    -- (kept in the private vault).
+    local function RouteOn() return false end
+    local function RouteSkips() return {} end
+    local function Routes() return {} end
+    local function RoutePlan() return {} end
 
     -- ------------------------------------------------------- the frame art
     -- The game's own Options window frame (metal edges, corners and title
@@ -1860,7 +1957,8 @@ do
         elseif entry.state == "log" then
             GameTooltip:AddLine(T("TRACK_IN_LOG"), 1.00, 0.82, 0.10)
         end
-        local goal = Field(id, "objective", details.objective)
+        -- choiceline (2.0.40): a choice's line has no one objective
+        local goal = (not entry.combined) and Field(id, "objective", details.objective) or nil
         if type(goal) == "string" and goal ~= "" and entry.state ~= "done" then GameTooltip:AddLine(goal, 1, 1, 1, true) end
         local turnin = Field(id, "turnin", details.turnin)
         if type(turnin) == "string" and turnin ~= "" and entry.state ~= "done" then
@@ -1896,13 +1994,14 @@ do
             local entry = self:GetParent().entry
             if JustDragged() or not entry then return end
             local spot, turnIn = entry.start, nil
-            if entry.state == "ready" or entry.state == "log" then spot, turnIn = entry.turnin, true end
+            if entry.state == "ready" or entry.state == "log" then spot, turnIn = entry.turnin, not entry.goTo end -- (stepgoto)
             local show = FDJ.MapMarkers and FDJ.MapMarkers.ShowRecordedLocationOnMap
             if not spot or not show then return end
             spot = (FDJ.LocalizeMapLocation and FDJ.LocalizeMapLocation(spot)) or spot
-            FDJ.pendingMarkerQuestTitle = entry.name
+            FDJ.pendingMarkerQuestTitle = (entry.arrowName or entry.name)
             FDJ.pendingMarkerTurnIn = turnIn
             FDJ.pendingMarkerQuestID = entry.step and entry.step.id -- autoclear
+            FDJ.pendingMarkerObjective = entry.goTo and true or nil -- (stepgoto)
             show(spot, spot.label)
         end)
         mark:SetScript("OnEnter", function(self)
@@ -1911,7 +2010,10 @@ do
             local id, details = entry.step.id, entry.details
             TooltipBeside(self, SIDE + 4)
             local where
-            if entry.state == "ready" or entry.state == "log" then
+            if entry.goTo and entry.state == "log" then -- (stepgoto)
+                GameTooltip:SetText(T("SHOW_ON_MAP"), 1, 0.82, 0)
+                where = FDJ.LocalizeFreeText and FDJ.LocalizeFreeText(entry.turnin.label) or entry.turnin.label
+            elseif entry.state == "ready" or entry.state == "log" then
                 GameTooltip:SetText(T("SHOW_TURN_IN"), 1, 0.82, 0)
                 where = Field(id, "turnin", details.turnin)
             else
@@ -1968,7 +2070,7 @@ do
         mark:SetShown(icon ~= nil)
         local color = (state == "done" and DONE) or ((state == "ready" or state == "log") and GOLD)
             or (state == "next" and TODO) or GREY
-        local label = entry.index .. ". " .. (entry.name or "")
+        local label = (entry.label or (entry.index .. ". ")) .. (entry.name or "")
         local parts = { Hex(color) .. label .. "|r" }
         for _, text in ipairs(entry.parts or {}) do parts[#parts + 1] = text end
         local textW = math.max(40, width - STEP_TEXT_X)
@@ -2232,6 +2334,33 @@ do
         chainIcon:SetScript("OnDragStop", MoveStop)
         chainIcon:Hide()
         row.chainLines = {}
+        -- dungeonroute (2.0.5): on the route or left out (shown while the
+        -- dungeon's route is on).
+        local okBox, box = pcall(CreateFrame, "CheckButton", nil, row, "UICheckButtonTemplate")
+        if okBox and box then
+            row.routeBox = box
+            box:SetSize(20, 20)
+            box:SetPoint("TOPRIGHT", row, "TOPRIGHT", 4, 3)
+            box:SetScript("OnClick", function(self)
+                local owner = self:GetParent()
+                local info, window = owner.info, owner:GetParent()
+                local name = window and window.dungeon
+                if not (info and info.quest and info.quest.id and name) then return end
+                RouteSkips(name)[info.quest.id] = (not self:GetChecked()) and true or nil
+                if PlaySound and SOUNDKIT then
+                    local sound = self:GetChecked() and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF
+                    if sound then pcall(PlaySound, sound) end
+                end
+                if FDJ.RefreshQuestTracker then FDJ.RefreshQuestTracker() end
+            end)
+            box:SetScript("OnEnter", function(self)
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:SetText(T(self:GetChecked() and "ROUTE_BOX_ON" or "ROUTE_BOX_OFF"), 1, 1, 1, 1, true)
+                GameTooltip:Show()
+            end)
+            box:SetScript("OnLeave", function() GameTooltip:Hide() end)
+            box:Hide()
+        end
 
         -- The quest's start item, once looted: its icon in place of the !.
         -- The game's action button template uses the item on a click (out of
@@ -2340,7 +2469,11 @@ do
         f.fdjTracker = true
         f.slot = index
         f:SetSize(WIDTH, COLLAPSED_H)
-        f:SetFrameStrata("LOW")
+        -- trackerover (2.0.51): above the game's own quest list (it drew its
+        -- lines over the window where the two met), still under the journal
+        -- (DIALOG). Was LOW.
+        f:SetFrameStrata("MEDIUM")
+        f:SetFrameLevel(20)
         f:SetClampedToScreen(true)
         f:SetMovable(true)
         f:EnableMouse(true)
@@ -2394,7 +2527,9 @@ do
         local fold = CreateFrame("Button", nil, over)
         f.fold = fold
         fold:SetSize(14, 14)
-        fold:SetPoint("CENTER", f, "TOPRIGHT", -36, -12)
+        -- foldleft (2.1.1, M 20 Nov 2026: "move the little minimize icon to the
+        -- left of the Dungeon Journal icon"): placed by Layout, just before the book.
+        fold:SetPoint("LEFT", f, "TOPLEFT", 46, -12)
         fold:SetFrameLevel(over:GetFrameLevel() + 2)
         fold:SetHighlightTexture("Interface\\Buttons\\UI-PlusButton-Hilight", "ADD")
         fold:SetScript("OnClick", function()
@@ -2467,6 +2602,22 @@ do
         end)
         grip:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
+        -- hoverbits (2.0.13, M 19 Nov 2026: "if I'm not hovering over the
+        -- tracking window, the X doesn't show, and not even the rescale mark
+        -- in the bottom right. Just have it so they appear on hover"): the
+        -- close button and the corner grip are only seen with the mouse over
+        -- the window (or while the corner is being dragged).
+        close:SetAlpha(0)
+        grip:SetAlpha(0)
+        f:HookScript("OnUpdate", function(self)
+            local over = (self:IsMouseOver(4, -4, -4, 4) or grip.dragging) and true or false
+            if over ~= self.fdjHoverBits then
+                self.fdjHoverBits = over
+                close:SetAlpha(over and 1 or 0)
+                grip:SetAlpha(over and 1 or 0)
+            end
+        end)
+
         f.rows = {}
         f:SetScale(math.max(MIN_SCALE, math.min(MAX_SCALE, tonumber(Slot(index).scale) or 1)))
         f:Hide()
@@ -2485,10 +2636,17 @@ do
         title:SetWidth(0)
         title:SetText(FDJ.LocalizeDungeonName and FDJ.LocalizeDungeonName(name) or name)
         local full = (title.GetUnboundedStringWidth and title:GetUnboundedStringWidth()) or title:GetStringWidth() or 0
-        local textWidth = math.min(full, WIDTH - 2 * 46 - 19)
+        -- foldleft (2.1.1): the fold button, the book and the name, centred
+        -- together between the count (46 from the left) and the X (25 from
+        -- the right); a very long name is cut short.
+        local textWidth = math.min(full, WIDTH - 46 - 29 - 18 - 19)
         title:SetWidth(math.ceil(textWidth))
+        local blockWidth = 18 + 19 + textWidth
+        local left = math.max(46, math.min(math.floor((WIDTH - blockWidth) / 2), WIDTH - 29 - blockWidth))
+        f.fold:ClearAllPoints()
+        f.fold:SetPoint("LEFT", f, "TOPLEFT", left, -12)
         over.icon:ClearAllPoints()
-        over.icon:SetPoint("LEFT", f, "TOPLEFT", math.floor((WIDTH - 19 - textWidth) / 2), -12)
+        over.icon:SetPoint("LEFT", f, "TOPLEFT", left + 18, -12)
 
         local collapsed = Folded()[name] == true
         f.fold:SetNormalTexture(collapsed and "Interface\\Buttons\\UI-PlusButton-Up" or "Interface\\Buttons\\UI-MinusButton-Up")
@@ -2529,7 +2687,9 @@ do
             return a < b
         end)
         local textX = (extra == 0 and TEXT_X) or DOOR_TEXT_X + (extra - 1) * ICON_STEP
-        local textW = rowWidth - textX
+        local routed = RouteOn(name) -- dungeonroute (2.0.5): tick boxes at the rows' right
+        local routeSkip = routed and RouteSkips(name) or nil
+        local textW = rowWidth - textX - (routed and 18 or 0)
         local y = ROWS_TOP
         local done = 0
         for n, i in ipairs(order) do
@@ -2597,6 +2757,11 @@ do
             end
             mark.glow:SetTexture(info.icon)
             mark.glow:SetShown(clickable and not questButton and not item)
+            if row.routeBox then -- dungeonroute (2.0.5)
+                local boxed = routed and info.state ~= "done" and info.quest and info.quest.id ~= nil
+                row.routeBox:SetShown(boxed and true or false)
+                if boxed then row.routeBox:SetChecked(not routeSkip[info.quest.id]) end
+            end
             row.title:ClearAllPoints()
             row.title:SetPoint("TOPLEFT", row, "TOPLEFT", textX, 0)
             row.title:SetWidth(textW)
@@ -2708,7 +2873,7 @@ do
         local level = PlayerLevel()
         local now = {}
         local names = {}
-        for _, name in ipairs(TrackedList()) do names[#names + 1] = name end
+        for _, name in ipairs(ShownTracked()) do names[#names + 1] = name end
         for name, on in pairs(ArrowChains()) do
             if on and FDJ.DB and FDJ.DB[name] and not IsTracked(name) then names[#names + 1] = name end
         end
@@ -2726,10 +2891,10 @@ do
                         local pending = false
                         for _, entry in ipairs(ChainSteps(info)) do
                             if entry.state == "next" then
-                                pending, spot, title = true, entry.start, entry.name
+                                pending, spot, title = true, entry.start, (entry.arrowName or entry.name)
                                 break
                             elseif entry.state == "log" or entry.state == "ready" then
-                                pending, spot, title, turnIn = true, entry.turnin, entry.name, true
+                                pending, spot, title, turnIn = true, entry.turnin, (entry.arrowName or entry.name), not entry.goTo -- (stepgoto)
                                 break
                             end
                         end
@@ -2740,10 +2905,97 @@ do
                 FDJ.FollowWaypoint(name, spot, title, turnIn)
             end
         end
+        -- dungeonroute (2.0.5): a dungeon's route, stop by stop.
+        for _, name in ipairs(ShownTracked()) do
+            local dungeon = FDJ.DB[name]
+            if dungeon and not dungeon.questChainPage and RouteOn(name) and not Locked(name) then
+                now[name] = true
+                local plan = RoutePlan(name)
+                local stop = plan[1]
+                -- routeready (2.0.8): all errands done, the entrance is next:
+                -- no arrow, the "You're ready to go in!" box, until its Show
+                -- location button is clicked.
+                if stop and stop.entrance and FDJ.RouteReady and not FDJ.RouteReady(name) then
+                    FDJ.FollowWaypoint(name, nil)
+                elseif stop and FDJ.RouteGoalHere and FDJ.RouteGoalHere(stop) then
+                    -- killzone (2.0.8): at the place to kill / collect: no arrow
+                    -- goalhere (2.0.9, M 16 Nov 2026): the arrow stays (it going
+                    -- away looked like it broke): what to kill / collect there in
+                    -- place of the yards (FDJ.RouteGoalLines).
+                    if FDJ.RouteNotReady then FDJ.RouteNotReady(name) end
+                    FDJ.FollowWaypoint(name, stop.spot, stop.title, stop.turnIn, FDJ.RouteGoalLines(plan, stop), type(stop.id) == "string" and stop.id:find("^goto:") ~= nil, stop.skipQuest)
+                elseif stop then
+                    if not stop.entrance and FDJ.RouteNotReady then FDJ.RouteNotReady(name) end
+                    FDJ.FollowWaypoint(name, stop.spot, stop.title, stop.turnIn, nil, type(stop.id) == "string" and stop.id:find("^goto:") ~= nil, stop.skipQuest) -- (skipnow)
+                else
+                    if FDJ.RouteNotReady then FDJ.RouteNotReady(name) end
+                    FDJ.FollowWaypoint(name, nil)
+                end
+            elseif dungeon and FDJ.RouteNotReady then
+                FDJ.RouteNotReady(name) -- Route off
+            end
+        end
         for name in pairs(followed) do
             if not now[name] then FDJ.FollowWaypoint(name, nil) end
         end
         followed = now
+    end
+    FDJ.FollowRoutes = FollowChains
+    -- killzone (2.0.8, M 15 Nov 2026): a stop that is a place to kill or
+    -- collect things (a goto: stop, no person named: Down the Scarlet Path's
+    -- Valley of Bones, the motes in Demon Fall Canyon) needs no arrow once you
+    -- are there: within 250 yards of the spot, or anywhere in its subzone.
+    -- The subzone is learned the first time you are within 100 yards (so it
+    -- is surely the right one) and kept (ForeverDungeonJournalDB.goalAreas,
+    -- per client language): after a /reload anywhere in the valley, still no
+    -- arrow. It stays away while you are within 400 yards; leave the area and
+    -- it comes back. A person to talk to (Sputtervalve) keeps it.
+    function FDJ.RouteGoalHere(stop)
+        if type(stop) ~= "table" or type(stop.id) ~= "string" or not stop.id:find("^goto:") then return false end
+        if stop.exact then return false end -- drownedally (2.0.9): one thing at one place (a tablet), not an area
+        if type(stop.spot) == "table" and stop.spot.exact then return false end -- (plankjump: a spot of one place, the arrow pointing at it)
+        local spot = stop.spot
+        if type(spot) ~= "table" or spot.targetName or not spot.mapID then return false end
+        FDJ.routeGoalsHere = FDJ.routeGoalsHere or {}
+        local here = FDJ.routeGoalsHere
+        local areas = {}
+        if type(ForeverDungeonJournalDB) == "table" then
+            if type(ForeverDungeonJournalDB.goalAreas) ~= "table" then ForeverDungeonJournalDB.goalAreas = {} end
+            areas = ForeverDungeonJournalDB.goalAreas
+        end
+        local key = string.format("%s|%.3f|%.3f", tostring(spot.mapID), tonumber(spot.x) or 0, tonumber(spot.y) or 0)
+        local yards = FDJ.YardsToSpot and FDJ.YardsToSpot(spot)
+        local sub = type(GetSubZoneText) == "function" and GetSubZoneText() or ""
+        if type(sub) ~= "string" then sub = "" end
+        local locale = type(GetLocale) == "function" and GetLocale() or ""
+        -- goalnear (2.0.13): a small place (spot.goalNear yards: the Lordamere
+        -- Internment Camp, 40): the arrow leads right into it
+        local reach = tonumber(spot.goalNear)
+        if yards and yards <= (reach or 100) and sub ~= "" then areas[key] = { sub = sub, locale = locale } end
+        local learned = areas[key]
+        local inArea = sub ~= "" and type(learned) == "table" and learned.sub == sub and learned.locale == locale
+        if reach then inArea = inArea and yards ~= nil and yards <= reach + 150 end
+        if (yards and yards <= (reach or 250)) or inArea or (here[stop.id] and yards and yards <= (reach and reach + 110 or 400)) then
+            here[stop.id] = true
+            return true
+        end
+        here[stop.id] = nil
+        return false
+    end
+    -- goalhere (2.0.9, M 16 Nov 2026): what the arrow says at the place to
+    -- kill / collect (FDJ.RouteGoalHere): the objectives of every quest done
+    -- there, as the tracker shows them ("0/15 Kurzen Jungle Fighter slain",
+    -- Bad Medicine's two lines under it: same place), done ones in grey.
+    function FDJ.RouteGoalLines(plan, stop)
+        local lines, seen = {}, {}
+        for _, task in ipairs(type(plan) == "table" and plan or {}) do
+            local id = type(task) == "table" and type(task.id) == "string" and tonumber(task.id:match("^goto:(%d+)$")) or nil
+            if id and not seen[id] and (task == stop or (task.key ~= nil and task.key == stop.key)) then
+                seen[id] = true
+                for _, line in ipairs(ObjectiveText(id)) do lines[#lines + 1] = line end
+            end
+        end
+        return lines
     end
     -- Show on Map on a chain page's spot (FDJ.SetWaypointArrow): follow it.
     function FDJ.FollowChainArrow(name)
@@ -2762,7 +3014,7 @@ do
 
     Refresh = function()
         local shown = {}
-        for _, name in ipairs(TrackedList()) do
+        for _, name in ipairs(ShownTracked()) do
             if not Locked(name) and #QuestsOf(name) > 0 then shown[#shown + 1] = name end
         end
         -- Each dungeon keeps its own window, and so its place, while other
@@ -2841,13 +3093,21 @@ do
         local journal = _G.ForeverDungeonJournalFrame
         local b = journal and journal.questTrackButton
         if not b then return end
-        if not name or #QuestsOf(name) == 0 then
+        if not name or #QuestsOf(name) == 0 or not Trackable(name) then -- trackpull (2.0.50)
             b.dungeon = nil
             b:Hide()
             Schedule()
             return
         end
         b.dungeon = name
+        -- buttonsrow (2.0.7): right of Route when Route shows, else first.
+        b:ClearAllPoints()
+        local route = journal.questRouteButton
+        if route and route:IsShown() then
+            b:SetPoint("LEFT", route, "RIGHT", 4, 0)
+        else
+            b:SetPoint("TOPLEFT", journal.questLeftPanel or b:GetParent(), "TOPLEFT", 10, -30)
+        end
         local on = IsTracked(name)
         b:SetText(T(on and "TRACKING" or "TRACK"))
         b.text = b:GetFontString() or b.text
@@ -2890,6 +3150,7 @@ do
     -- Track / stop tracking one dungeon; a newly tracked one opens last.
     function FDJ.ToggleQuestTracking(name)
         if not name or not (FDJ.DB and FDJ.DB[name]) then return end
+        if not Trackable(name) then return end -- trackpull (2.0.50)
         local list = TrackedList()
         local on = not IsTracked(name)
         if on then
@@ -2908,6 +3169,7 @@ do
             WindowSlots()[name] = nil
             -- Not tracked any more: its arrow stops, Show on Map's too (1.9.9).
             ArrowChains()[name] = nil
+            Routes()[name] = nil -- dungeonroute (2.0.5)
         end
         Folded()[name] = nil
         if PlaySound and SOUNDKIT then
@@ -2916,7 +3178,7 @@ do
         end
         Refresh()
         -- The first window, never moved yet: right beside the journal.
-        local index = on and #list == 1 and WindowSlots()[name]
+        local index = on and #ShownTracked() == 1 and WindowSlots()[name]
         if index and windows[index] and type(Slot(index).left) ~= "number" then
             PopOutBeside(windows[index], _G.ForeverDungeonJournalFrame)
         end
@@ -2925,6 +3187,7 @@ do
         if b and b.dungeon then FDJ.UpdateQuestTrackButton(b.dungeon) end
     end
 
+
     -- Called by the journal while it builds the quest list: the button sits
     -- left of the Alliance/Horde buttons.
     function FDJ.CreateQuestTrackButton(journal, questLeft)
@@ -2932,7 +3195,9 @@ do
         local b = CreateFrame("Button", nil, questLeft, "UIPanelButtonTemplate")
         FDJ.OwnFonts(b) -- ownfonts (2.0.8)
         journal.questTrackButton = b
-        b:SetSize(80, 26)
+        -- buttonsrow (2.0.7): Route and Track sit in a row under the "Quests"
+        -- title (Route first), not beside it: with Route they ran over it.
+        b:SetSize(80, 22)
         b:SetText(T("TRACK"))
         -- Same font in every state, like the Map / Bosses / Quests buttons.
         if b.SetNormalFontObject then b:SetNormalFontObject("ForeverDJ_GameFontNormal") end
@@ -2944,11 +3209,7 @@ do
         b.check:SetSize(14, 14)
         b.check:SetTexture(ICON_DONE)
         b.check:Hide()
-        if journal.allianceQuestButton then
-            b:SetPoint("RIGHT", journal.allianceQuestButton, "LEFT", -6, 0)
-        else
-            b:SetPoint("TOPRIGHT", questLeft, "TOPRIGHT", -122, -13)
-        end
+        b:SetPoint("TOPLEFT", questLeft, "TOPLEFT", 10, -30)
         b:SetScript("OnClick", function(self)
             if self.dungeon then FDJ.ToggleQuestTracking(self.dungeon) end
         end)
@@ -3069,6 +3330,76 @@ do
         return b
     end
 
+    -- questrowtrial (2.0.8, M 15 Nov 2026): the quest list's round ! for a
+    -- quest not taken yet (dungeons in FDJ.QUESTROW_TRIAL): the turn-in
+    -- button with a ! (Media/PickUpMark.tga) in place of the ?; until the
+    -- game is restarted (a new file loads only then) the gossip ! on its
+    -- ring. A click shows how to pick the quest up (FDJ.ShowHowToPickUp:
+    -- where it is picked up, on the map; with no spot on the map, the chain
+    -- step to do next, else its page).
+    function FDJ.CreatePickUpButton(parent, size)
+        local b = FDJ.CreateTurnInButton(parent, size)
+        local art = "Interface\\AddOns\\ForeverDungeonJournal\\Media\\PickUpMark"
+        if b.sharp then
+            if b.sharp:SetTexture(art, nil, nil, "TRILINEAR") == false then
+                b.sharp:SetTexture(ICON_TODO)
+                b.sharp:SetSize(size * 0.62, size * 0.62)
+                if b.button and b.button.ring then b.button.ring:Show() end
+                b.fdjSmallMark = true
+            end
+        elseif b.button and b.button.icon then
+            local t = b.button.icon
+            if t:SetTexture(art, nil, nil, "TRILINEAR") == false then t:SetTexture(ICON_TODO) end
+        elseif b.icon then
+            b.icon:SetTexture(ICON_TODO)
+        end
+        b:SetScript("OnEnter", function(self)
+            if not self.quest then return end
+            if self.button then self.button.lit:Show() end
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            -- pickonmap (2.0.8): "Show pickup on map", the place under it
+            -- (and its chain, when not done yet).
+            local onMap = FDJ.PickUpOnMapSpot and FDJ.PickUpOnMapSpot(self.quest)
+            local step = FDJ.NextChainStep and FDJ.NextChainStep(self.quest)
+            -- chainfirst (2.0.8): its chain not done yet: the click shows the chain
+            GameTooltip:SetText(T(step and "SHOW_QUEST_CHAIN" or (onMap and "PICKUP_ON_MAP" or "PICKUP_HOW")), 1, 0.82, 0)
+            if onMap then
+                local where = Field(self.quest.id, "pickup", self.quest.pickup)
+                if type(where) == "string" and where ~= "" then GameTooltip:AddLine(where, 1, 1, 1, true) end
+                if step then
+                    GameTooltip:AddLine(T("PICKUP_CHAIN_FIRST", Field(step.id, "name", step.name) or "?"), 1, 1, 1, true)
+                end
+            elseif step then
+                GameTooltip:AddLine(T("PICKUP_CHAIN_FIRST", Field(step.id, "name", step.name) or "?"), 1, 1, 1, true)
+            else
+                local where = Field(self.quest.id, "pickup", self.quest.pickup)
+                if type(where) == "string" and where ~= "" then GameTooltip:AddLine(where, 1, 1, 1, true) end
+            end
+            GameTooltip:Show()
+        end)
+        b.fdjClick = function(self)
+            if self.quest and FDJ.ShowHowToPickUp then FDJ.ShowHowToPickUp(self.quest, self.dungeon) end
+        end
+        b:SetScript(b._fdjCanTarget and "PostClick" or "OnClick", b.fdjClick)
+        return b
+    end
+    -- quest: the quest not taken yet, or nil to hide the button.
+    function FDJ.SetPickUpButton(b, quest, title, dungeon)
+        if not b then return end
+        b.quest, b.title, b.dungeon = quest or nil, title, dungeon
+        if not quest then
+            b:Hide()
+            return
+        end
+        b:EnableMouse(true)
+        if b.button then
+            PressMark(b, false)
+            b.button.lit:Hide()
+        end
+        if b.fdjSmallMark and b.sharp then b.sharp:SetSize(b:GetWidth() * 0.62, b:GetHeight() * 0.62) end
+        b:Show()
+    end
+
     -- The chain steps' round ? (journal chain list, tracker step line): 24,
     -- the size picked with the 1.7.4 test slider.
     function FDJ.StepMarkSize()
@@ -3171,3 +3502,143 @@ do
         end
     end
 end
+
+-- repneeds (2.0.13, M 19 Nov 2026, The Twin Bears: "we need a neutral
+-- reputation with the Timbermaw Hold ... display it a bit better instead of
+-- having it hidden in the notes ... the official reputation bar from your
+-- character ... at the top above objective. And it says requires neutral.
+-- And then it shows what you have"): a quest's reputation needs
+-- (quest.repNeeds = { { faction = factionID, name = "...", standing = 1-8 } }):
+-- per faction a line "Requires <standing> with <faction>" (green when you
+-- have it, red when not) and a bar like the game's reputation bar with your
+-- standing and its progress. Placed above Objective; returns the new cursorY.
+;(function()
+    local STANDING_EN = { "Hated", "Hostile", "Unfriendly", "Neutral", "Friendly", "Honored", "Revered", "Exalted" }
+    local COLORS = {
+        { 0.80, 0.30, 0.22 }, { 0.80, 0.30, 0.22 }, { 0.75, 0.27, 0.00 }, { 0.90, 0.70, 0.00 },
+        { 0.00, 0.60, 0.10 }, { 0.00, 0.60, 0.10 }, { 0.00, 0.60, 0.10 }, { 0.00, 0.60, 0.10 },
+    }
+    local function Secret(v) return type(issecretvalue) == "function" and issecretvalue(v) end
+    local function Label(n)
+        local sex = 2
+        if type(UnitSex) == "function" then local ok, v = pcall(UnitSex, "player") if ok and tonumber(v) then sex = v end end
+        if type(GetText) == "function" then
+            local ok, text = pcall(GetText, "FACTION_STANDING_LABEL" .. n, sex)
+            if ok and type(text) == "string" and text ~= "" and not text:find("^FACTION_STANDING") then return text end
+        end
+        local g = _G["FACTION_STANDING_LABEL" .. n]
+        return (type(g) == "string" and g ~= "") and g or STANDING_EN[n] or "?"
+    end
+    local function Color(n)
+        local c = type(FACTION_BAR_COLORS) == "table" and FACTION_BAR_COLORS[n]
+        if type(c) == "table" and tonumber(c.r) then return c.r, c.g, c.b end
+        c = COLORS[n] or COLORS[4]
+        return c[1], c[2], c[3]
+    end
+    -- The player's standing with a faction: name, standing (1-8), value in
+    -- the standing, its size; nil when the game does not say.
+    local function Standing(factionID)
+        if C_Reputation and type(C_Reputation.GetFactionDataByID) == "function" then
+            local ok, d = pcall(C_Reputation.GetFactionDataByID, factionID)
+            if ok and type(d) == "table" and tonumber(d.reaction) and not Secret(d.reaction) then
+                local low, high, cur = tonumber(d.currentReactionThreshold) or 0, tonumber(d.nextReactionThreshold) or 0, tonumber(d.currentStanding) or 0
+                return d.name, d.reaction, cur - low, high - low
+            end
+        end
+        if type(GetFactionInfoByID) == "function" then
+            local ok, name, _, standing, low, high, value = pcall(GetFactionInfoByID, factionID)
+            if ok and tonumber(standing) and not Secret(standing) then
+                return name, standing, (tonumber(value) or 0) - (tonumber(low) or 0), (tonumber(high) or 0) - (tonumber(low) or 0)
+            end
+        end
+        return nil
+    end
+    local function Row(journal, i)
+        journal.fdjRepRows = journal.fdjRepRows or {}
+        local row = journal.fdjRepRows[i]
+        if row then return row end
+        local parent = journal.questDetailContent
+        row = {}
+        row.text = parent:CreateFontString(nil, "OVERLAY", "ForeverDJ_GameFontNormal")
+        row.text:SetJustifyH("LEFT")
+        local bar = CreateFrame("StatusBar", nil, parent)
+        bar:SetSize(230, 16)
+        bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+        bar:SetMinMaxValues(0, 1)
+        bar.bg = bar:CreateTexture(nil, "BACKGROUND")
+        bar.bg:SetAllPoints()
+        bar.bg:SetColorTexture(0, 0, 0, 0.55)
+        -- a thin dark edge round it
+        for _, side in ipairs({ { "TOPLEFT", "TOPRIGHT", 0, 1 }, { "BOTTOMLEFT", "BOTTOMRIGHT", 0, -1 } }) do
+            local line = bar:CreateTexture(nil, "BORDER")
+            line:SetColorTexture(0.12, 0.08, 0.03, 1)
+            line:SetPoint(side[1], bar, side[1], -1, side[4])
+            line:SetPoint(side[2], bar, side[2], 1, side[4])
+            line:SetHeight(1)
+        end
+        for _, side in ipairs({ { "TOPLEFT", "BOTTOMLEFT", -1 }, { "TOPRIGHT", "BOTTOMRIGHT", 1 } }) do
+            local line = bar:CreateTexture(nil, "BORDER")
+            line:SetColorTexture(0.12, 0.08, 0.03, 1)
+            line:SetPoint(side[1], bar, side[1], side[3], 1)
+            line:SetPoint(side[2], bar, side[2], side[3], -1)
+            line:SetWidth(1)
+        end
+        bar.label = bar:CreateFontString(nil, "OVERLAY", "ForeverDJ_GameFontHighlightSmall")
+        bar.label:SetPoint("CENTER", bar, "CENTER", 0, 0)
+        row.bar = bar
+        journal.fdjRepRows[i] = row
+        return row
+    end
+    function FDJ.PlaceRepNeeds(quest, cursorY)
+        local journal = _G.ForeverDungeonJournalFrame
+        if not (journal and journal.questDetailContent) then return cursorY end
+        local needs = type(quest) == "table" and type(quest.repNeeds) == "table" and quest.repNeeds or {}
+        local shown = 0
+        for i, need in ipairs(needs) do
+            local factionID, want = tonumber(need.faction), tonumber(need.standing) or 4
+            if factionID then
+                shown = i
+                local row = Row(journal, i)
+                local name, have, value, size = Standing(factionID)
+                if type(name) ~= "string" or name == "" or Secret(name) then name = need.name or "?" end
+                local met = have and have >= want
+                row.text:ClearAllPoints()
+                row.text:SetPoint("TOPLEFT", journal.questDetailContent, "TOPLEFT", 0, -cursorY)
+                row.text:SetText(FDJ.L("REP_REQUIRES", Label(want), name))
+                -- warnfont (2.1.1): red (not met) in the warning font.
+                if met then
+                    row.text:SetFontObject("ForeverDJ_GameFontNormal")
+                    row.text:SetTextColor(0.05, 0.42, 0.05)
+                else
+                    if FDJ.WarningFont then FDJ.WarningFont(row.text) else row.text:SetTextColor(0.62, 0.10, 0.05) end
+                end
+                row.text:Show()
+                cursorY = cursorY + (row.text:GetStringHeight() or 14) + 4
+                local bar = row.bar
+                bar:ClearAllPoints()
+                bar:SetPoint("TOPLEFT", journal.questDetailContent, "TOPLEFT", 1, -cursorY)
+                if have then
+                    bar:SetStatusBarColor(Color(have))
+                    if size and size > 0 then
+                        bar:SetValue(math.max(0, math.min(1, value / size)))
+                        bar.label:SetText(Label(have) .. "  " .. math.floor(value) .. " / " .. math.floor(size))
+                    else
+                        bar:SetValue(1)
+                        bar.label:SetText(Label(have))
+                    end
+                else
+                    bar:SetStatusBarColor(0.4, 0.4, 0.4)
+                    bar:SetValue(0)
+                    bar.label:SetText(type(UNKNOWN) == "string" and UNKNOWN or "Unknown")
+                end
+                bar:Show()
+                cursorY = cursorY + 16 + 10
+            end
+        end
+        for i, row in ipairs(journal.fdjRepRows or {}) do
+            if i > shown then row.text:Hide() row.bar:Hide() end
+        end
+        return cursorY
+    end
+end)()
+
