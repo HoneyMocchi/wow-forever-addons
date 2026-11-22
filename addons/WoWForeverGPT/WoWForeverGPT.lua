@@ -3415,9 +3415,17 @@ local function BuildUI()
 	for _, event in ipairs({"PLAYER_TARGET_CHANGED", "QUEST_LOG_UPDATE", "SUPER_TRACKING_CHANGED", "PLAYER_EQUIPMENT_CHANGED", "ITEM_DATA_LOAD_RESULT"}) do
 		pcall(contextEvents.RegisterEvent, contextEvents, event)
 	end
+	local itemRedrawQueued = false
 	contextEvents:SetScript("OnEvent", function(_, event)
 		if ui.frame:IsShown() then
-			if event == "ITEM_DATA_LOAD_RESULT" then WoWForeverGPT.Render()
+			if event == "ITEM_DATA_LOAD_RESULT" then
+				-- A load result may arrive inside Render. Defer and combine redraws.
+				if itemRedrawQueued then return end
+				itemRedrawQueued = true
+				C_Timer.After(0, function()
+					itemRedrawQueued = false
+					if ui.frame:IsShown() then WoWForeverGPT.Render() end
+				end)
 			else WoWForeverGPT.UpdateQuickQuestions() end
 		end
 	end)

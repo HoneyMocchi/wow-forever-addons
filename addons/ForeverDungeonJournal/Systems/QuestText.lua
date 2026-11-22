@@ -1885,7 +1885,9 @@ do
         if not info then return end
         local quest = info.quest
         TooltipBeside(row, SIDE + 6)
-        GameTooltip:SetText(FDJ.LocalizeFreeText(info.name or ""), 1, 0.82, 0, 1, true)
+        -- AddLine handles wrapping consistently across Forever client builds.
+        GameTooltip:ClearLines()
+        GameTooltip:AddLine(FDJ.LocalizeFreeText(info.name or ""), 1, 0.82, 0, true)
         if info.state == "done" then
             GameTooltip:AddLine(FDJ.LocalizeFreeText(T("TRACK_DONE")), GREEN[1], GREEN[2], GREEN[3])
         elseif info.state == "ready" then
@@ -1920,7 +1922,9 @@ do
         if not step then return end
         local details = FDJ.QUEST_PREREQ_DETAILS and FDJ.QUEST_PREREQ_DETAILS[step.id] or {}
         TooltipBeside(button, SIDE + TEXT_X + 6)
-        GameTooltip:SetText(FDJ.LocalizeFreeText(info.stepName or ""), 1, 0.82, 0, 1, true)
+        -- AddLine handles wrapping consistently across Forever client builds.
+        GameTooltip:ClearLines()
+        GameTooltip:AddLine(FDJ.LocalizeFreeText(info.stepName or ""), 1, 0.82, 0, true)
         GameTooltip:AddLine(FDJ.LocalizeFreeText(T("TRACK_IN_LOG")), 1.00, 0.82, 0.10)
         local goal = Field(step.id, "objective", details.objective)
         if type(goal) == "string" and goal ~= "" then GameTooltip:AddLine(FDJ.LocalizeFreeText(goal), 1, 1, 1, true) end
@@ -1949,7 +1953,9 @@ do
         if not entry then return end
         local id, details = entry.step.id, entry.details
         TooltipBeside(line, SIDE + TEXT_X + 6)
-        GameTooltip:SetText(FDJ.LocalizeFreeText(entry.name or ""), 1, 0.82, 0, 1, true)
+        -- AddLine handles wrapping consistently across Forever client builds.
+        GameTooltip:ClearLines()
+        GameTooltip:AddLine(FDJ.LocalizeFreeText(entry.name or ""), 1, 0.82, 0, true)
         if entry.state == "done" then
             GameTooltip:AddLine(FDJ.LocalizeFreeText(T("TRACK_DONE")), GREEN[1], GREEN[2], GREEN[3])
         elseif entry.state == "ready" then
@@ -2355,7 +2361,9 @@ do
             end)
             box:SetScript("OnEnter", function(self)
                 GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-                GameTooltip:SetText(T(self:GetChecked() and "ROUTE_BOX_ON" or "ROUTE_BOX_OFF"), 1, 1, 1, 1, true)
+                -- AddLine handles wrapping consistently across Forever client builds.
+                GameTooltip:ClearLines()
+                GameTooltip:AddLine(T(self:GetChecked() and "ROUTE_BOX_ON" or "ROUTE_BOX_OFF"), 1, 1, 1, true)
                 GameTooltip:Show()
             end)
             box:SetScript("OnLeave", function() GameTooltip:Hide() end)

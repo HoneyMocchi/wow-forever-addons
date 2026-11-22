@@ -7553,8 +7553,9 @@ FDJ.MarkLostQuestRows = function(buttons, quests)
             button:HookScript("OnEnter", function(self)
                 if not self.fdjLost then return end
                 GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-                -- (SetText: text, r, g, b, alpha, wrap)
-                GameTooltip:SetText(FDJ.LocalizeFreeText(self.fdjLostText or FDJ.L(self.fdjLostTip or "QUEST_LOST_TIP")), 1, 0.35, 0.3, 1, true)
+                -- AddLine handles wrapping consistently across Forever client builds.
+                GameTooltip:ClearLines()
+                GameTooltip:AddLine(FDJ.LocalizeFreeText(self.fdjLostText or FDJ.L(self.fdjLostTip or "QUEST_LOST_TIP")), 1, 0.35, 0.3, true)
                 GameTooltip:Show()
             end)
             button:HookScript("OnLeave", function(self)
