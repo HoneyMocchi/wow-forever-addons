@@ -164,6 +164,16 @@ local function StandOf(region)
   local stand = normal and normal.stand
   if stand and stand.active then return stand end
 end
+-- ForeverAuras (1.4.6-dev.18, "Shadow Form" report: CDMAuraProgress.lua:181, "Attempt to access forbidden
+-- object ... self:GetParent()"): under the client's restrictions (a battleground, say) a stand-in's frame
+-- or one of its parents can be forbidden to addon code, and asking it for its parent is an error that
+-- stopped the display's update. A forbidden frame is not asked; the walk ends there, and the candidates
+-- found so far, with the owner as the fallback, are tried as before (each attempt already under pcall).
+local function ParentOf(frame)
+  if not frame or (frame.IsForbidden and frame:IsForbidden()) then return end
+  local ok, parent = pcall(frame.GetParent, frame)
+  if ok then return parent end
+end
 local function NativeAnchor(native)
   local owner = native.owner
   local region = native.region or owner
@@ -178,10 +188,10 @@ local function NativeAnchor(native)
   if owner ~= region then list[#list + 1] = stand.copies and stand.copies[owner] end
   list[#list + 1] = stand.frame
   list[#list + 1] = stand.proxy
-  local parent = stand.frame and stand.frame:GetParent()
+  local parent = ParentOf(stand.frame)
   while parent and parent ~= UIParent and #list < 8 do
     list[#list + 1] = parent
-    parent = parent:GetParent()
+    parent = ParentOf(parent)
   end
   list[#list + 1] = owner
   return list

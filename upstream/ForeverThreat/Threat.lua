@@ -39,6 +39,23 @@ local function SafeUnitCanAttack(unitA, unitB)
     return hostile == true
 end
 
+local function SafeUnitGroupRole(unit)
+    if type(_G.UnitGroupRolesAssigned) ~= "function" or not unit then
+        return nil
+    end
+
+    local ok, role = pcall(UnitGroupRolesAssigned, unit)
+    if not ok or FT:IsSecret(role) or type(role) ~= "string" then
+        return nil
+    end
+
+    if role == "TANK" or role == "HEALER" or role == "DAMAGER" then
+        return role
+    end
+
+    return nil
+end
+
 local RAID_STAGED_SCAN_MIN_MEMBERS = 30
 local RAID_FULL_SCAN_INTERVAL = 1.25
 local RAID_PRIORITY_COUNT = 8
@@ -105,9 +122,14 @@ local function AddUnit(units, unit, isPet, ownerUnit)
     local name = UnitName(unit)
     local _, classToken = UnitClass(unit)
     local ownerName = nil
+    local groupRole = nil
 
     if ownerUnit and UnitExists(ownerUnit) then
         ownerName = UnitName(ownerUnit)
+    end
+
+    if not isPet then
+        groupRole = SafeUnitGroupRole(unit)
     end
 
     units[#units + 1] = {
@@ -121,6 +143,8 @@ local function AddUnit(units, unit, isPet, ownerUnit)
         classToken = classToken,
         ownerName = ownerName,
         isPlayer = SafeUnitIsUnit(unit, "player"),
+        groupRole = groupRole,
+        isGroupTank = groupRole == "TANK",
     }
 end
 
@@ -253,6 +277,11 @@ function FT:GetThreatEntry(unitInfo, sourceUnit)
         isPlayer = SafeUnitIsUnit(unit, "player")
     end
 
+    local groupRole = cached and cached.groupRole or nil
+    if not groupRole and not isPet then
+        groupRole = SafeUnitGroupRole(unit)
+    end
+
     local entry = {
         unit = unit,
         name = name,
@@ -263,6 +292,8 @@ function FT:GetThreatEntry(unitInfo, sourceUnit)
         isPet = isPet and true or false,
         ownerUnit = ownerUnit,
         ownerName = ownerName,
+        groupRole = groupRole,
+        isGroupTank = groupRole == "TANK",
 
         isTanking = false,
         status = nil,
@@ -432,6 +463,12 @@ function FT:UpdateRaidThreatPriority(data, tankEntry)
 
     if tankEntry and tankEntry.unit then
         priority[tankEntry.unit] = true
+    end
+
+    for _, entry in ipairs(data or {}) do
+        if entry.isGroupTank and entry.unit then
+            priority[entry.unit] = true
+        end
     end
 
     for _, entry in ipairs(data or {}) do
@@ -685,6 +722,8 @@ function FT:GetTestThreatData()
             ownerUnit = nil,
             ownerName = nil,
             isTanking = spec.tank and true or false,
+            groupRole = spec.tank and "TANK" or nil,
+            isGroupTank = spec.tank and true or false,
             status = spec.status,
             scaled = spec.scaled,
             rawPct = spec.scaled,
@@ -711,6 +750,28 @@ function FT:GetTestThreatData()
     return data, self:L("TEST_ENEMY"), tankEntry, "target"
 end
 
+function FT:IsRaidDangerEntry(entry)
+    if not entry or entry.isPet or entry.isAggroHolder then
+        return false
+    end
+
+    if entry.status ~= nil and entry.status >= 1 then
+        return true
+    end
+
+    local threshold = tonumber(self.db and self.db.highThreatThreshold) or 90
+    if type(entry.scaled) == "number" and entry.scaled >= threshold then
+        return true
+    end
+
+    local etaThreshold = tonumber(self.db and self.db.etaWarningThreshold) or 5
+    if entry.etaIsLead ~= true and type(entry.threatEta) == "number" and entry.threatEta <= etaThreshold then
+        return true
+    end
+
+    return false
+end
+
 function FT:GetDisplayThreatData(data, maxVisibleRows, effectiveMode)
     if type(data) ~= "table" then
         return {}
@@ -718,6 +779,67 @@ function FT:GetDisplayThreatData(data, maxVisibleRows, effectiveMode)
 
     if not IsInRaid() or not self.db then
         return data
+    end
+
+    if self.db.raidDangerViewEnabled then
+        local limit = tonumber(self.db.raidTopRows) or 10
+        limit = math.max(1, math.min(40, math.floor(limit + 0.5)))
+        if maxVisibleRows then
+            limit = math.min(limit, math.max(1, math.floor(maxVisibleRows)))
+        end
+
+        local result = {}
+        local seen = {}
+
+        local function AddUnique(entry)
+            if not entry or #result >= limit then
+                return
+            end
+
+            local key = entry.unit or entry.name
+            if key and seen[key] then
+                return
+            end
+
+            if key then
+                seen[key] = true
+            end
+            result[#result + 1] = entry
+        end
+
+        local aggroEntry
+        local playerEntry
+
+        for _, entry in ipairs(data) do
+            if entry.isAggroHolder and not aggroEntry then
+                aggroEntry = entry
+            end
+            if self:IsPlayerThreatEntry(entry) and not playerEntry then
+                playerEntry = entry
+            end
+        end
+
+        AddUnique(aggroEntry)
+
+        -- Keep assigned tanks visible even when they are not currently holding
+        -- the boss. If the client does not expose group roles, the aggro holder
+        -- above still guarantees a useful tank reference.
+        for _, entry in ipairs(data) do
+            if entry.isGroupTank then
+                AddUnique(entry)
+            end
+        end
+
+        AddUnique(playerEntry)
+
+        -- Only add non-tanks when they are actually close enough to matter.
+        for _, entry in ipairs(data) do
+            if self:IsRaidDangerEntry(entry) then
+                AddUnique(entry)
+            end
+        end
+
+        return result
     end
 
     if self.db.raidTankViewEnabled and effectiveMode == "TANK" then
@@ -852,5 +974,5 @@ function FT:GetThreatLabel(entry)
         return FT:L("AGGRO")
     end
 
-    return "—"
+    return "-"
 end

@@ -1,0 +1,10 @@
+## Interface: 16001
+## Title: Forever Korean
+## Title-koKR: Forever 한글 보완
+## Notes-koKR: OpenMap·퀘스티 공용 NPC 이름 및 직책 한글 보완
+## Version: 2026.11.15.1
+## Dependencies: QuestieDB
+## OptionalDeps: Questie
+## License: GPL-3.0-or-later
+
+NpcCorrections.lua

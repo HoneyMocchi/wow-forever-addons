@@ -63,7 +63,12 @@ function Native.Style(native, settings, inverse)
   -- other start angles crop the corners as the display's own Rotation does.
   local anchor = 0
   if circular then
-    anchor = 180 + ((settings.orientation == "ANTICLOCKWISE" and settings.endAngle or settings.startAngle) or 0)
+    -- ForeverAuras (1.4.6-dev.25): the display's angles run clockwise from the top; the client's
+    -- SetRotation turns a texture anticlockwise (its documentation), so the angle is subtracted.
+    -- Until dev.25 it was added. No part circle ever drew before dev.25, and a start at the top
+    -- (0, the default) is the same either way, so the old sign was never seen in game. This one
+    -- is from the documentation, not from a measurement: ring tests A, D and E show it.
+    anchor = 180 - ((settings.orientation == "ANTICLOCKWISE" and settings.endAngle or settings.startAngle) or 0)
   end
   texture:SetRotation(math.rad((settings.auraRotation or 0) + anchor))
   native.coord:SetFull()
@@ -79,25 +84,23 @@ function Native.Style(native, settings, inverse)
     bar:SetStatusBarColor(settings.color_anim_r or settings.color_r or 1, settings.color_anim_g or settings.color_g or 1,
       settings.color_anim_b or settings.color_b or 1, settings.color_anim_a or settings.color_a or 1)
     native.linearTexture:Hide()
-    -- With the client's zero turned onto the fill's start (above), the arc
-    -- runs from zero for the display's span, and the rest of the circle is
-    -- cut out. The fill runs from zero clockwise in the client's forward
-    -- mode and anticlockwise reversed (seen in game: the forward fill ran
-    -- the wrong way for Clockwise when it was taken for the reversed one).
-    -- A whole circle leaves nothing cut out (equal offsets).
+    -- ForeverAuras (1.4.6-dev.25, the ring report; measured in game by Dan with a probe of eight
+    -- rings, each half full): the client's fill starts at the start offset (a fraction of the
+    -- circle, clockwise from its zero at the bottom) and covers percent x (1 - end offset) of the
+    -- circle from there, clockwise, or anticlockwise when reversed. So 0 / 0 is the whole circle,
+    -- 0 / 0.25 fills three quarters when full, and 0.75 / 1 (what was sent here for a 270 degree
+    -- arc) has no length at all: every part circle drew nothing. With the client's zero turned
+    -- onto the fill's start (above), the start offset is 0 and the end offset is the part of the
+    -- circle that is not in the display's span.
     local startAngle, endAngle = settings.startAngle or 0, settings.endAngle or 360
     local span = (endAngle - startAngle) % 360
     if span == 0 then span = 360 end
-    local startOffset, endOffset = span / 360, 1
-    if span >= 360 then startOffset, endOffset = 0, 0 end
+    local startOffset, endOffset = 0, 1 - span / 360
     if not pcall(texture.SetRadialProgressBarStartOffset, texture, startOffset) then texture:SetRadialProgressBarStartOffset(0) end
-    if not pcall(texture.SetRadialProgressBarEndOffset, texture, endOffset) then texture:SetRadialProgressBarEndOffset(0.9999) end
-    -- Measured in game: with an arc cut out (unequal offsets) the client's
-    -- bar sweeps the opposite way from the whole-circle case, so the reverse
-    -- flag is inverted for a partial arc to keep Clockwise clockwise.
-    local anticlockwise = settings.orientation == "ANTICLOCKWISE"
-    if span < 360 then anticlockwise = not anticlockwise end
-    texture:SetRadialProgressBarReverse(anticlockwise)
+    if not pcall(texture.SetRadialProgressBarEndOffset, texture, endOffset) then texture:SetRadialProgressBarEndOffset(0) end
+    -- The probe also showed the same sweep with and without an arc cut out (clockwise forward,
+    -- anticlockwise reversed), so the direction is no longer inverted for a part circle.
+    texture:SetRadialProgressBarReverse(settings.orientation == "ANTICLOCKWISE")
     texture:SetRadialProgressBarFeather(0)
   else
     if bar.SetRenderMode and Enum.StatusBarRenderMode then bar:SetRenderMode(Enum.StatusBarRenderMode.Linear) end

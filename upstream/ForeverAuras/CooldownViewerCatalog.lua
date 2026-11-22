@@ -451,6 +451,7 @@ function Private.CDMCatalog(previous)
     for _, id in ipairs(C_CooldownViewer.GetCooldownViewerCategorySet(category, true) or {}) do
       if Number(id) then
         local info = C_CooldownViewer.GetCooldownViewerCooldownInfo(id)
+        Private.HitchCount("cdm: info read from client (catalog)")
         if info then
           local arranged = layout and layout[id]
           local placement = arranged and Number(arranged.category)
@@ -484,11 +485,24 @@ function Private.CDMCatalog(previous)
           scanIDs[slot], scanInfos[slot], scanCategories[slot], scanPlacements[slot] = id, info, category, placement
           scanDisplayed[slot], scanKnown[slot], scanFrameSpells[slot], scanSecret[slot] = displayed, known, Number(frameSpellRaw), secret
           if same then
+            -- (dev.17, Astra's live review, item C) the first reason the standing catalog
+            -- cannot be kept is counted by name, so a capture tells a readable change from
+            -- an entry that could not be compared (secret), without touching secret values.
             local old = previous[id]
-            same = old ~= nil and not old.secret and not secret and old.sourceCategory == category
-              and old.category == (placement and placement >= 0 and placement or category)
-              and old.displayed == displayed and old.known == known and old.frameSpell == Number(frameSpellRaw)
-              and SameInfo(old.info, info)
+            local why
+            if old == nil then why = "entry added"
+            elseif old.secret or secret then why = "uncomparable (secret field)"
+            elseif old.sourceCategory ~= category then why = "source category changed"
+            elseif old.category ~= (placement and placement >= 0 and placement or category) then why = "placement changed"
+            elseif old.displayed ~= displayed then why = "displayed changed"
+            elseif old.known ~= known then why = "known changed"
+            elseif old.frameSpell ~= Number(frameSpellRaw) then why = "frame spell changed"
+            elseif not SameInfo(old.info, info) then why = "info record changed"
+            end
+            if why then
+              same = false
+              Private.HitchCount("cdm catalog: replaced because " .. why)
+            end
           end
         end
       end
@@ -498,6 +512,7 @@ function Private.CDMCatalog(previous)
     local count = 0
     for _ in pairs(previous) do count = count + 1 end
     same = count == n
+    if not same then Private.HitchCount("cdm catalog: replaced because entry gone") end
   end
   if same then
     for slot = 1, n do scanInfos[slot] = nil end
@@ -1057,14 +1072,53 @@ function Private.PrintCDMDebug(id)
     if value == nil then return "nil" end
     if issecretvalue and issecretvalue(value) then return "<secret>" end
     if type(value) == "number" then return string.format("%.1f", value) end
+    if type(value) == "string" then return string.format("%q", value) end
     return tostring(value)
   end
   local function Say(...) print("|cff88ccffFA cdm|r " .. table.concat({...}, " ")) end
+  -- (dev.14/dev.15, Astra's reviews) every read of a frame, field or font string is an
+  -- observation: {status = "ok"|"secret"|"refused"|"none", value = <untouched>}. Status and
+  -- value are kept apart; a secret value is kept as it is (so it can still be handed to an
+  -- API that accepts it) and only described at the print boundary; nothing is inferred
+  -- from a refusal; a failed read never stops the next one.
+  local function Obs(ok, value)
+    if not ok then return {status = "refused"} end
+    if issecretvalue and issecretvalue(value) then return {status = "secret", value = value} end
+    return {status = "ok", value = value}
+  end
+  local NONE = {status = "none"}
+  local function Call(object, method, ...)
+    if object == nil then return NONE end
+    return Obs(pcall(function(...) return object[method](object, ...) end, ...))
+  end
+  local function Field(object, name)
+    if object == nil then return NONE end
+    return Obs(pcall(function() return object[name] end))
+  end
+  -- Prints an observation: the value when readable, otherwise its status.
+  local function Show(obs)
+    if obs.status ~= "ok" then return obs.status end
+    return Fmt(obs.value)
+  end
+  -- "present"/"absent" only from a readable lookup; otherwise the status.
+  local function Presence(obs)
+    if obs.status ~= "ok" then return obs.status end
+    return obs.value ~= nil and "present" or "absent"
+  end
+  local function Is(obs, value) return obs.status == "ok" and obs.value == value end
+  local function Table(obs) return obs.status == "ok" and type(obs.value) == "table" and obs.value or nil end
+  local function DurationKind(value)
+    local ok, isObj = pcall(function() return WeakAuras.IsDurationObject and WeakAuras.IsDurationObject(value) end)
+    if not ok then return "unclassifiable" end
+    if value == nil then return "nil" end
+    return isObj and "duration object" or ("other: " .. type(value))
+  end
   local data = id and WeakAuras.GetData(id)
   if not data then Say("no aura named", tostring(id)); return end
   Say(id, "loaded", Fmt(Private.loaded[id]), "auras secret", Fmt(C_Secrets and C_Secrets.ShouldAurasBeSecret and C_Secrets.ShouldAurasBeSecret()),
     "combat", Fmt(InCombatLockdown()), "catalog incomplete", Fmt(Private.cdmCatalogForDebug and Private.cdmIncompleteCatalogs and Private.cdmIncompleteCatalogs[Private.cdmCatalogForDebug()] or false))
   local spellIDs, wanted = {}, {}
+  -- The live states first, before anything below rebuilds (the scratch update).
   for index, entry in ipairs(data.triggers or {}) do
     local trigger = entry.trigger
     if trigger and trigger.type == "cdm" then
@@ -1078,6 +1132,20 @@ function Private.PrintCDMDebug(id)
           -- ForeverAuras: the Stack Count / Remaining Time filters' path: the
           -- applications the trigger read and whether the native gate decides.
           "stacks", Fmt(state.stacks), "nativeFilter", Fmt(state.cdmNativeRemaining))
+        -- (dev.13, Hoopester's report: icon but no timer text for a buff gained in
+        -- combat): where this state's timer text would come from.
+        local source = state.cdmCountdownSource
+        local sourceShown, sourceText = "none", "none"
+        if source then
+          local forbidden = Call(source, "IsForbidden")
+          if Is(forbidden, true) then sourceShown, sourceText = "forbidden", "forbidden"
+          else sourceShown, sourceText = Show(Call(source, "IsShown")), Show(Call(source, "GetText")) end
+        end
+        local record = state.cdmTextRecord
+        Say("trigger", index, "clone", string.format("%q", cloneId), "timer: durationObject", DurationKind(state.durationObject),
+          "countdown source", source and "present" or "absent", "shown", sourceShown, "text", sourceText,
+          "hooked times", Fmt(record and (record.duration ~= nil or record.barDuration ~= nil or record.raw ~= nil) or false),
+          "paused", Fmt(state.cdmNativePaused), "unit", Fmt(state.cdmAuraUnit))
         for _, sid in ipairs(state.cdmAuraRenderSpellIDs or {}) do spellIDs[sid] = true end
       end
       if count == 0 then Say("trigger", index, "has no states (table", Fmt(states ~= nil), ")") end
@@ -1093,29 +1161,71 @@ function Private.PrintCDMDebug(id)
   for rankID in pairs(wanted) do ranks[#ranks + 1] = tostring(rankID) end
   table.sort(ranks)
   Say("spell ids", table.concat(list, ","), "ranks", table.concat(ranks, ","))
-  local frames = 0
+  -- Each viewer frame classified once: buff viewer, other viewer, or unclassified (its
+  -- parent or name could not be read). Unclassified frames are reported, not dropped.
+  local classified = {}
+  local buffFrames, unclassified = 0, 0
   for _, frame in pairs(Private.CDMFrames()) do
-    local record = observed[frame]
-    local parent = frame:GetParent()
-    local parentName = parent and parent.GetName and parent:GetName()
-    if parentName == "BuffIconCooldownViewer" or parentName == "BuffBarCooldownViewer" then
-      frames = frames + 1
-      local spellID = frame.GetSpellID and frame:GetSpellID()
-      local cdID = frame.cooldownID
-      local info = cdID ~= nil and not (issecretvalue and issecretvalue(cdID)) and C_CooldownViewer.GetCooldownViewerCooldownInfo(cdID)
-      Say("viewer frame", Fmt(parentName), "spell", Fmt(spellID), "api spell", Fmt(info and info.spellID), "api override", Fmt(info and info.overrideSpellID),
-        "recorded spell", Fmt(record and record.spellID), "cooldownID", Fmt(frame.cooldownID),
-        "isActive", Fmt(frame.isActive), "instance", Fmt(frame.auraInstanceID), "cached", Fmt(frame.auraDataCached ~= nil),
-        "unit", Fmt(frame.auraDataUnit), "shown", Fmt(frame:IsShown()), "stampReadable", Fmt(record and record.auraReadable))
+    local parent = Call(frame, "GetParent")
+    local name = Table(parent) and Call(parent.value, "GetName") or parent
+    local kind
+    if name.status ~= "ok" then kind = "unclassified (" .. name.status .. ")"; unclassified = unclassified + 1
+    elseif name.value == "BuffIconCooldownViewer" or name.value == "BuffBarCooldownViewer" then kind = "buff"; buffFrames = buffFrames + 1
+    else kind = "other" end
+    classified[frame] = {kind = kind, name = name}
+  end
+  for frame, class in pairs(classified) do
+    if class.kind ~= "other" then
+      local record = observed[frame]
+      local cdID = Field(frame, "cooldownID")
+      local info = Is(cdID, cdID.value) and type(cdID.value) == "number" and C_CooldownViewer.GetCooldownViewerCooldownInfo(cdID.value) or nil
+      Say("viewer frame", class.kind == "buff" and Fmt(class.name.value) or class.kind, "spell", Show(Call(frame, "GetSpellID")),
+        "api spell", Fmt(info and info.spellID), "api override", Fmt(info and info.overrideSpellID),
+        "recorded spell", Fmt(record and record.spellID), "cooldownID", Show(cdID),
+        "isActive", Show(Field(frame, "isActive")), "instance", Show(Field(frame, "auraInstanceID")), "cached", Presence(Field(frame, "auraDataCached")),
+        "unit", Show(Field(frame, "auraDataUnit")), "shown", Show(Call(frame, "IsShown")), "stampReadable", Fmt(record and record.auraReadable))
     end
   end
-  Say("buff viewer frames", frames)
+  Say("buff viewer frames", buffFrames, "unclassified frames", unclassified)
+  -- (dev.13) the timing APIs this client offers, and what GetAuraDuration says for each active buff frame
+  Say("timing APIs: GetAuraDuration", Fmt(C_UnitAuras and C_UnitAuras.GetAuraDuration ~= nil), "CreateDuration", Fmt(C_DurationUtil and C_DurationUtil.CreateDuration ~= nil),
+    "IsDurationObject", Fmt(WeakAuras.IsDurationObject ~= nil))
+  for frame, class in pairs(classified) do
+    if class.kind == "buff" and Is(Field(frame, "isActive"), true) then
+      -- Each observation on its own; the instance is read once, under guard, and handed to the
+      -- API as it is (a secret instance is a permitted argument); a refused read is not asked.
+      local unit, instance = Field(frame, "auraDataUnit"), Field(frame, "auraInstanceID")
+      local answer
+      if not (C_UnitAuras and C_UnitAuras.GetAuraDuration) then answer = "API missing"
+      elseif unit.status ~= "ok" then answer = "unit " .. unit.status
+      elseif unit.value ~= "player" and unit.value ~= "target" then answer = "unit not player/target"
+      elseif instance.status == "refused" then answer = "instance refused, not asked"
+      else
+        local ok, duration = pcall(C_UnitAuras.GetAuraDuration, unit.value, instance.value)
+        answer = ok and DurationKind(duration) or ("refused: " .. tostring(duration))
+      end
+      local cooldown = Field(frame, "Cooldown")
+      if cooldown.status == "ok" and cooldown.value == nil then cooldown = Field(frame, "cooldown") end
+      local numbersText, hiddenText, shownText
+      if Table(cooldown) then
+        local numbers = Call(cooldown.value, "GetCountdownFontString")
+        numbersText = Presence(numbers)
+        hiddenText = Show(Call(cooldown.value, "GetHideCountdownNumbers"))
+        shownText = Table(numbers) and Show(Call(numbers.value, "IsShown")) or ("unavailable (" .. numbersText .. ")")
+      else
+        local why = cooldown.status == "ok" and "absent" or cooldown.status
+        numbersText, hiddenText, shownText = "cooldown " .. why, "unavailable", "unavailable"
+      end
+      Say("viewer frame cooldownID", Show(Field(frame, "cooldownID")), "GetAuraDuration", answer, "countdown numbers", numbersText,
+        "numbers hidden", hiddenText, "numbers shown", shownText)
+    end
+  end
   local catalog = Private.CDMCatalog and Private.cdmCatalogForDebug and Private.cdmCatalogForDebug()
-  for _, frame in pairs(Private.CDMFrames()) do
-    local cdID = frame.cooldownID
-    local entry = catalog and cdID ~= nil and not (issecretvalue and issecretvalue(cdID)) and catalog[cdID]
-    if entry and (frame.isActive == true) then
-      Say("catalog entry", Fmt(cdID), "known", Fmt(entry.known), "displayed", Fmt(entry.displayed), "category", Fmt(entry.category))
+  for frame in pairs(classified) do
+    local cdID = Field(frame, "cooldownID")
+    local entry = catalog and Is(cdID, cdID.value) and cdID.value ~= nil and catalog[cdID.value]
+    if entry and Is(Field(frame, "isActive"), true) then
+      Say("catalog entry", Fmt(cdID.value), "known", Fmt(entry.known), "displayed", Fmt(entry.displayed), "category", Fmt(entry.category))
     end
   end
   for index, entry in ipairs(data.triggers or {}) do
@@ -1135,7 +1245,7 @@ function Private.PrintCDMDebug(id)
     end
   end
   -- The trigger's own update, run now on a scratch table: what it would
-  -- produce at this moment, state by state.
+  -- produce at this moment, state by state (the live states were printed above).
   for index, entry in ipairs(data.triggers or {}) do
     local trigger = entry.trigger
     if trigger and trigger.type == "cdm" and Private.CDMSpellQueries and Private.ExecEnv.UpdateCDMSelectionList then
@@ -1150,7 +1260,8 @@ function Private.PrintCDMDebug(id)
           n = n + 1
           Say("trigger", index, "would give", string.format("%q", cloneId), "show", Fmt(state.show), "auraActive", Fmt(state.auraActive),
             "nativeShow", Fmt(state.cdmNativeShow), "progress", Fmt(state.progressType), "duration", Fmt(state.duration), "expires", Fmt(state.expirationTime),
-            "cooldownID", Fmt(state.cooldownID), "buff", Fmt(state.cdmBuff), "unit", Fmt(state.cdmAuraUnit))
+            "cooldownID", Fmt(state.cooldownID), "buff", Fmt(state.cdmBuff), "unit", Fmt(state.cdmAuraUnit),
+            "durationObject now", DurationKind(state.durationObject), "countdown source now", state.cdmCountdownSource and "present" or "absent")
         end
         if n == 0 then Say("trigger", index, "would give no states") end
       end
@@ -1167,27 +1278,28 @@ function Private.PrintCDMDebug(id)
     Say("player aura", index, "spell", Fmt(sid), Fmt(aura.name), "instance", Fmt(aura.auraInstanceID), "duration", Fmt(aura.duration),
       "expires", Fmt(aura.expirationTime) .. match)
   end
-  Say("direct read found", found)
+  Say("direct read found (HELPFUL|PLAYER on the player only)", found)
   local harm = {}
   for rankID in pairs(wanted) do
     local ok, result = pcall(C_Spell.IsSpellHarmful, rankID)
-    harm[#harm + 1] = tostring(rankID) .. "=" .. (ok and Fmt(result) or "err")
+    harm[#harm + 1] = tostring(rankID) .. "=" .. (ok and Fmt(result) or "refused")
   end
-  Say("IsSpellHarmful", table.concat(harm, " "), "targets enemy", Fmt(Private.CDMSpellsTargetEnemy(ranks)), "target exists", Fmt(UnitExists("target")))
+  Say("IsSpellHarmful (spell classification, not the applied aura)", table.concat(harm, " "), "targets enemy", Fmt(Private.CDMSpellsTargetEnemy(ranks)), "target exists", Fmt(UnitExists("target")))
   -- ForeverAuras: the display side of the native filter path (CDMAuraProgress):
   -- for the display and each clone, whether a show gate hides it, whether a
   -- timer slot with filter clips was built and the filters it was asked for.
   local function SayRegion(label, region)
     if not region then return end
-    local gate = region.nativeShowGate
-    local native = region.cdmAuraTimer
-    local window = region.cdmRemainingWindow
-    local stacks = window and window.stacks
-    Say(label, "type", Fmt(region.regionType), "shown", Fmt(region:IsShown()), "askedAlpha", Fmt(region.requestedAlpha),
-      "gate", gate and (Fmt(gate.mode) .. (gate.hide and " hide" or "")) or "none",
-      "slot", native and ("yes button " .. Fmt(native.button ~= nil) .. " clips " .. Fmt(native.filterClips and #native.filterClips or 0)) or "none",
-      "filterWanted", Fmt(region.cdmFilterWanted), "stackFilter", stacks and (Fmt(stacks.kind) .. " " .. Fmt(stacks.n)) or "none",
-      "timeFilters", Fmt(window and (window.remaining or window.elapsed) ~= nil))
+    local gate = Field(region, "nativeShowGate")
+    local native = Field(region, "cdmAuraTimer")
+    local window = Field(region, "cdmRemainingWindow")
+    local stacks = Table(window) and Field(window.value, "stacks") or NONE
+    local gateText = Table(gate) and (Fmt(gate.value.mode) .. (gate.value.hide and " hide" or "")) or (gate.status == "ok" and "none" or gate.status)
+    local slotText = Table(native) and ("yes button " .. Fmt(native.value.button ~= nil) .. " clips " .. Fmt(native.value.filterClips and #native.value.filterClips or 0)) or (native.status == "ok" and "none" or native.status)
+    local stackText = Table(stacks) and (Fmt(stacks.value.kind) .. " " .. Fmt(stacks.value.n)) or (stacks.status == "ok" and "none" or stacks.status)
+    local timeText = Table(window) and Fmt((window.value.remaining or window.value.elapsed) ~= nil) or (window.status == "ok" and "false" or window.status)
+    Say(label, "type", Show(Field(region, "regionType")), "shown", Show(Call(region, "IsShown")), "askedAlpha", Show(Field(region, "requestedAlpha")),
+      "gate", gateText, "slot", slotText, "filterWanted", Show(Field(region, "cdmFilterWanted")), "stackFilter", stackText, "timeFilters", timeText)
   end
   SayRegion("display", WeakAuras.GetRegion(id))
   for cloneId, region in pairs(Private.clones[id] or {}) do SayRegion("clone " .. string.format("%q", cloneId), region) end

@@ -225,7 +225,7 @@ events:SetScript("OnEvent", function(_, event, unit)
   end
 end)
 
-events:SetScript("OnEvent", Private.Profiled("aura (modern) - linked text", events:GetScript("OnEvent")))
+events:SetScript("OnEvent", Private.ProfiledEvent("aura (modern) - linked text", events:GetScript("OnEvent")))
 
 -- ForeverAuras 1.2.4 (Dan's session-long growth): the file's own tables are memory scan roots (/fa memscan), resolved to the CURRENT table only when the scan runs (Astra's dev.1 review: a saved reference would pin a table a reset has replaced)
 Private.memoryRootAccessors = Private.memoryRootAccessors or {}

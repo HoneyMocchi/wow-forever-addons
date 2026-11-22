@@ -117,27 +117,45 @@ end
 
 WeakAuras.WA_Utf8Sub = WA_Utf8Sub
 
+-- ForeverAuras (1.4.6-dev.21, "WA_ClassColorName indexes a table with a secret class token in dungeons"
+-- report: AuraEnvironment.lua:140, "attempted to index a table that cannot be indexed with secret keys",
+-- 3,278 times in one dungeon): with a secret class token, or a secret name, the colour is asked of the
+-- client's own class-colour API, which is the only thing that may take a secret; whether it accepts one
+-- is not established, and the reporter saw it refuse ("bad argument #1 to 'WrapTextInColor'"), so the call
+-- is made under pcall and the plain name is returned when it fails. The name is always returned.
+local function WrapNameInClassColor(class, name)
+  local ok, colored = pcall(function()
+    local classColor = C_ClassColor.GetClassColor(class)
+    return classColor and classColor:WrapTextInColorCode(name)
+  end)
+  if ok and colored ~= nil then return colored end
+  return name
+end
+
 -- Wrapping a unit's name in its class colour is very common in custom Auras
 local WA_ClassColorName = function(unit, maxlen)
   if unit and UnitExists(unit) then
     local name = WeakAuras.UnitName(unit)
     if issecretvalue(name) then
       local _, class = UnitClass(unit)
-      if not class then
+      if not issecretvalue(class) and not class then
         return name
       end
-
-      local classColor = C_ClassColor.GetClassColor(class)
-      return classColor:WrapTextInColorCode(name)
+      return WrapNameInClassColor(class, name)
     end
     if maxlen and maxlen > 0 then
       name = WA_Utf8Sub(name, maxlen)
     end
     local _, class = UnitClass(unit)
-    if not class then
+    -- ForeverAuras (1.4.6-dev.21): the class token can be secret while the name is not (reported in
+    -- dungeons); a secret value cannot index the colour table.
+    if issecretvalue(class) then
+      return WrapNameInClassColor(class, name)
+    elseif not class then
       return name
     else
       local classData = (CUSTOM_CLASS_COLORS or RAID_CLASS_COLORS)[class]
+      if not classData then return name end
       local coloredName = ("|c%s%s|r"):format(classData.colorStr, name)
       return coloredName
     end

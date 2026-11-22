@@ -1,0 +1,30 @@
+Dungeon maps for Hall of Thanes, Ruins of Lordaeron, Excavation Site: Wetlands,
+City of Dalaran (with the Dalaran Sewers) and Blackmaw Hold
+
+Map art by Santiago Reyes, from his Atlas de Azeroth: Forever series.
+Used in NeedRoll with his permission. The art is his and is not covered by
+NeedRoll's GNU GPL v3 license; please don't reuse it from here, ask him.
+His watermark is kept on each map, which is only resized and cut into tiles
+(the title banner below the City of Dalaran maps is cut off).
+
+  Atlas de Azeroth: Forever  https://asguevara433.wixsite.com/srmaps/post/proyecto-atlas-de-azeroth-forever
+  X                          https://x.com/SR433_20
+
+Dev/ holds maps by Santiago Reyes of dungeons NeedRoll doesn't show players
+yet: The Drowned City, Krol'dok Stronghold, Shaper's Terrace and Alcaz Prison
+(Main Unit and Maximum Security Unit). They are for local development
+checkouts only and are left out of the released addon. The same terms apply
+to them, and each is only resized and cut into tiles with his watermark kept.
+The character sketches on Alcaz Prison's Maximum Security Unit map are
+original illustrations by Nysha (@nyswhf) and PallBadguy (@pall.bdguy), as
+the map's corner credit says.
+
+The maps of the Classic dungeons and raids are Blizzard's own world map art
+(the Wrath-era drawings). Classic/ holds them, copied unchanged from the
+game client's enUS files (interface/worldmap/<map>/, file names kept): the
+Russian, Mexican Spanish and Italian clients don't have them, so NeedRoll
+ships them rather than drawing them from the game's files. So are
+UpperBlackrockSpire1_* and UpperBlackrockSpire2_*: Blizzard's drawings of
+Upper Blackrock Spire's first two floors, which the game's files lack. This
+art is Blizzard Entertainment's and is not covered by NeedRoll's GNU GPL v3
+license.

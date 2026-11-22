@@ -1,0 +1,48 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Script file="Theme.lua"/>
+    <Script file="MainFrame.lua"/>
+    <Script file="Settings.lua"/>
+    <Script file="Hotfixes.lua"/>
+    <Script file="Reputation.lua"/>
+    <Script file="Lists.lua"/>
+    <Script file="LootGrid.lua"/>
+    <Script file="Overview.lua"/>
+    <Script file="MapEdit.lua"/>
+    <Script file="WorldMapOverlay.lua"/>
+    <Script file="WorldMapMarkers.lua"/>
+    <Script file="QuestChainNotes.lua"/>
+    <Script file="SavedLists.lua"/>
+    <Script file="Shopping.lua"/>
+    <Script file="Wishlist.lua"/>
+    <Script file="TalentPlanner.lua"/>
+    <Script file="TierSets.lua"/>
+    <Script file="ClassSpells.lua"/>
+    <Script file="ClassOverview.lua"/>
+    <Script file="Poisons.lua"/>
+    <Script file="Questlines.lua"/>
+    <Script file="DungeonQuestlines.lua"/>
+    <Script file="Classes.lua"/>
+    <Script file="HunterPets.lua"/>
+    <Script file="ProfessionOverview.lua"/>
+    <Script file="LibraryBooks.lua"/>
+    <Script file="WarlockPets.lua"/>
+    <Script file="MageScrolls.lua"/>
+    <Script file="TalentLinks.lua"/>
+    <Script file="Search.lua"/>
+    <Script file="Welcome.lua"/>
+    <Script file="MinimapButton.lua"/>
+    <Script file="RecipeBand.lua"/>
+    <Script file="ProfessionBar.lua"/>
+    <Script file="DevKit.lua"/>
+    <Script file="IconDebug.lua"/>
+    <!--@debug@
+    <Script file="IconBrowser.lua"/>
+    @end-debug@-->
+    <Script file="FrameDebug.lua"/>
+    <!--@debug@
+    <Script file="Fished.lua"/>
+    <Script file="SoundTest.lua"/>
+    <Script file="DropTalk.lua"/>
+    <Script file="LineDump.lua"/>
+    @end-debug@-->
+</Ui>

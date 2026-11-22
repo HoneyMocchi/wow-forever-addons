@@ -454,6 +454,19 @@ function Private.SetRegionSecretRemaining(region, window)
   if region.RealSetAlpha then region:SetAlpha(region.requestedAlpha or region.animAlpha or region.alpha or 1) end
 end
 
+-- ForeverAuras (1.4.6-dev.24): a display shown only on cooldown, during a wand hold, with a restricted
+-- cooldown (the spell and Cooldown Manager triggers set state.secretLockoutGate to the spell's own
+-- GCD-free timer). Its alpha is the asked-for one for a real cooldown and 0 for a wand or GCD-length
+-- lockout, evaluated by the client from that timer's total length (Private.LockoutGateAlpha). The total
+-- of a timer does not change while it runs, so it is applied when the gate or its timer is set, not on
+-- a ticker. A display with a Remaining Time window keeps that window; the two are not combined.
+function Private.SetRegionLockoutGate(region, duration)
+  duration = duration or nil
+  if not duration and not region.secretLockoutGate then return end
+  region.secretLockoutGate = duration
+  if region.RealSetAlpha then region:SetAlpha(region.requestedAlpha or region.animAlpha or region.alpha or 1) end
+end
+
 function Private.SetRegionNativeShow(region, gate)
   if region.nativeShowGate == gate then return end
   region.nativeShowGate = gate
@@ -857,6 +870,15 @@ local function UpdateProgressFrom(self, progressSource, minMaxConfig, state, sta
   else
     UpdateProgressFromState(self, minMaxConfig, states and states[trigger] or {}, progressSource)
   end
+  -- ForeverAuras (1.4.6-dev.26, Astra's dev.24 review, P2): the wand lockout gate is set or cleared
+  -- here, on every update and for every progress source, from the state that owns the display's
+  -- visibility (the active trigger's, `state`). dev.24 did it inside UpdateProgressFromState only, so
+  -- a display on manual progress, or with a state that names no progress, kept an old gate and
+  -- stayed invisible. Only a display has the alpha wrapper; a sub element passing through here does
+  -- not, and is left alone.
+  if self.RealSetAlpha then
+    Private.SetRegionLockoutGate(self, state and state.secretLockoutGate or nil)
+  end
 end
 
 -- For regions
@@ -1059,6 +1081,8 @@ function Private.regionPrototype.create(region)
       local window = self.secretRemainingWindow
       local duration = window and self.durationObject
       if duration and not duration.EvaluateRemainingDuration then duration = nil end
+      -- (dev.24) the wand lockout gate (Private.SetRegionLockoutGate); a Remaining Time window comes first
+      local lockout = not window and self.secretLockoutGate or nil
       if standFrame then
         -- ForeverAuras: one owner for each part. The display's own frame
         -- carries the asked-for alpha (the stand frame is its child, so the
@@ -1073,6 +1097,12 @@ function Private.regionPrototype.create(region)
           applied = true
         elseif duration then
           local ok, factor = pcall(duration.EvaluateRemainingDuration, duration, RemainingCurve(window, 1))
+          if ok and factor ~= nil then
+            pcall(standFrame.SetAlpha, standFrame, factor)
+            applied = true
+          end
+        elseif lockout then
+          local ok, factor = pcall(Private.LockoutGateAlpha, lockout, 1)
           if ok and factor ~= nil then
             pcall(standFrame.SetAlpha, standFrame, factor)
             applied = true
@@ -1106,6 +1136,12 @@ function Private.regionPrototype.create(region)
           return self:RealSetAlpha(alpha)
         end
       end
+      if lockout then
+        local ok, alpha = pcall(Private.LockoutGateAlpha, lockout, wanted)
+        if ok and alpha ~= nil then
+          return self:RealSetAlpha(alpha)
+        end
+      end
       if gate and self.SetAlphaFromBoolean then
         local ok, shown = pcall(gate.read)
         if ok and shown ~= nil then
@@ -1118,7 +1154,7 @@ function Private.regionPrototype.create(region)
     end
     -- Animations read the alpha they start from: the asked-for one, not the fade.
     region.GetAlpha = function(self)
-      if (self.unitGone or (self.nativeShowGate and self.nativeShowGate.hide) or self.secretRemainingWindow) and self.requestedAlpha then return self.requestedAlpha end
+      if (self.unitGone or (self.nativeShowGate and self.nativeShowGate.hide) or self.secretRemainingWindow or self.secretLockoutGate) and self.requestedAlpha then return self.requestedAlpha end
       return self:RealGetAlpha()
     end
   end
@@ -1180,6 +1216,9 @@ end
 function Private.regionPrototype.modify(parent, region, data)
   region.state = nil
   region.states = nil
+  -- ForeverAuras (1.4.6-dev.26, Astra's dev.24 review, P2): a frame given to another display, or
+  -- set up again, starts with no wand lockout gate (Private.SetRegionLockoutGate).
+  if region.secretLockoutGate then Private.SetRegionLockoutGate(region, nil) end
   region.subRegionEvents:ClearSubscribers()
   region.subRegionEvents:ClearCallbacks()
   UpdateTick(region) -- Empty subscribers detach now, or after the current dispatch.

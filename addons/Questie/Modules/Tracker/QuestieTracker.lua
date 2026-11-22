@@ -296,33 +296,7 @@ function QuestieTracker.Initialize()
     QuestieCombatQueue:Queue(function()
         QuestieTracker.HandleZoneChanged() -- covers login/reload while already inside an instance
 
-        -- Sync and populate the QuestieTracker - this should only run when a player has loaded
-        -- Questie for the first time or when Re-enabling the QuestieTracker after it's disabled.
-
-        -- The questsWatched variable holds the native (Blizzard) watch count captured before Questie
-        -- takes over quest watching, so any pre-existing native watches can be migrated into the tracker.
-        if questsWatched > 0 then
-            -- When a quest is removed from the Watch Frame, the questIndex can change so we need to snag
-            -- the entire list and build a temp table with QuestIDs instead to ensure we remove them all.
-            local tempQuestIDs = {}
-            for i = 1, questsWatched do
-                local questIndex = QuestieCompat.GetQuestIndexForWatch(i)
-                if questIndex then
-                    local questId = select(8, QuestieCompat.GetQuestLogTitle(questIndex))
-                    if questId then
-                        tempQuestIDs[i] = questId
-                    end
-                end
-            end
-
-            -- Remove quest from the Blizzard Quest Watch and populate the tracker.
-            for _, questId in pairs(tempQuestIDs) do
-                local questIndex = QuestieCompat.GetQuestLogIndexByID(questId)
-                if questIndex then
-                    QuestieTracker:AQW_Insert(questIndex, QUEST_WATCH_NO_EXPIRE)
-                end
-            end
-        end
+        QuestieTracker.MigrateNativeQuestWatches()
 
         -- Look for any QuestID's that don't belong in the Questie.db.char.TrackedQuests or
         -- the Questie.db.char.AutoUntrackedQuests tables. They can get out of sync.
@@ -357,6 +331,35 @@ function QuestieTracker.Initialize()
                 Questie.Debug(Questie.DEBUG_INFO, "[QuestieTracker:Initialize] Hidden tracker - already in pet battle")
             end
         end)
+    end
+end
+
+-- Sync and populate the QuestieTracker - this should only run when a player has loaded
+-- Questie for the first time or when Re-enabling the QuestieTracker after it's disabled.
+function QuestieTracker.MigrateNativeQuestWatches()
+    -- The questsWatched variable holds the native (Blizzard) watch count captured before Questie
+    -- takes over quest watching, so any pre-existing native watches can be migrated into the tracker.
+    if questsWatched > 0 then
+        -- When a quest is removed from the Watch Frame, the questIndex can change so we need to snag
+        -- the entire list and build a temp table with QuestIDs instead to ensure we remove them all.
+        local tempQuestIDs = {}
+        for i = 1, questsWatched do
+            local questIndex = QuestieCompat.GetQuestIndexForWatch(i)
+            if questIndex then
+                local questId = select(8, QuestieCompat.GetQuestLogTitle(questIndex))
+                if questId then
+                    tempQuestIDs[i] = questId
+                end
+            end
+        end
+
+        -- Remove quest from the Blizzard Quest Watch and populate the tracker.
+        for _, questId in pairs(tempQuestIDs) do
+            local questIndex = QuestieCompat.GetQuestLogIndexByID(questId)
+            if questIndex then
+                QuestieTracker:AQW_Insert(questIndex, QUEST_WATCH_NO_EXPIRE, true)
+            end
+        end
     end
 end
 
@@ -527,11 +530,23 @@ function QuestieTracker:UpdateVoiceOverFrame()
     end
 end
 
+---@param text string
+---@return boolean
+local function _IsOwnLootMessage(text)
+    for _, lootFormat in pairs({LOOT_ITEM_SELF, LOOT_ITEM_PUSHED_SELF, LOOT_ITEM_CREATED_SELF, LOOT_ITEM_BONUS_ROLL_SELF}) do
+        local placeholderStart = string.find(lootFormat, "%", 1, true)
+        if placeholderStart and placeholderStart > 1 and string.sub(text, 1, placeholderStart - 1) == string.sub(lootFormat, 1, placeholderStart - 1) then
+            return true
+        end
+    end
+    return false
+end
+
 -- If the player loots a "Quest Item" then this triggers a Tracker Update so the
 -- Quest Item Button can be switched on and appear in the tracker.
 ---@param text string
 function QuestieTracker:QuestItemLooted(text)
-    local playerLoot = strmatch(text, "You receive ") or strmatch(text, "You create")
+    local playerLoot = _IsOwnLootMessage(text)
     local itemId = tonumber(string.match(text, "item:(%d+)"))
 
     if playerLoot and itemId then
@@ -1117,20 +1132,24 @@ function QuestieTracker:UpdateHeight()
     if Questie.db.char.isTrackerExpanded then
         -- Removes any padding from the last line in the tracker
         local currentLine = TrackerLinePool.GetCurrentLine()
-        local firstLine = TrackerLinePool.GetFirstLine()
+        if (not currentLine) then
+            return
+        end
 
         currentLine:SetHeight(currentLine.label:GetStringHeight())
 
-        local firstLineTop = firstLine:GetTop()
-        local currentLineBottom = currentLine:GetBottom()
-
-        if currentLine.mode == "zone" then
-            -- If a single zone is the only line in the tracker then don't add pixel padding
-            trackerQuestFrame.ScrollChildFrame:SetHeight((firstLineTop - currentLineBottom))
-        else
-            -- Add 3 pixels to bottom of tracker to account for text that traverses beyond the GetStringHeight() function such as lower case "g".
-            trackerQuestFrame.ScrollChildFrame:SetHeight((firstLineTop - currentLineBottom + 3))
+        -- Lines are stacked without gaps, so their summed heights are the content height.
+        -- Screen coordinates (GetTop/GetBottom) are not used, because they are nil while the tracker has no resolved position.
+        local contentHeight = 0
+        for i = 1, TrackerLinePool.GetHighestIndex() do
+            contentHeight = contentHeight + TrackerLinePool.GetLine(i):GetHeight()
         end
+
+        if currentLine.mode ~= "zone" then
+            -- Add 3 pixels to bottom of tracker to account for text that traverses beyond the GetStringHeight() function such as lower case "g".
+            contentHeight = contentHeight + 3
+        end
+        trackerQuestFrame.ScrollChildFrame:SetHeight(contentHeight)
 
         -- Set the baseFrame to full height so we can measure it
         trackerQuestFrame:SetHeight(trackerQuestFrame.ScrollChildFrame:GetHeight())
@@ -1379,7 +1398,8 @@ function QuestieTracker:UntrackQuestId(questId)
     end)
 end
 
-function QuestieTracker:AQW_Insert(index, _expire)
+---@param keepCollapsed boolean? Keeps the collapse state, e.g. when native watches are synced on startup
+function QuestieTracker:AQW_Insert(index, _expire, keepCollapsed)
     Questie.Debug(Questie.DEBUG_DEVELOP, "[QuestieTracker:AQW_Insert]")
     if (not Questie.db.profile.trackerEnabled) or (index == 0) or (index == nil) then
         return
@@ -1446,12 +1466,9 @@ function QuestieTracker:AQW_Insert(index, _expire)
         if quest then
             -- Tracking is independent of map enrichment, including native-only quests.
             -- Expand the group the tracker lists this quest under, which depends on the sort mode.
-            local zoneId = TrackerUtils.GetQuestGroupName(quest)
-            if Questie.db.char.collapsedQuests[questId] == true then
+            if (not keepCollapsed) then
+                local zoneId = TrackerUtils.GetQuestGroupName(quest)
                 Questie.db.char.collapsedQuests[questId] = nil
-            end
-
-            if Questie.db.char.collapsedZones[zoneId] == true then
                 Questie.db.char.collapsedZones[zoneId] = nil
             end
 

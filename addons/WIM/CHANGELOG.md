@@ -1,41 +1,23 @@
 # WIM
 
-## [3.19.6](https://github.com/Legacy-of-Sylvanaar/wow-instant-messenger/tree/3.19.6) (2026-11-12)
-[Full Changelog](https://github.com/Legacy-of-Sylvanaar/wow-instant-messenger/compare/3.19.5...3.19.6) [Previous Releases](https://github.com/Legacy-of-Sylvanaar/wow-instant-messenger/releases)
+## [3.19.8](https://github.com/Legacy-of-Sylvanaar/wow-instant-messenger/tree/3.19.8) (2026-11-20)
+[Full Changelog](https://github.com/Legacy-of-Sylvanaar/wow-instant-messenger/compare/3.19.7...3.19.8) [Previous Releases](https://github.com/Legacy-of-Sylvanaar/wow-instant-messenger/releases)
 
-- Enhance forward slash key detection logic for QWERTY keyboards.  
-    - if demand calls for it, an option will have to be added to allow user to select their keyboard type. For example, "/" on a German keyboard is `Shift + 7`. I don't believe using the game's locale to determine the keyboard type.  
-    - since on key down is specifically looking for the `/` key, I think this feature handler will just never get called in such an instance.  
-- Remove the reload prompt after Edit Mode  
-    The prompt was added because WIM's Edit Mode integration caused protected  
-    action errors. Their cause is gone: WIM no longer adds anything to the  
-    Edit Mode manager. The prompt would now warn of a risk that is not there.  
-- Open Edit Mode from the options only the way the client allows  
-    ShowUIPanel passes a frame to secure code only when the frame is a managed  
-    UI panel. Retail and WoW Forever register the Edit Mode manager as one.  
-    Classic Era does not, so there the Edit Mode button of the options showed  
-    the manager from addon code and Edit Mode was entered tainted. On such a  
-    client the button now opens the game menu, whose own Edit Mode button is  
-    secure, and says so.  
-    The button also asks the manager whether Edit Mode can be entered, as the  
-    game menu and the slash command do, and is disabled when it cannot.  
-- Keep WIM's Edit Mode checkboxes out of the game's own list  
-    WIM added its three checkboxes to the Edit Mode manager's  
-    settingsCheckButtons table, parented them into the manager's containers  
-    and called LayoutSettings and Layout itself. Blizzard's LayoutSettings  
-    walks that table with pairs, so the game's own code ran tainted by WIM.  
-    After a click on Advanced Options or on the expander a tainted account  
-    setting was stored, and from then on every checkbox of the manager ran its  
-    refresh tainted. Reported on WoW Forever as a blocked TargetUnit() and as  
-    "arithmetic on a secret number value (execution tainted by 'WIM')" in  
-    CompactUnitFrame; retail and Classic Era run the same code.  
-    The checkboxes now sit in a frame WIM owns, docked under the manager (above  
-    it when there is no room below). Nothing is written to the manager, no  
-    frame is created inside it and none of its layout methods is called.  
-- Merge pull request #311 from Gogo1951/update-workflow-actions  
-    Update GitHub Actions in release workflow  
-- Update GitHub Actions in release workflow  
-    Bump actions/checkout from v5 to v7.  
-    Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>  
-- Improved tab UI and expanded options in skin table.  
-- Remove debugging output  
+- Fix: Conversation menu was closing before a click could be registered when anchored to trigger points other than the minimap icon (AddonCompartment).  
+    - Menu now anchors relative to the requested point, but on the UIParent.  
+    - Added a PseudoHide() function to menu which will set the alpha to 0 for a short while before actually hiding. This is useful in cases where you want the menu to hide, but still need the click to be registered.  
+- Fix how CHAT\_MSG\_SYSTEM online/offline/no-user events were being handled.  
+    Events were being handled in the filter. Separated it out to its own handler. The filter strictly decides whether or not to suppress the message. #320  
+- Fix: Alerts for BattleNet users coming online and going offline were getting suppressed.  
+    They are now handled the same way as a normal friend coming online / offline. Suppression rules only apply if chat window with user is open. Message is routed to the user's window if currently monitoring an active session. #318  
+- Enhance BattleNet integration and improve message formatting in chat history. Stream mode now shows privatized battle tag instead of toon name for better consistency between history and live conversations.  
+- Refactor and add addition BattleNet utility functions and show BNet account names in history instead of battle tags. The display of names respects the streaming mode preference.  
+- Reorganize utilities into their own files and namespaces.  
+- Add Bnet icon to history viewer user list.  
+- History now properly outputs message as a player or BNplayer in both the history viewer and the history preview.  
+- feat: Implement global shift-click handling for chat edit boxes.  
+- Merge pull request #316 from @Mouchoir/fix/shift-click-name-into-chat and right click menu.  
+    - Let a Shift-clicked name reach the default chat box untainted  
+    - Let right click menu work without blocking. Copy Character Name works!  
+- Experiment with setting ACTIVE\_CHAT\_EDIT\_BOX directly on WIM focus and setting it to nil on focus lost. Doing so should avoid taint since nil values can not hold taint.  
+- chore: Stop loading source files not currently being utilized. Kept in project for posterity.  

@@ -1214,6 +1214,11 @@ end
 -- scans and spell data arriving later is seen by the next one. The checks
 -- and the lookups behind them are counted for /fa phitch.
 local knownMemo, knownMemoOpen = {}, false
+-- ForeverAuras (1.4.5-dev.3): dev.1 let the second combat-end scan of a frame reuse the first
+-- one's answers. Dan then saw displays stay unloaded after a reload in combat. A first scan
+-- that runs before the game has lifted its restrictions can get "not known" for a spell the
+-- second scan would find, and a reused answer would keep such a display unloaded, so the
+-- sharing is removed: every scan starts empty again, as in 1.4.4.
 function Private.SpellKnownMemo(open)
   knownMemoOpen = open
   wipe(knownMemo)
@@ -4729,12 +4734,15 @@ Private.event_prototypes = {
         state.cdmTextPreview = event == "OPTIONS"
         -- Clear this on every update, including previews and charge/LoC changes.
         state.wandAppearanceDuration = not state.cdmTextPreview and cooldownData and cooldownData.wandAppearanceDuration or nil
+        -- ForeverAuras (1.4.6-dev.24): shown only on cooldown, the cooldown restricted, a wand hold on:
+        -- the display's alpha follows the spell's own timer (RegionPrototype, SetRegionLockoutGate).
+        state.secretLockoutGate = SHOW_ON_COOLDOWN and isSecret and not state.cdmTextPreview and cooldownData and cooldownData.lockoutGate or nil
         state.cdmHideGCDText = %s and not state.cdmTextPreview
         state.cdmGCDOnly = cooldownData and cooldownData.gcdOnly or false
         state.cdmTextDurationRequired = state.cdmHideGCDText
         state.cdmTextDurationObject = state.cdmHideGCDText and cooldownData and cooldownData.textDuration or nil
         state.cdmNativePaused = not state.cdmTextPreview and cooldownData and cooldownData.paused or false
-      ]=]):format(tostring(trigger.use_showgcdtext ~= true)))
+      ]=]):gsub("SHOW_ON_COOLDOWN", tostring(trigger.genericShowOn == "showOnCooldown")):format(tostring(trigger.use_showgcdtext ~= true)))
       if trackSpecificCharge then
         table.insert(ret, "if isSecret then genericShowOn = false end\n")
       end
@@ -8473,20 +8481,32 @@ local rangeState = inRange and "inRange" or (checksRange and "outOfRange") or "n
           local use_interruptSchool = %s
           local interruptSchool = tonumber(%q)
           local duration, expirationTime, spellName, icon, spellName, spellId, locType, lockoutSchool, name, _
-          for i = 1, C_LossOfControl.GetActiveLossOfControlDataCount() do
+          -- ForeverAuras (1.4.6-dev.14): a secret count cannot drive the loop; the first entry is still looked at.
+          local locCount = C_LossOfControl.GetActiveLossOfControlDataCount()
+          if issecretvalue(locCount) then locCount = 1 end
+          for i = 1, locCount or 0 do
             local data = C_LossOfControl.GetActiveLossOfControlData(i)
             if data then
               -- ForeverAuras (1.3.6-dev.15, Dan's "Warrior - Crowd Controlled" error): in combat the client
               -- can hand back secret numbers here; arithmetic on them is an error. A secret start or
               -- duration leaves the timer off (the display still shows the control), and a secret
               -- lockout school cannot be tested against the chosen one.
+              -- ForeverAuras (1.4.6-dev.14, "Will to Survive" report): the control type itself can be
+              -- secret in combat, and comparing it was an error on every LOSS_OF_CONTROL_UPDATE. A secret
+              -- type cannot be told apart, so it never matches a chosen Specific Type; with no Specific
+              -- Type chosen the control still shows. Each value is checked for secrecy before any other use.
+              local locTypeSecret = issecretvalue(data.locType)
               if (not use_controlType)
-              or (data.locType == controlType and (controlType ~= "SCHOOL_INTERRUPT" or ((not use_interruptSchool)
+              or (not locTypeSecret and data.locType == controlType and (controlType ~= "SCHOOL_INTERRUPT" or ((not use_interruptSchool)
                 or (not issecretvalue(data.lockoutSchool) and bit.band(data.lockoutSchool, interruptSchool) > 0))))
               then
                 spellId = data.spellID
-                spellName, _, icon = Private.ExecEnv.GetSpellInfo(data.spellID)
-                if data.startTime and data.duration and not issecretvalue(data.startTime) and not issecretvalue(data.duration) then
+                if issecretvalue(spellId) then
+                  icon = data.iconTexture
+                else
+                  spellName, _, icon = Private.ExecEnv.GetSpellInfo(spellId)
+                end
+                if not issecretvalue(data.startTime) and not issecretvalue(data.duration) and data.startTime and data.duration then
                   duration = data.duration
                   expirationTime = data.startTime + data.duration
                 end
@@ -8568,7 +8588,8 @@ local rangeState = inRange and "inRange" or (checksRange and "outOfRange") or "n
         name = "lockoutSchool",
         display = L["Interrupted School Text"],
         hidden = true,
-        init = "lockoutSchool and lockoutSchool > 0 and GetSchoolString(lockoutSchool) or nil",
+        -- ForeverAuras (1.4.6-dev.14): a secret school cannot be compared or named.
+        init = "not issecretvalue(lockoutSchool) and lockoutSchool and lockoutSchool > 0 and GetSchoolString(lockoutSchool) or nil",
         store = true,
         test = "true",
       },

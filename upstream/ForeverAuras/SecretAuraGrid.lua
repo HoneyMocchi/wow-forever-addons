@@ -625,6 +625,7 @@ end
 function Display.RefreshGrid(group)
   local grid = group and grids[group.id]
   if not grid or not grid.container then return end
+  Private.HitchCount("layout: grid refreshed")
   local first = grid.members[1]
   local entry = Private.regions[group.id]
   local groupRegion = entry and entry.region

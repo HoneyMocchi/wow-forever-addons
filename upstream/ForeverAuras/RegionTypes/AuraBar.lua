@@ -345,6 +345,15 @@ local flipPointY = {
 
 local extraTextureWrapMode = "REPEAT";
 
+-- ForeverAuras (1.4.6-dev.22): the spark's alpha curves (UpdateSecretSpark), made on first use.
+local sparkCurves
+-- (dev.23, Astra's dev.22 review) Puts back the alpha a secret value left on the spark. The mark is
+-- cleared only once the write was accepted: a refused write (the client can refuse it under its
+-- restrictions) raises nothing and leaves the mark, so the next update tries again. dev.22 cleared the
+-- mark first and wrote unprotected: a refusal was an error and the spark could stay transparent.
+local function RestoreSparkAlpha(spark)
+  if spark.faSecretAlpha and pcall(spark.SetAlpha, spark, 1) then spark.faSecretAlpha = nil end
+end
 -- Emulate blizzard statusbar with advanced features (more grow directions)
 local barPrototype = {
   ["UpdateAnchors"] = function(self)
@@ -433,6 +442,8 @@ local barPrototype = {
       or (sparkHidden == "EMPTY" and progress > 0)
       or (sparkHidden == "BOTH" and progress < 1 and progress > 0);
 
+    -- (1.4.6-dev.22) a readable value decides by showing or hiding; the alpha a secret value left is undone
+    RestoreSparkAlpha(self.spark)
     if (sparkVisible) then
       self.spark:Show();
     else
@@ -1262,6 +1273,8 @@ local funcs = {
         self.secretBar:SetValue(self.value)
       end
     end
+    -- (1.4.6-dev.22) the spark's hide-at-the-ends follows each new secret value
+    self:UpdateSecretSpark()
     self.bar:UpdateAdditionalBars();
   end,
   UseNormalMask = function(self)
@@ -1291,7 +1304,76 @@ local funcs = {
     else
       self.bar.spark:Show()
     end
+    self:UpdateSecretSpark()
     self.bar:UpdateAdditionalBars();
+  end,
+  -- ForeverAuras (1.4.6-dev.22, "Spark does not hide when the bar is full or empty" report, a mana bar):
+  -- a secret power or health value cannot be compared with its maximum, so with Hide Spark set to Full,
+  -- Empty or Full and Empty the spark stayed on screen whenever the value was secret. The client can
+  -- still turn the unit's power or health percentage into a number through a curve, and a texture takes
+  -- that number as its alpha without the addon reading it: the spark's alpha is 0 at the chosen end(s)
+  -- and 1 everywhere else. Only for a bar whose progress is the power or health of the trigger that
+  -- drives it (that state names the unit), over the default range, and not driven by a Cooldown Manager
+  -- bar; any other bar keeps
+  -- the spark shown, as before. A readable value takes the normal path (bar.UpdateProgress), which shows
+  -- or hides the spark and puts the alpha back.
+  UpdateSecretSpark = function(self)
+    local spark = self.bar.spark
+    local mode = spark.sparkHidden
+    local alpha
+    if self.bar.activeMask == "secret" and self.secretProgress == "value" and not self.cdmNativeProgress
+       and (mode == "FULL" or mode == "EMPTY" or mode == "BOTH")
+       and not self.adjustedMin and not self.adjustedMax and not self.adjustedMinRelPercent and not self.adjustedMaxRelPercent then
+      -- (dev.23, Astra's dev.22 review) the state that drives this bar, not the display's active one:
+      -- dev.22 read the active trigger's state, so a health bar fed by another trigger hid its spark
+      -- when the active trigger's mana was full. Automatic progress is the active state's own value;
+      -- a chosen trigger counts only when the chosen property is that trigger's power or health itself
+      -- (not a percentage, a deficit or any other number); manual progress never qualifies.
+      local source = self.progressSource
+      local sourceTrigger = source and source[1] or -1
+      local state, property
+      if sourceTrigger == -1 then
+        state = self.state
+      elseif type(sourceTrigger) == "number" and sourceTrigger > 0 then
+        state, property = self.states and self.states[sourceTrigger], source[3]
+      end
+      local PC = Private.ExecEnv.PowerCurve
+      local kind = state and not state.cdmBarSource
+        and ((issecretvalue(state.power) or state.power ~= nil) and "power"
+          or (issecretvalue(state.health) or state.health ~= nil) and "health")
+      if kind and property ~= nil and property ~= kind then kind = nil end
+      local ctx = kind and PC and PC.Begin and PC.Begin(state, kind)
+      if ctx and C_CurveUtil and C_CurveUtil.CreateCurve and Enum.LuaCurveType then
+        -- The bar's own direction: with Inverse the fill is full when the value is empty.
+        local hideEmpty, hideFull = mode ~= "FULL", mode ~= "EMPTY"
+        if self.inverseDirection then hideEmpty, hideFull = hideFull, hideEmpty end
+        local key = (hideEmpty and 1 or 0) + (hideFull and 2 or 0)
+        sparkCurves = sparkCurves or {}
+        local curve = sparkCurves[key]
+        if not curve then
+          -- Steps hold each value until the next point: 0 itself, then everything up to but not
+          -- including 1, then 1 itself.
+          curve = C_CurveUtil.CreateCurve()
+          curve:SetType(Enum.LuaCurveType.Step)
+          curve:AddPoint(0, hideEmpty and 0 or 1)
+          curve:AddPoint(0.0001, 1)
+          curve:AddPoint(1, hideFull and 0 or 1)
+          sparkCurves[key] = curve
+        end
+        local ok, value
+        if ctx.kind == "health" then
+          ok, value = pcall(UnitHealthPercent, ctx.unit, true, curve)
+        else
+          ok, value = pcall(UnitPowerPercent, ctx.unit, ctx.powerType, false, curve)
+        end
+        if ok and value ~= nil then alpha = value end
+      end
+    end
+    if alpha ~= nil then
+      if pcall(spark.SetAlpha, spark, alpha) then spark.faSecretAlpha = true end
+    else
+      RestoreSparkAlpha(spark)
+    end
   end,
   UpdateSecretMaskInverse = function(self, force)
     -- if we want to set reversed progress for secret values we have to play with mask anchoring

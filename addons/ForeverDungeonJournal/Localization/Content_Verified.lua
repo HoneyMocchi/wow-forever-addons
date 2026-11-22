@@ -185,6 +185,7 @@ do
         ["Timmy the Cruel"] = "Timmy der Grausame",
         ["Tinkerer Gizlock"] = "Tüftler Gizlock",
         ["Tunnelweb Matriarch"] = "Tunnelnetzmatriarchin",
+        ["Sabella No-Eyes"] = "Sabella Ohne-Augen", -- sabella (2.1.2): Wowhead Forever
         ["Twilight Commander Zarmok"] = "Twilight-Kommandant Zarmok",
         ["Twilight Lord Kelris"] = "Twilight-Lord Kelris",
         ["Unstable Sentinel"] = "Instabile Schildwache",
@@ -981,6 +982,7 @@ do
         ["Timmy the Cruel"] = "Timmy el Cruel",
         ["Tinkerer Gizlock"] = "Manitas Gizlock",
         ["Tunnelweb Matriarch"] = "Matriarca cavatelas",
+        ["Sabella No-Eyes"] = "Sabella Sin Ojos", -- sabella (2.1.2): Wowhead Forever
         ["Twilight Commander Zarmok"] = "Comandante Crepuscular Zarmok",
         ["Twilight Lord Kelris"] = "Señor Crepuscular Kelris",
         ["Unstable Sentinel"] = "Centinela inestable",
@@ -1773,6 +1775,7 @@ do
         ["Timmy the Cruel"] = "Timmy le Cruel",
         ["Tinkerer Gizlock"] = "Artisan Gizlock",
         ["Tunnelweb Matriarch"] = "Matriarche tissetunnel",
+        ["Sabella No-Eyes"] = "Sabella Sans-Regard", -- sabella (2.1.2): Wowhead Forever
         ["Tuten'kash"] = "Tuten’kash",
         ["Twilight Commander Zarmok"] = "Commandant du Crépuscule Zarmok",
         ["Twilight Lord Kelris"] = "Seigneur du crépuscule Kelris",
@@ -2395,6 +2398,7 @@ do
         ["Aggem Thorncurse"] = "저주의가시 아겜",
         ["Aku'mai"] = "아쿠마이",
         ["Alzzin the Wildshaper"] = "칼날바람 알진",
+        ["Isalien"] = "이살리엔", -- isalien (2.1.1): Wowhead Forever ko
         ["Ambassador Flamelash"] = "사자 화염채찍",
         ["Amnennar the Coldbringer"] = "혹한의 암네나르",
         ["Ancient Stone Keeper"] = "고대 바위 문지기",
@@ -2622,6 +2626,7 @@ do
         ["Tinkerer Gizlock"] = "땜장이 기즐록",
         ["Tsu'zee"] = "츄지",
         ["Tunnelweb Matriarch"] = "땅굴그물 어미",
+        ["Sabella No-Eyes"] = "눈 없는 사벨라", -- sabella (2.1.2): Wowhead Forever
         ["Tuten'kash"] = "투텐카쉬",
         ["Twilight Commander Zarmok"] = "황혼의 사령관 자르모크",
         ["Twilight Lord Kelris"] = "황혼의 군주 켈리스",
@@ -3409,6 +3414,7 @@ do
         ["Timmy the Cruel"] = "Tico, o Cruel",
         ["Tinkerer Gizlock"] = "Engenhoqueiro Bugitranca",
         ["Tunnelweb Matriarch"] = "Matriarca Teiatúnel",
+        ["Sabella No-Eyes"] = "Sabella Sem-olho", -- sabella (2.1.2): Wowhead Forever
         ["Tuten'kash"] = "Tutan'kash",
         ["Twilight Commander Zarmok"] = "Comandante do Crepúsculo Zarmok",
         ["Twilight Lord Kelris"] = "Senhor do Crepúsculo Kelris",
@@ -4003,6 +4009,7 @@ do
         ["Aggem Thorncurse"] = "Аггем Терновое Проклятие",
         ["Aku'mai"] = "Аку'май",
         ["Alzzin the Wildshaper"] = "Алззин Перевертень",
+        ["Isalien"] = "Изалиен", -- isalien (2.1.1): Wowhead Forever ru
         ["Ambassador Flamelash"] = "Посол Огнехлыст",
         ["Amnennar the Coldbringer"] = "Амненнар Хладовей",
         ["Ancient Stone Keeper"] = "Древний Хранитель Камня",
@@ -4232,6 +4239,7 @@ do
         ["Tinkerer Gizlock"] = "Ремонтник Гизлок",
         ["Tsu'zee"] = "Цу'зи",
         ["Tunnelweb Matriarch"] = "Паутинный матриарх",
+        ["Sabella No-Eyes"] = "Сабелла Безглазая", -- sabella (2.1.2): Wowhead Forever
         ["Tuten'kash"] = "Тутен'каш",
         ["Twilight Commander Zarmok"] = "Сумеречный командир Зармок",
         ["Twilight Lord Kelris"] = "Повелитель сумрака Келрис",
@@ -4855,6 +4863,7 @@ do
         ["Aggem Thorncurse"] = "阿格姆",
         ["Aku'mai"] = "阿库麦尔",
         ["Alzzin the Wildshaper"] = "奥兹恩",
+        ["Isalien"] = "伊萨利恩", -- isalien (2.1.1): cn.classic.wowhead.com npc=16097
         ["Ambassador Flamelash"] = "弗莱拉斯大使",
         ["Amnennar the Coldbringer"] = "寒冰之王亚门纳尔",
         ["Ancient Stone Keeper"] = "古代的石头看守者",
@@ -5074,6 +5083,7 @@ do
         ["Tinkerer Gizlock"] = "工匠吉兹洛克",
         ["Tsu'zee"] = "苏斯",
         ["Tunnelweb Matriarch"] = "洞网蛛母",
+        ["Sabella No-Eyes"] = "无眼莎贝拉", -- sabella (2.1.2): Wowhead Forever (zhCN written from zhTW)
         ["Tuten'kash"] = "图特卡什",
         ["Twilight Lord Kelris"] = "暮光领主克尔里斯",
         ["Umbra"] = "乌姆布拉",
@@ -5652,6 +5662,8 @@ do
         ["Aggem Thorncurse"] = "阿格姆",
         ["Aku'mai"] = "阿庫麥爾",
         ["Alzzin the Wildshaper"] = "奧茲恩",
+        ["Sabella No-Eyes"] = "無眼莎貝拉", -- sabella (2.1.2): Wowhead Forever tw
+        ["Isalien"] = "伊薩利恩", -- isalien (2.1.1): written from zhCN
         ["Ambassador Flamelash"] = "弗萊拉斯大使",
         ["Amnennar the Coldbringer"] = "寒冰之王亞門納爾",
         ["Ancient Stone Keeper"] = "古代的石頭看守者",

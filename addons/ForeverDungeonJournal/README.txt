@@ -1,70 +1,1973 @@
-DungeonJournal 2.0.5
+DungeonJournal 2.1.3
+
+CHANGES IN 2.1.3 (the release after 2.1.2)
+- Find the Gems (Restoring the Necklace chain): a warning line at the top
+  says "Complete this quest before killing the last boss." Translated into
+  all languages.
+- Run tracker: Reset asks "Reset the tracker?" in the game's popup again on
+  keyboard and mouse: it asked for a second click whenever the game's
+  controller setting was on, even with no controller there. With a
+  controller connected, the same question with Yes / No in a little window
+  of the journal's own.
+- Uldaman: Revelosh's Spaulders, Armguards, Boots and Gloves and the Ancient
+  Stone Keeper's Cragfists show <Random enchantment>, like the Archaedic
+  Stone.
+- Uldaman's map: the Obsidian Sentinel now has his pin, in Echomok Cavern
+  by the back entrance.
+- Uldaman's map: the quest marks of The Hidden Chamber, The Lost Dwarves and
+  The Lost Tablets of Will are now in their rooms, beside Ironaya, the Lost
+  Dwarves and Galgann Firehammer. On every dungeon map a quest mark is kept
+  clear of a boss's pin at any zoom.
+- Home page: "Forever Dungeons Only" is turned off once for everyone with
+  this update. Some players were seeing only WoW Forever's dungeons: an
+  older version turned it on with a click on the WoW Forever emblem, and
+  the emblem no longer turns it off. It's still in Options if you want it.
+- Home page, "Forever Dungeons Only" on: the page turns WoW Forever blue and
+  the emblem at the top left becomes the WoW Forever logo on its blue
+  background. Its tooltip says "Forever Only View", and a right click on it
+  turns the view off. Translated.
+- Run tracker, Uldaman (Alliance): the run now ends when every boss is
+  dead. The Lost Dwarves, friendly to the Alliance and not on its tracker,
+  were still counted, so the run never ended. A run left open by this
+  ends a few seconds after you log in or /reload.
+- Character Logs: Alliance characters' Uldaman runs no longer list The Lost
+  Dwarves (friendly to the Alliance).
+- Options > Quests: "Hide completed quests" leaves the quests you've handed
+  in out of a dungeon's quest list, so you only see what's left to do. The
+  dungeon list still counts them. Off by default. Translated.
+- Uldaman, Obsidian Sentinel: a red line under its name says Blizzard has
+  removed its loot for now (players found an efficient gold farm with it),
+  and its loot is greyed out. Translated.
+- Loot filter, Rogue: one-hand axes are no longer greyed out. Rogues can use
+  them in WoW Forever.
+- Stratholme: Egan's The Restless Souls now needs Caretaker Alen's The
+  Restless Souls first, as a step of its chain. It was shown as an optional
+  introduction, but Egan only offers his quest after it.
+- Opening a dungeon from a search result, the tracker or an item's tooltip
+  builds its page once, straight on the right tab and boss (it built it up
+  to three times). Faster, and it no longer stops with "script ran too
+  long" when opened in combat.
+- Stratholme: Baron Rivendare's loot now has Deathcharger's Reins, his
+  mount, at the top left with "Extremely rare drop" in its tooltip, and
+  the Runeblade of Baron Rivendare beside it at the top right. Translated.
+- Quest items: the line under an item's name that says where to find it
+  is now translated into all languages everywhere (many were still English
+  only), with the game's own names for places, enemies and objects.
+- Locating the Lost City (Horde): its map spot is now on the cavern
+  entrance, 21.8, 27.6 (it was a little to the north).
+- The Shattered Necklace (Restoring the Necklace chain): no longer marked as
+  a Dungeon Chain Step. The necklace also drops from the elite troggs and
+  Shadowforge dwarves outside Uldaman, and its page says so. Translated into
+  all languages.
+- A Sign of Hope, Amulet of Secrets and Prospect of Faith (The Lost Tablets
+  of Will chain) and Necklace Recovery (Horde) are no longer marked as
+  Dungeon Chain Steps: they are done outside Uldaman. A Sign of Hope and
+  Amulet of Secrets have a warning line at the top: "This is completed
+  OUTSIDE the instance." Translated into all languages.
+- Solution to Doom: a warning line at the top says the Tablet of Ryun'eh is
+  in the Ancient Chest outside the instance, and its Notes show a minimap
+  picture of the excavation caves with the tablet's icon on the chest's
+  place. Amulet of Secrets shows the same picture with Hammertoe's Amulet on
+  Magregan Deepshadow's place. Translated into all languages.
+- Reclaimed Treasures: a warning line at the top says the treasure is in a
+  chest outside the instance (both factions), and the Alliance quest's Notes
+  show a minimap picture with Krom Stoutarm's Treasure on the chest's place.
+  Translated into all languages.
+- Quests with a minimap picture: a note with a red arrow next to the item
+  says "Click the item to see location". Clicking the item takes you down to
+  the picture. Translated.
+- Uldaman Reagent Run (both factions): a warning line at the top says the
+  Magenta Fungus Caps can also be picked up outside the dungeon. Translated
+  into all languages.
+- Hammertoe Grez (A Sign of Hope, Amulet of Secrets): Show on Map now marks
+  where he really stands, about 160 yards into the excavation tunnel, not
+  the cave mouth.
+- Uldaman: a warning line at the top of The Shattered Necklace ("Farm the
+  elites outside Uldaman for the necklace.") and of Agmond's Fate ("This is
+  completed in the area outside the dungeon."). Translated into
+  all languages.
+- Power Stones: its note is now a warning line at the top: the power stones
+  can also drop from elite dwarves outside the dungeon. Translated into all
+  languages.
+- Mallet of Zul'Farrak page: one entry now, no quest chain. The objective
+  is killing Qiaga the Keeper for the Sacred Mallet (Show on Map), then
+  using it at the altar on top of Jintha'Alor (Show on Map). No "Pick it up",
+  no Starts at, and no In Dungeon mark on its objective. A red line at the
+  top says there is no quest to pick up, just kill and loot. Translated into
+  all languages.
+
+CHANGES IN 2.1.2 (the release after 2.1.1)
+- Tier Sets: Shift-click (and Ctrl-click) on a piece links it in chat (and
+  shows it on your character) again, Tier 0.5 included.
+- Blackmaw Hold: new rare, Sabella No-Eyes, with her drops (Truesight Rifle,
+  Furbolg Rib Protector).
+- Character Logs: a Zul'Farrak run with every boss down no longer stays
+  "Not finished" (Ruuzlu's death goes unseen, so the Chief's kill was not
+  counted as the last boss). Runs already saved like that are put right
+  the next time you log in.
+- Dungeon Tracker: killing Kirtonos the Herald or Ras Frostwhisper in
+  Scholomance no longer adds an extra skull (the game names their fights
+  "Kirtonos" and "Ras Frostwhisperer"). Runs already saved with those
+  skulls are put right the next time you log in.
+- Removed the "Use Amberhall's Soulstone" button (A Small Favor) that could
+  sit in the middle of the screen near the Twilight Thrall in the
+  Riverglades (reported on Discord by Syrlin).
+- Boss pages: the line under a boss's name (like Titanosaur's "Can drop 2
+  items") is red again; the blue was hard to read there.
+- Blackmaw Hold: Spearfisher's Waders and Demon Worshipper's Necklace are
+  confirmed trash drops (no longer "probably drops").
+- Dire Maul: West: Lord Hel'nurath is marked "Warlock Mount Quest Boss",
+  like Death Knight Darkreaver's "Paladin Mount Quest Boss".
+- Shaper's Terrace: its map now shows where each boss is, and the entrance
+  (on the swirl by the small pond in the south-west, its label under it).
+- Loot Filter: "Minimum required level" is now "Level range", two boxes
+  with a dash between them (from - to). Type 10 and 10 for the items of
+  level 10 only; leave a box empty for no limit on that side. Quest rewards
+  count at their quest's level ("Available from Level 40"). It also works
+  now on items the old box let through by mistake.
+
+CHANGES IN 2.1.1 (the release after 2.1.0)
+- Blackmaw Hold: Blackmaw Reclamation's chain now starts where it really
+  does, at Ekkal (The Legashi Threat, Report to Rageroar, Missing Blackmaw
+  Scouts), and Korsa's quests are all steps instead of "pick one"
+  (reported on Discord by Theladron).
+- Character code window: the code now sits on one line inside the box
+  (Ctrl+A, Ctrl+C still copy all of it) instead of spilling down the screen,
+  and it is a bit shorter.
+- Character code: the Options have an Export tab (before Discord) with the
+  code ready to copy and the website's address to paste it at, to see your
+  progress there while logged off. An Export button at the top of the
+  journal, left of Report, opens that tab (the first time, the code's row
+  lights up). Hide Export button on main page, at the bottom of the Export
+  tab (and in Options > General), hides it. /dj export shows the code in a
+  window. Your talents and Favourites go with it.
+  The first time you open the journal after this update, a note points at
+  the Export button to say so (once only).
+- Character code in RPG Mode: it now carries what your journal shows (the
+  pages you have unlocked, with Account-Wide Unlocks too, the locked cards'
+  sketches and your Journey bar), so the website can show the same.
+- Controller support (first version): the journal can be used with a
+  gamepad (tested by kaanu on Discord). With a controller, Show on Map marks
+  the spot without opening the world map (opening it broke the game's
+  controller mode): open the map yourself to see it.
+- Arrow: after dying, it now leads back to your corpse first, also where
+  the game doesn't show the corpse's place.
+- Arrow: on the same continent it only says to use your hearthstone when
+  that saves a long trip (like Booty Bay to Ironforge); otherwise it says
+  to fly.
+- Arrow: while flying, the flight master icon sits above the quest's name
+  and the time left is a yellow bar that empties as you fly.
+- Arrow: coming to Dalaran by the roads east and south of the city, it now
+  leads along the road to the plaza and up the great stairs, instead of
+  straight at the walls.
+- Quest tracker: the minimize button now sits left of the Dungeon Journal
+  book in its title bar.
+- Quest pages: in a quest chain, the step done inside the dungeon says
+  "Dungeon Chain Step" over its objective, with the chain icon, and its
+  page has a teal tint (the colour of the In Dungeon icon).
+- Quest chains: a step started by an item that drops inside a dungeon is a
+  dungeon step too (A Crumpled Up Note). On the Onyxia Attunement page, the
+  steps done inside Blackrock Depths count as dungeon steps.
+- Krol'dok Stronghold: Tunk, whose Krol'dok Moulding starts the key quests,
+  is on the dungeon's map at his forge, as a quest mob. Key Ingredients' page
+  no longer has the dungeon tint (it is all done in town), nor has Final
+  Passage's (only its Library step is done inside).
+- Krol'dok Stronghold: Zalfan Moonshadow (Vengeance of the Highborne) is on
+  the map as a quest mob, and Nar'gurk's pin is where he stands. Key
+  Ingredients' note: its key opens a shortcut to the last boss.
+- Scholomance: new drops for Marduk Blackpool (Gravetoll Gavel, The Black
+  Helm) and Vectus (Band of the Damned, Soulwoven Drape).
+- Dire Maul East: new drops for Pusillin (Demondash Spaulders), Zevrim
+  Thornhoof (Clever Hat, Gloves of Shadowy Mist) and Lethtendris
+  (Lethtendris's Wand).
+- Dire Maul East: Isalien, the Dungeon Set 2 (Tier 0.5) boss summoned in
+  Alzzin the Wildshaper's hall, is in the boss list with her portrait and
+  loot (marked 0.5 Quest Event, not on the Dungeon Tracker).
+- Loot: the slot of relics (Relic, Libram, Totem) is now translated, and so
+  is the 0.5 Quest Event label of the Dungeon Set 2 bosses.
+- Dungeon maps: Hide quests also hides the quest mobs (Tunk, Highland
+  Horror).
+- Quests: "Available from Level X" shows the level in red while your
+  character is too low to pick the quest up (bold, with a thin outline, on
+  the quest page).
+- Quest pages: the warnings and notes are now blue and a little bigger,
+  easier to read, also the line under a boss's name.
+- Razorfen Downs: Extinguishing the Idol's warning now says to make sure
+  everyone in the group has completed the previous step before starting it,
+  and The Coldbringer's Eye's note says the Eye isn't on Amnennar's body.
+- Quest chains: a step done somewhere else before it is handed in now leads
+  there first. Test of Lore (Horde): the arrow goes through the Talondeep
+  Path to the Dor'Danil Barrow Den in Ashenvale, where the Legacy of the
+  Aspects lies at the bottom, then back to Braug Dimspirit. The arrow keeps
+  pointing until you are at the book, and leads in at the den's door and down
+  through it ("Into the barrow den", "Down to the bottom", then left to the
+  book).
+- Test of Lore (Horde): on the last step, the arrow tells you the answer to
+  Braug Dimspirit's question (Neltharion).
+- Test of Lore (Horde): the Library step (the book) shows as a dungeon step.
+- Dungeon tint: every dungeon quest and quest-chain step checked. Quests
+  done only outside the dungeon (a trip to town, a hand-in, mobs outside
+  the instance) no longer have the tint, and steps done inside a dungeon
+  (also another dungeon than the page's) show as dungeon steps.
+- Tier Sets: Tier 0.5 shows Forever's own pieces (they link, with their real
+  stats and set bonuses), one row per version, marked by its spec icon, for
+  the classes that have several. Compact view: those rows sit right under
+  the Tier 0 pieces.
+- Waypoint arrow: a long way on foot is weighed as it is really walked
+  (round the mountains), so the arrow flies or uses your Hearthstone when
+  that is quicker, instead of a long walk to a zeppelin.
+- Waypoint arrow: at a thing to pick up, a loot bag stands where the arrow
+  was (in place of the crossed swords of a place to kill).
+- New colours for some dungeon pages.
+- Options: a search box at the top right. Type a word and every option
+  that matches shows, with its own box to tick.
+- A Small Favor (Krol'dok Stronghold chain): once the Twilight Thrall is weak,
+  a pop-up says to use Amberhall's Soulstone, with the item's button to click.
+
+CHANGES IN 2.1.0 (the release after 2.0.12)
+- Razorfen Downs: Extinguishing the Idol has a warning at the top to make
+  sure the whole group is on this step before starting the quest.
+- Dire Maul: North: Nostro's Compendium now shows only to warriors and
+  paladins ("WARRIOR / PALADIN ONLY", with both class icons), like the other
+  class quests, and its
+  note, start and hand-in are translated (reported on Discord by Ziefog).
+- Stratholme: Living: The Medallion of Faith is repeatable in WoW Forever. It
+  is now listed twice, like Blackmaw Pouches: the quest itself, ticked once
+  you have handed it in, and a repeatable entry that is always there
+  (reported on Discord by Ziefog).
+- A Brother In Need and the rest of the Alliance Paladin storyline are now
+  translated into all languages.
+- Maraudon and Blackrock Depths: new Alliance Paladin quest, Materials of
+  Significance (from Gregory in Felwood, from level 45), in both dungeons'
+  quest lists, with where to get each of its four parts and its whole chain:
+  the Alliance Paladin storyline from the Strange Orb in Darkshore, through
+  A Brother In Need, Some Good News, The Mysterious Merchant and Elrick,
+  Paladin of the Silver Hand, to In Search of Aeonas. Each dungeon's page
+  marks its own part with a gold edge (reported on Discord by Nurax).
+- Zul'Farrak: new rogue quest, The Talisman of Kazdor (both factions, from
+  level 45), with its chain to unlock it: The Manor, Ravenholdt, The Horn of
+  Xelthos, The Eye of Bhossca, Fahrad's letter at level 45 and Fool Me Twice.
+- RPG Mode: a dungeon's page now opens when the run tracker counts its final
+  boss a moment after the kill. Wailing Caverns stayed locked with Mutanus
+  the Devourer dead in the run's log (reported on Discord by Kostiantyn).
+- Rot and Regret: the stray "Choose: Overgrown Cuffs or Thornplated Cord /
+  11,100 XP" line under the rewards is gone (the rewards and XP were
+  already shown above it).
+- Zul'Farrak map: Theka the Martyr, Hydromancer Velratha and Ruuzlu (beside
+  Chief Ukorz Sandscalp) added. Sergeant Bly is on the pyramid, on the spot
+  Dustwraith had; Dustwraith is off the map for now.
+- Zul'Farrak map: boss pictures that covered each other (Sergeant Bly and
+  Shadowpriest Sezz'ziz, Zerillis and Sandarr Dunereaver) now sit side by
+  side.
+- Dungeon Tracker: a Lua error could stop it from showing at all ("/dj
+  tracker" did nothing, the text stayed in the chat box): a fight that can
+  be one of several bosses (the Ring of Law's) got the + of a group like the
+  altars', and once that + was clicked every redraw broke. Only real groups
+  get the + now.
+- Blackfathom Deeps map (Level 2): faded Lorgus Jett pins on the two other
+  spots he can spawn at, up the northern channel ("Can also spawn here"), as
+  Targorr's in The Stockade.
+- Arrow, Undercity: the way to Doctor Martin Felben (Source of Power), from
+  anywhere in the city, goes down the little passage on the lab's west side
+  (past the two abominations), not through the Royal Quarter's door.
+- Run tracker: a run is never shown as done before the dungeon's final boss
+  is dead, in every dungeon (a Stratholme run was shown done before Baron
+  Rivendare, after a boss the journal doesn't list was killed).
+- Arrow: an NPC's picture could be another NPC's or your own character's
+  (Dorn Plainstalker with an undead face). A picture only counts once it
+  has really loaded, never your own, and seeing the NPC (target, mouseover,
+  nameplate) corrects it. Pictures saved before are learned again once.
+- The Coldbringer's Eye: a red line under the objective says Amnennar
+  doesn't drop the Eye: after killing him, click the Eye on the floor. The Eye's tooltip says
+  the same.
+- Arrow, Dorn Plainstalker (Test of Faith and the rest of the Test of Lore
+  chain, Thousand Needles): it leads up the path from the canyon floor into
+  his cave, not round and up onto the mesa above it.
+- Tracker: the close button (X) and the resize corner only show while the
+  mouse is over the tracker window.
+- Arrow: when the hearthstone is the quicker way, it says only "Hearth to
+  ...", not the flight or boat as well. The flight or boat shows when the
+  hearthstone is on cooldown or no quicker.
+- Woodwyrd (Word of the Woods, Rot and Regret, Passing the Blame): the arrow
+  and map point now go to him in the Forlorn Gardens (69.9, 72.1), not to
+  Mithera's spot.
+- Test of Faith: Show on Map under its objective points at the planks on
+  the mesa to jump from, and the arrow says "Jump off the planks" there.
+- Fragments of the Pylons, Powering the Pylons and Rot and Regret: the
+  Pylon Fragment and Pylon Shard say which crystal they come from (Magram
+  village 68.1, 79.1; Gelkis village 36.1, 85.6), the Mana Sieve says it is
+  on the top floor of the big temple (46.0, 78.1). Click one of them, or the
+  Vial of Earth Song Water, to see where it is on the map.
+- Arrow, the Mana Sieve: it leads to the temple's top floor by its north
+  door, from the low ground west of the temple round to the long stairway
+  north of it and up, or along the upper level from the city and the east.
+- Arrow, inside the temple of Shen'dralas: to a place outside it (Mithera
+  after Meeting the Magister, and any other), it says "Leave the temple" and
+  leads out by its door first, not through the walls.
+- Arrow: an NPC's picture could be the one before it (Mithera's arrow with
+  Magister Kirandis's face); the saved pictures are learned again once.
+- Quest pages: a quest that needs a reputation shows it above Objective:
+  "Requires Neutral with Timbermaw Hold" (green when you have it, red when
+  not) and a reputation bar with your standing. Blackmaw Hold: The Twin
+  Bears, Blackmaw Reclamation and A Lost Memento (Timbermaw Hold, Neutral).
+- Alcaz Prison (Horde): the Kor'kron quests' giver is Nazeer Bloodpike (the
+  journal had "Bloodspike", so clicking to target him missed), and his spot
+  in Brackenwall Village is corrected.
+- Dungeon list: The Stockade now comes before Excavation Site: Wetlands
+  (its level range is lower).
+- Quest chains: a step's "Show Turn In" button only shows once the step is
+  in your quest log and ready to hand in.
+- Rituals of Power (mage, Scarlet Monastery Library): the chain now starts
+  with Journey to the Marsh, from your mage trainer in a capital city. Its
+  objective, start and hand-in lines are translated into all languages.
+  Its start names only the trainers of the faction the quest list shows.
+- Shaper's Terrace trash: Pattern: Blue Dragonscale Helm (from Azurepetal
+  Trappers and Emerald Flayers).
+- Shaper's Terrace, Vitrix: full drop list (Wowhead Forever): Bolt's Charged
+  Eyeball, Albinofur Grips, Sparklance Wand, Cinderedge Crescent, Crownroar
+  Chestplate and Heartflame Gauntlets.
+- Agamaggan's Blood (Razorfen Downs): under the Maraudon warning, a line
+  saying the quest is completed in the area outside Razorfen Downs.
+- City of Dalaran quests: the old "Quest data is recorded in the beta" notes
+  are gone. Opportunistic Education's note now says where it is done: the
+  library, in the Alliance portal area of Wrath of the Lich King's Dalaran.
+- Quests: an objective that is done and has no count ("Western pylon found")
+  now says "(Complete)", in the tracker and on the quest page.
+- Map: a "Turn in here" ? put on the map now goes away by itself when its
+  quest is handed in, also one put there by a click on the arrow.
+- Arrow, open ground (Desolace and the north of Shen'dralas so far): the
+  arrow now knows the open ground between the roads (a point every 150
+  yards, joined where the walking maps say the straight line can be walked),
+  so it leads straight across the plains instead of round by the roads.
+- Arrow, long walks: the arrow no longer holds on to a corner behind you.
+  Every 15 yards it looks at the way from where you stand, and takes it when
+  it is shorter than going back to the corner it had begun with.
+- Arrow, roads: 49 small breaks in the road net are joined (road ends a few
+  yards from the next stretch of road). On the road south of Nijel's Point
+  in Desolace the arrow led back north and round by the west road; it now
+  follows the road south.
+- Quests, both factions shown: the round ! (and links) of a quest of the
+  other faction now open that faction's list, not your own faction's list
+  with the wrong quest unfolded.
+- The Medallion of Faith (Stratholme: Living): its Notes show Leads to:
+  Aurius' Reckoning. Click it to open that quest on Stratholme: Undead.
+- Undercity: the arrow to the bat handler follows the canal ring, the
+  bridges into the Trade Quarter and the ramp up to him, from anywhere in
+  the lower city (the Apothecarium's lab and the elevators too), instead of
+  pointing straight through the walls. To Doctor Martin Felben it goes down
+  the lab's ramp.
+- Arrow: a place inside a building in a city (Archbishop Benedictus in
+  Stormwind's Cathedral) no longer shows as 20,000 yards away with the
+  arrow pointing out of the city.
+- Home page icons (Tier Sets, Onyxia, Sleeping Bag): clicking the one
+  already open keeps its page (a double click no longer jumps back to the
+  dungeon list). The WoW Forever emblem goes back to the dungeons.
+- Arrow: in the place's own zone, when the ground ahead is open, the
+  arrow goes straight to the place instead of back to a corner of the way
+  it was following (Dalaran to Southshore's gryphon master).
+- Menethil Harbor: the arrow to the boats follows the quay and the piers
+  (the boat to Theramore leaves from the southern pier) instead of pointing
+  straight over the water.
+- Arrow: while you are a ghost it leads to your corpse first, then back to
+  where it was leading once you are alive.
+- Arrow: out on a pier (Theramore's) the arrow follows the walked way
+  into town instead of pointing straight over the water.
+- The Onyxia Attunement icon hides by itself once the character is attuned
+  (the chain's last quest handed in). Options > Hide Onyxia Attunement,
+  unticked, shows it again on that character.
+
+CHANGES IN 2.0.12 (the release after 2.0.11)
+- Quest rewards fixed (from Wowhead Forever): The Love Potion adds Boots
+  of Requite and Private Rocknot's Spare Bracers to its choice; The Last
+  Element is a choice of Lagrave's Seal or Dark Iron Signet; The Demon
+  Forge gives 5 Potions of Demonslaying; Pusillin and the Elder Azj'Tordin
+  adds Incanter's Pantaloons to its choice; Lethtendris's Web (both
+  factions) is a choice of Lorespinner, Warpwood Bracers or Satyrhide
+  Armbands; Houses of the Holy also gives 5 Superior Healing Potions and 5
+  Greater Mana Potions; Ramstein gives both rings (no choice); Kirtonos the
+  Herald also gives the Spectral Essence; The Lich, Ras Frostwhisper gives
+  Darrowshire Strongguard as well as the choice of three.
+- Quest rewards fixed (Ragefire Chasm to Maraudon audit, Wowhead Forever):
+  The Lost Tablets of Will is a choice of Medal of Courage or Medal of
+  Valor; both Uldaman Reagent Runs give 5 Greater Mender's Potions; A Tale
+  Spun Around the Fire also gives Translated Tale of I'lalai and Tale of
+  I'lalai in Zandali; Findings for the Explorer's League also gives
+  Translated Tale of I'lalai; Data Rescue gives both the Repairman's Cape
+  and the Mechanic's Pipehammer; The Tempest's Weapons (Horde) also gives
+  Elementalist's Guard, as for the Alliance.
+- Quest XP (until the game has the quest loaded) corrected for 67 quests
+  from Ragefire Chasm to Gnomeregan, Scarlet Monastery and Razorfen Kraul,
+  e.g. Ragefire Chasm's quests about doubled, In the Name of the Light
+  15,300, The Test of Righteousness 3,850, The Wrath of Rath'mael 4,600.
+- Quest XP (until the game has the quest loaded) corrected for 83 more
+  quests: Compendium of the Fallen, Mythology of the Titans, Hearts of
+  Zeal, Remember That I Love You, Destruction in Deadmines, Unending
+  Torment, Hall of Thanes, and the Blackrock Depths, Dire Maul, Lower and
+  Upper Blackrock Spire, Scholomance and Stratholme quests (the old numbers
+  were missing Forever's dungeon-quest bonus), e.g. Shards of the Felvine
+  22,200, The Madness Within 23,650, General Drakkisath's Demise 26,600.
+- New quest: Ever After (Blackrock Depths, the Rugged Traveler on the
+  hidden ledge: Premo's Poise-Demanding Uniform, 3 Student Fodder,
+  Traveler's Symbols).
+- Drop chances are out of the item tooltips for now, and so is the
+  "Hide drop rates" option.
+- Arrow, Undercity: to Varimathras, Sylvanas and the others in the Royal
+  Quarter it now leads up the Apothecarium's stairs, through the door with
+  the Royal Dreadguards, along the hall (it bends west) and up the dais's
+  steps, instead of pointing straight at them through the walls. From the
+  Rogues' Quarter, the War Quarter and the elevators too.
+- Arrow, Thunder Bluff: the rises are open ground now. Standing on a rise,
+  the arrow points straight at a spot on the same rise (the wind rider
+  tower from anywhere on the main rise), and straight at the bridge or
+  elevator that starts the way off it, instead of round by the roads.
+- Dungeon Tracker: with a controller on, Reset asks for a second click
+  instead of a popup (the popup broke the controller until /reload).
+- Vorrel's Revenge: a note at the top says the quest is completed
+  outside the dungeon, in the lake below Undercity.
+
+CHANGES IN 2.0.11 (the release after 2.0.10)
+- All dungeons: hovering an item on a boss's loot page shows how often
+  that boss drops it ("Drop chance: 21%"), from Wowhead Forever's loot data
+  (Classic Wowhead's for the few bosses with too few kills recorded on
+  Forever yet). Quest items don't show one.
+- Loot Filter: the Weapon filter now has Held In Off-hand (after Shield),
+  so you can show only off-hand items like orbs and tomes.
+- Item tooltips in the journal: with Auctionator installed, its "Vendor"
+  price line no longer shows under the game's own Sell Price. Auctionator's
+  other lines, Pawn and other addons show as before.
+- Arrow: on a tower with two zeppelins (Orgrimmar), the arrow now keeps
+  pointing at the dock of the zeppelin you need until you stand there,
+  instead of disappearing.
+- Arrow: to a spot down in Undercity it now leads through the ruins' gate
+  and the throne room to the elevator, instead of round by the sewers.
+- Arrow: in Thunder Bluff it now follows the rises and the bridges between
+  them (rough first version).
+- Quest lists: right-click a quest you have for the game's small menu with
+  Share Quest and Abandon Quest.
+- New Options section, Loot: "Hide drop rates" (no Drop chance line on
+  item tooltips) and "Hide quest item drops" (boss loot pages leave out
+  the quest items a boss drops). Both off by default.
+- New option (Options, Dungeon Tracker): "Lock Tracker". The tracker can't
+  be moved, and its resize corner and X are gone. Right-click still opens
+  Options.
+- Upper Blackrock Spire: new Map tab, the Blackrock Spire map with its
+  boss pins and the entrance. Hall of Binding and the Rookery top left,
+  Dragonspire Hall (the entrance) under them, the main spire on the right.
+  Arrows mark the ways between the parts (green: Dragonspire Hall to the
+  Hall of Binding; blue: the Rookery to the main spire): click one and its
+  partner flashes.
+- Blackrock Depths: The Challenge (the long Tier 0.5 chain step with the
+  Banner of Provocation) is no longer in the quest list for now.
+- Sunken Temple, Da Voodoo (Shaman): now for Alliance shamans too. Their
+  chain starts with Mastering the Elements at Bath'rah the Windwatcher
+  (Alterac Mountains), then Spirit Totem. The first step (Mastering the
+  Elements / Elemental Mastery) now lists the items it needs: Elemental
+  Air, Earth, Fire and Water.
+- Home page: the round icons at the top (WoW Forever, Cozy Sleeping Bag,
+  Onyxia, Tier Sets) now make the same page-turn sound as opening the
+  journal, instead of a click.
+- New option (Options, Quests): "Hide unavailable quests". Hides the quests
+  marked Unavailable (not in WoW Forever for now, or not for your race).
+  Off by default. If an update makes one of them available again, the
+  option turns itself off so you see it.
+- Uldaman, Necklace Recovery, Take 3 (Horde): no longer says Undead can't
+  take it. Undead can. Its first step (Necklace Recovery) now says at the
+  top: "As Horde you can't start the quest from the necklace, you need to
+  have the quest first."
+
+CHANGES IN 2.0.10 (the release after 2.0.9)
+- Tier Sets: Compact view is the same Compact view / Detailed view button
+  as the boss and loot lists' (it was a tick box).
+- Dungeon Tracker: leaving the dungeon alive unticks Options > Hide Tracker
+  (the tracker's X ticks it). The tracker closed with the X stays closed
+  outside and shows again the next time you go into a dungeon. Leaving as a
+  ghost (a corpse run) keeps it hidden, as before.
+- A dungeon page opened right after the Onyxia Attunement or Cozy Sleeping
+  Bag page had no Dungeons button at the top left (it now always has it).
+- The Platinum Discs (Uldaman), both factions: the reward is a choice of 5
+  Superior Healing Potions or 5 Greater Mana Potions, with the Thawpelt Sack
+  on top (it was one of the choices). The Horde chain now ends like the
+  Alliance one: hand the reward voucher to Bena Winterhoof in Thunder Bluff
+  (Sage Truthseeker's step gives Thunder Bluff +150). Reward choices with
+  more than one of an item show how many ("x5").
+- Quest pages: under "You will also receive", the items everyone gets now
+  come first, then the XP (and money), then the reputation.
+- Blueleaf Tubers: the reward shows as an item (A Small Container of Gems),
+  with Ratchet +150. Bring the End / Bring the Light: the Vanquisher's Sword
+  is no longer one of the choices; it comes on top of the Amberglow
+  Talisman or the Purified Ring.
+- XP fixed (Wowhead Forever): Allegiance to the Old Gods 6,300, Amongst the
+  Ruins 6,550, Baron Aquanis 7,250, Open the Maw 6,950 (they showed about 3%
+  more).
+- Quest rewards fixed: Tiara of the Deep (a choice of Gemshale Pauldrons
+  or Dank Shoulderpads, plus the Spellshifter Rod and 65s), Divino-matic
+  Rod (Magister Cowl added to the choice; Gadgetzan +200) and Vorrel's
+  Revenge (Vorrel's Boots on top of the choice; Undercity +150).
+- Dungeon map on the big map (M) inside a dungeon: it now goes on top of
+  anything another map addon draws in the map window (OpenMap and the like
+  were fighting it). The World Map button still switches to their map, and
+  Options > Hide Dungeon Map inside the dungeon hands M back to them.
+- Dungeon Tracker: killing a boss could cross off an extra skull portrait
+  at the end of the tracker, when the game's boss event names the boss
+  differently from the journal (seen on Kirtonos the Herald, Scholomance).
+  That event now counts for the boss that just died (and the other way
+  round), and the boss learns the name; older runs are put right too. An
+  event arriving before the boss's death waits 5 seconds unlisted, so the
+  skull doesn't even flash (seen on Ras Frostwhisper); and an encounter ID
+  the addon knows from another dungeon no longer names a kill here.
+- Tier Sets (shown from level 50; Options > Hide Tier Sets unticked shows it
+  sooner): a round icon on the home page, right of the Onyxia icon (of
+  the Sleeping Bag's or the Raids medallion when those are hidden), with
+  the same golden glow: the Tier 0 chest piece of the character's class.
+  Its page (in place of the dungeon list, under the icons): Tier 0, the
+  class's set, its eight pieces in a row (Head to Feet), each with its
+  name and the boss and dungeon it drops from; hover for the item's
+  tooltip, click to open its boss page, shift-click to link it. "Show
+  Classes" at the top, a drop-down: All (ticks every class; again, back to
+  your own), then every class with its icon; the ticked classes' sets show,
+  one row each, the character's own first (kept per character). "Compact
+  view" beside it:
+  one slim line per class (class and set name, then the eight pieces as
+  small icons; name and where it drops in the tooltip), so every class
+  fits on one page (kept between sessions). (Systems/TierSets.lua)
+- The home page's row of icons works as tabs: the WoW Forever emblem shows
+  the dungeon list (its "Forever dungeons only" switch is in Options), the
+  Tier Sets icon the Tier Sets page, the Onyxia icon the Onyxia Attunement
+  page; the page shown has its icon lit (gold ring, brighter glow), and
+  clicking a lit Tier Sets or Onyxia icon goes back to the dungeon list.
+  On the Onyxia Attunement page the icons stay at the top, in place of the
+  Dungeons button.
+- Tier Sets: under each class's Tier 0 pieces, a small arrow down to the
+  Tier 0.5 piece it becomes, with the Tier 0.5 quest that gives it (Compact
+  view: after an arrow on the same line); the Tier 0.5 set's name on the
+  class's line. The character's own class's pieces it has (worn, in the
+  bags or in the bank) have a green tick. Options > Hide Tier Sets, or
+  right-click the icon > Hide, hides its icon. "Tier 0" and "Tier 0.5"
+  stand left of each class's two rows (no Tier 0 heading over the list).
+  The pieces have the colour of their quality as the game shows it (many
+  Tier 0.5 pieces are epic in WoW Forever). Hovering the text under a piece
+  (who drops it) shows the boss's portrait, name and dungeon; under a Tier
+  0.5 piece, the quest that gives it. The tick on the pieces you own is a
+  bold green one. A boss page opened from a piece has "Back to Tiers" at
+  the top left (where the Dungeons button is), back to the Tier Sets page
+  where it was. The round Tier Sets icon no longer shows the item icon's
+  thin light edge at its top. The Cozy Sleeping Bag icon works the same way (its page
+  keeps the icons at the top, its icon lit). The lit icon has a thin round
+  gold ring around it (it was a square).
+- Hide Dungeons: a dungeon hidden by an auto-hide option (quests done,
+  outleveled, my level range) can be shown again: its tooltip says which
+  option hides it, and a click keeps it shown anyway (per character). A
+  second click hides it by hand (Discord report by HonestAuntyElle).
+  Turning that option off and on again hides those dungeons again.
+- Loot Filter, Armor: a second box right of the list with Head, Shoulder,
+  Chest, Wrist, Hands, Waist, Legs and Feet. Ticking slots shows only those
+  slots (of the ticked armor types, if any), like Cloak / Ring / Neck /
+  Trinket: Plate + Head = plate helms only.
+- Loot Filter: "Show quest rewards too" (under "Item must have all ticked
+  stats"): Show results also lists the dungeons' quests whose rewards match
+  the filter, each after its dungeon's bosses (the quest's name, its
+  matching rewards). Quests as in the dungeon's quest list. A quest's row
+  has the quest pages' "!" (a repeatable quest's blue ?); clicking the row
+  shows the whole quest on the right, as on its dungeon's Quests tab;
+  clicking the "!" opens the quest on its dungeon's Quests tab.
+- Loot Filter, Show results with stats ticked: much quicker (only the items
+  the other filters keep are read, each once, as many a frame as fit), and
+  a box on the journal says "Searching the loot... 42%" with a bar until
+  the results open.
+- Resize: the window no longer jumps when a corner is taken. It grows by
+  exactly as far as the mouse moves, the opposite corner stays put, and it
+  stops at the screen's edge.
+- Loot Filter, "Only show loot my class can use": below level 40, plate (for
+  paladins and warriors) and mail (for hunters and shamans) needing level 40
+  or more counts as usable: by the time you can wear it, your class can.
+- Blackmaw Hold: the Forsaken paladin quest The Reliquary of Tyr (Sword of
+  Mourning) with its first step The Knight of Mourning (Tirisfal Glades,
+  17.6, 67.4); the Reliquary drops from Elder Shaman Bloodmane.
+- Item tooltips: an item with charges shows them ("3 Charges", under its
+  "Use:" line, as on the real item): Manual Crowd Pummeler (Discord report).
+  The game's tooltip of the item itself has no charges line; only an owned
+  copy has one. (Systems/ItemCharges.lua, FDJ.ITEM_CHARGES)
+- Options > General > Resize: opens the journal with a handle on three of
+  its corners (not the top right, where the close button is), each with a
+  note pointing at it ("Drag the corners to resize"; the notes bounce and
+  flash; OK closes them, the corners stay draggable until the journal is
+  closed, then the grip is Rescale again; Reset Size beside it puts the
+  journal back to its normal size and scale). Dragging
+  makes the window itself bigger (more dungeon cards in a row, more bosses,
+  wider loot columns, bigger maps); not smaller than the normal window;
+  right-click on a handle resets the size; kept between sessions. In a
+  bigger window the loot is a grid filling the page's whole width (as many
+  columns as fit at 360 or more each), left to right. The corner grip is
+  Rescale again (scales the whole window, as before).
+- Boss list: a short list's rows grow to fill it (bigger portraits, up to
+  1.45x), so there is no empty space under the bosses.
+- The Stockade map: Targorr the Dread's other spawn spots shown as faded
+  pins ("Can also spawn here").
+- The Stockade map: Kam Deepfury, Hamhock, Bazil Thredd, Dextren Ward and
+  Bruegal Ironknuckle moved to their rooms.
+- Uldaman: Necklace Recovery, Take 3 is greyed out for the Undead ("Undead
+  cannot take this quest"), as Compendium of the Fallen.
+- Fixed: the Run Log's Need rolls showed no numbers (yours or the other
+  players'): the roll lines in chat were not recognised when the game adds
+  a tag or name links/colours to them.
+- Onyxia Attunement: every quest of both chains shows its WoW Forever XP
+  (23 steps had none; Drakefire Amulet is 22,200 and Blood of the Black
+  Dragon Champion 26,600, not 8,300 / 9,950). The same quests on the
+  Blackrock Spire pages too (Warlord's Command 15,350, For The Horde!
+  26,600).
+- Waypoint arrow: Shift + right-click hides it now; a plain right-click
+  does nothing (no more hiding it by mistake).
+- Blackrock Depths: the rewards of Hurley Blackbreath, Lost Thunderbrew
+  Recipe, Jail Break! and Operation: Death to Angerforge are shown now
+  (their choice of items, the items everyone gets, money and reputation).
+- Blackrock Depths, Disharmony of Fire (Horde): its rewards are shown now,
+  one of Sunborne Cape, Nightfall Gloves, Crypt Demon Bracers or Stalwart
+  Clutch, and 2g 55s.
+- Blackrock Depths, A Taste of Flame: its chain is shown now (Squire
+  Maltrake, Set Them Ablaze!, Trinkets... with the Black Dragonflight Molt
+  in the hoard, then A Taste of Flame: show the molt to Cyrus Therepentous;
+  his elite drake quest counts for that step too), and its rewards: one of Shaleskin Cape, Wyrmhide Spaulders or Valconian Sash,
+  and 2g 65s; the Encased Fiery Essence and the Altered Black Dragonflight
+  Molt as its items.
+
+CHANGES IN 2.0.9 (the release after 2.0.8)
+- Alcaz Prison map: stairs to level 2 south of the crossroads ("Open with
+  Wrex's Keyring for level 2" on hover).
+- Zul'Farrak, quest Gahz'rilla: above Objective it now says Gahz'rilla has
+  to be summoned, with a "How to summon Gahz'rilla" button that opens the
+  Mallet of Zul'Farrak chain at the step you are on.
+- New option (Options > Dungeon list, off by default): "Show only my level
+  range": the dungeon list shows only the dungeons whose level range has
+  your level in it. Too low for any dungeon, the list says so (and the
+  level the first ones start at), with a "Show all dungeons anyway"
+  button that opens Options on that option.
+- Dungeon level ranges now match the game's Looking For Group panel:
+  City of Dalaran 28-35, Scarlet Armory 36-44, Scarlet Cathedral 38-46,
+  The Drowned City 35-42, Uldaman 41-51, Krol'dok Stronghold 40-47,
+  Zul'Farrak 44-54, Maraudon 46-55, Alcaz Prison 48-55, Sunken Temple
+  50-60, Dire Maul East 54-60, West and North 56-60, Upper Blackrock
+  Spire 59-60.
+- Loot pages: the trash portrait tooltips that name a whole family ("All
+  trees", "All satyrs", "All Eldreth spirits", Verek) are now translated
+  in every language.
+- Route: once all that is left is handing quests in, the arrow takes you
+  to the nearest hand-in first, then the nearest from there (Stormwind:
+  Ironforge before Southshore; Dalaran: Archmage Timear before Abra
+  Cadabra when you stand by the Violet Hold).
+- Quests ready to hand in keep their chain icon, and Show Quest Chain
+  opens the whole chain list, so you can still see it (to help a friend
+  who is behind).
+- The arrow no longer sends you to a boat or zeppelin on the place's own
+  continent when you can fly there: it says to fly.
+- Gnomeregan (Horde): the "You're ready to go in!" card now also says
+  "Get on the teleporter".
+- North-west Stranglethorn: the arrow to The Drowned City (and the tablets)
+  now goes straight over land and water where it can, not round by the roads.
+- Dalaran: the arrow now follows the city's streets and the great stairs
+  instead of pointing through the buildings.
+- Booty Bay: the arrow now follows the town's docks and piers (to Scooty,
+  the flight master, the boat) and the tunnel out, instead of pointing at
+  the cliff.
+- Orgrimmar: when the way goes on by flight ("Fly to Ratchet", a boat after
+  it), the arrow leads up the wind rider tower to Doras instead of back
+  to the city gate.
+- Compact View / Detailed View now applies to every loot page at once
+  (Detailed stays the default).
+- New portraits bundled (Grubbis anew, Mor Grayhoof, Burning Felguard, Jarien
+  and Sothos, Strashaz Enchantress, the Dire Maul trash mobs).
+- Added loot: Miniature Cannon Balls (Cannon Master Willey), Eye of Arachnida
+  (Nerub'enkan), Band of the Steadfast Hero and Hammer of Divine Might (Kormok).
+- Run Log: hovering a Need roll shows everyone's rolls on it (yours in green,
+  the winner in gold); a lost Need shows the number you rolled; a boss's
+  loot tooltip lists the other players' rolls under each item.
+- The Drowned City map: Umbra and "Pyromancer" Braxton placed, the spot to
+  swim down to Atal'Byzal marked, and the Primeval Elemental moved to the
+  Atal'Byzal page.
+- Stratholme: Living: new 0.5 Quest Event entry Jarien and Sothos (both
+  portraits on it), with the five items from their chest.
+- Lower Blackrock Spire: new 0.5 Quest Event boss Mor Grayhoof (5 items) and
+  the rare Burning Felguard (Demonskin Gloves, Phase Blade).
+- Blackrock Depths: Brewmancer Nightcap added to Plugger Spazzring.
+- Upper Blackrock Spire: Chromatic Carapace added to Gyth.
+- Upper Blackrock Spire: Felstriker added to Warchief Rend Blackhand, and a
+  Trash Drops page with 13 Dungeon Set 1 pieces and Wind Dancer Boots.
+- Blackrock Depths: Verek's Collar and Verek's Leash now say they drop from
+  Verek (still on Warder Stilgiss's page).
+- The arrow no longer disappears when you reach an NPC: it says
+  "Talk to <NPC>" instead.
+- The arrow now knows every road: standing on a road it follows the road
+  (it could point back to a road further off). In Stranglethorn the
+  hand-made ways to the Rebel Camp and the troll tablets only lead once
+  you are near them.
+- Gnomer-gooooone!'s chain is now just Chief Engineer Scooty (Rig Wars is
+  no longer needed for it in Forever), and Rig Wars lost its warning.
+- Gnomeregan now has a Route for the Horde: Rig Wars and Chief Engineer
+  Scooty in Orgrimmar, then Scooty in Booty Bay. Gnomer-gooooone! (the
+  Goblin Transponder) is the last step before the run, and the way in is
+  the Transpolyporter beside Scooty. The ring quests come after the run.
+- Dire Maul: West trash: the Wand of Arcane Potency and the Eidolon
+  Talisman now show their mob portraits (the Talisman one Eldreth spirit,
+  "All Eldreth spirits" on hover).
+- Added trash loot to Dire Maul: East (Barbed Thorn Necklace, Unbridled
+  Leggings, Phasing Boots) and Dire Maul: West (Eidolon Talisman, Wand of
+  Arcane Potency, Stonebark Gauntlets).
+- Fixed trash mob portraits that showed another mob's face (a mob whose
+  look the game had to find could get the one found just before it).
+- At a place to kill or collect things (the arrow showing the objectives
+  in place of the yards) the pointer is gone: it pointed at the middle of
+  the area, which could be behind you while the mobs stood in front.
+- Added loot to Alcaz Prison (5 BoEs: Chaplain's Mitre, Spaulders of
+  Containment, Iron-Wrought Cuffs, Mark of Captivity, Enchantresses' Spire)
+  and The Drowned City (7 trash BoEs).
+- At a thing to pick up (the four troll tablets of Kurzen's Mystery) the
+  arrow no longer goes away: it says "Pick it up". For The Second Troll
+  Legend, on the bottom of the Vile Reef, it says "Swim underwater" once
+  you are in the water near it.
+- The arrow walks round the walls of the Ruins of Zul'Kunda and the
+  Bal'lal Ruins (Kurzen's Mystery's tablets): there it knows the ground
+  cell by cell (walls, ledges, gaps) and aims at the furthest point of
+  the way that can be walked to in a straight line. From the road in
+  Zul'Kunda to The Third Troll Legend: east to the end of the wall and
+  back along its south side, 155 yards, not 54 through the wall.
+- Alcaz Prison's map shows its bosses: Overseer Wrex, The Questioner and
+  Tidemistress Ca'zass on the Main Unit, Katerina the Cleaner and
+  Blazeroar on the Maximum Security Unit (from a player's marked map on
+  Discord). The Entrance label sits above the swirl now, clear of The
+  Questioner's room.
+- The arrow understands mountains between zones. A walk to a place in
+  another zone was a straight line (in Westfall's Dust Plains the arrow to
+  The Fourth Troll Legend in Stranglethorn pointed through the mountain,
+  "369 yds"). It now follows the walked ways of the Eastern Kingdoms and
+  Kalimdor from one zone to the next: to the nearest way, then corner by
+  corner along roads, passes, bridges and tunnels (clear of the other
+  faction's towns), and straight on from the last corner. The yards are
+  the whole way. Inside one zone the straight line stays unless the walked
+  way is much longer (a ridge between); a corner ridden past no longer
+  turns the arrow back. On the hand-made ways (the tablets from the Rebel
+  Camp, Dalaran, the dungeon routes) nothing changes.
+  New files: Data/WalkNet.lua, Systems/WalkNet.lua.
+- Fixed: the game could lose its graphics device over and over (the window
+  flipping between full screen and windowed every second, graphics resets
+  without end; seen in Ragefire Chasm, reported on Discord with the game's
+  gx.log: "RTV view create failed", "Device context was lost"). Every boss
+  portrait the game draws is a render target, and the journal kept every
+  one it had drawn for the whole session: some 125 after logging in, over
+  300 once many pages had been opened, and each graphics reset drew them
+  all again. Now the journal keeps at most 48 at once, lets go of the
+  oldest it no longer shows, draws only the bosses of the dungeon it opens
+  on after logging in (not every boss in the game), keeps only a few once
+  it is closed and none it isn't showing over a loading screen. Its hidden
+  models that look up a creature's look are shared instead of one per
+  creature. A boss portrait not seen for a while may take a moment to
+  show again.
+  The rows of a page that is not open no longer hold on to their
+  portraits: one is handed straight to a row on screen that shows the same
+  creature, or let go to make room, and a row that lost its portrait gets
+  it back by itself when it is on screen again. So a page always gets its
+  portraits, however many pages were opened before. A trash mob's portrait
+  is no longer drawn straight on its row when there is no room (a dark
+  disc until there is).
+- Portraits are pictures now. Every creature portrait the journal knows is
+  bundled as a picture of the game's own portrait (photographed in the
+  game, pixel for pixel, round edge included), so the game no longer draws
+  any of them: they show at once on every page, however many pages were
+  opened, and none is a render target. 185 new pictures: the bosses of the
+  new dungeons, the trash mobs, the Run Log's Spirit Healer. The boss ones
+  also come 128 pixels wide, used wherever a portrait is shown larger than
+  64 pixels on screen (the selected boss; a large journal; a high
+  resolution), as sharp as the game drew it there.
+  57 trash mobs and 5 bosses (Obsidian Sentinel, Theldren, Tunnelweb
+  Matriarch, Cinder, Snowtalon) were known by NPC ID only: their look was
+  asked of the game on each player's client, and never found for a creature
+  that character had not met. They have their look and picture now. Only
+  three trash mobs (Phantasm, Mana Stalker, Mindless Horror) are still
+  asked of the game; they, and any look the journal does not know, are
+  drawn as before, within the limit above.
+- Fixed: handing in a quest with several rewards to choose from could
+  show only one of them, now and then, mostly soon after logging in or a
+  /reload (reported on Discord). When the journal lists an item whose item
+  ID is not known yet, it looks the ID up by asking the server about the
+  item IDs around it; it asked for thousands at once after every login and
+  /reload, and a quest's reward items could wait behind them. It now asks
+  at most 10 a second, nothing the game already knows, and nothing while a
+  quest, gossip or vendor window is open or just closed.
+- The arrow to the Rebel Camp (Sergeant Yohwa, Brother Nimetz) no longer
+  points at the ridge the camp lies behind: it leads over the bridge from
+  Duskwood into Stranglethorn, right at the first turn, then up the path
+  into the camp. Seen by M on Duskwood's south road.
+  With the Route's exact paths, the whole road from Darkshire is followed
+  corner by corner.
+- Sunken Temple: The God Hakkar has its fourth reward to choose from,
+  Shapeshifter's Helm (leather, Agility, Intellect, Defense).
+- Sunken Temple: Jammal'an the Prophet has its third reward to choose
+  from, Leggings of Freedom and Sorrow (leather, Agility, Stamina,
+  Defense).
+- Ruins of Lordaeron: Viktor the Vile is listed right after Witherfang,
+  not after the last boss. Rath'mael is last, then the rare Lordaeron
+  Captain.
+- Blueprints (M's blueprint audit of 15 Nov 2026, every camping blueprint
+  checked against Wowhead Forever's recorded drops). Added: Arcane Forge
+  (Nanaya, Shaper's Terrace), Plague Doctor's Laboratory (Doctor Theolen
+  Krastinov) and Sewing Machine (Vectus) in Scholomance, Molten Foundry
+  (Ambassador Flamelash, Blackrock Depths), Loom (Baroness Anastari,
+  Stratholme), Seed Hybridizer (Tendris Warpwood, Dire Maul: West), and
+  Trapper's Workbench on The Beast too (Upper Blackrock Spire; Houndmaster
+  Loksey keeps his). Removed: Arcane Salvager from Rath'mael (Ruins of
+  Lordaeron); it drops from Charlga Razorflank and the Shade of the
+  Archmage.
+- The waypoint arrow now says to fly when the way on foot crosses other
+  zones. A walk used to be measured in a straight line, so from Stormwind
+  to the Rebel Camp in Stranglethorn (2,573 yards as the crow flies, but
+  across Elwynn and Duskwood) it said to walk instead of "Fly to
+  Darkshire". Every zone border on the way now counts as 500 yards more,
+  on foot from where you stand and from each flight point alike, so the
+  flight point picked is also the one with the fewest zones left to cross
+  (Darkshire, not Sentinel Hill). Seen by M at Stormwind's gryphon master.
+- Fixed: the waypoint arrow could say "Hearth to Stormwind City" while
+  you stood in Stormwind. When you hearthed with a loading screen longer
+  than two seconds, the journal saved where you hearthed from as where
+  your hearthstone goes (say Southshore), so hearthing "home" looked like
+  a shortcut there. Now the place is saved only once the hearthstone has
+  really moved you (after the loading screen), places saved the old way
+  are not used any more (the inn is found by its name until you next set
+  or use your hearthstone), Stormwind's inn is where it stands on
+  Forever's map, and the arrow never says to hearth to the place you are
+  already in. Seen by M in Stormwind.
+- Fixed: Master Mathias Shaw's map marker for Our Man in Theramore (Alcaz
+  Prison) was at his place on the old Stormwind map; it is now where he
+  stands in SI:7, Old Town (78.3, 70.7). Reported by Pekins on Discord.
+- Fixed: eight more quest NPCs in Stormwind had their map markers at their
+  places on the old Stormwind map; they now point where they stand:
+  Highlord Bolvar Fordragon, Grimand Elmore, Furen Longbeard, Shylamiir,
+  Wilder Thistlenettle, Brohann Caskbelly, Nikova Raskol and Lord Grayson
+  Shadowbreaker. In Ironforge and Thunder Bluff, Prospector Stormpike,
+  High Priest Rohan and Rahauro were a little off too.
+- Route: The Drowned City for the Alliance. The whole way to its two
+  quests: Sergeant Yohwa's two quests at the Rebel Camp taken together and
+  done at Kurzen's Compound, Brother Nimetz's Kurzen's Mystery (the arrow
+  leads right up to each of the four troll tablets not read yet, in the
+  shortest order), Troll Witchery (the Skullsplitter trolls), An
+  Acquaintance in Southshore, Loremaster Dibbs' Take Two With Water and
+  Magics of the Drowned City, the dungeon, back to Dibbs, then his two
+  deliveries (Ironforge, Dalaran; no second run for them). Krazek's two
+  quests and Ancient Gurubashi Secrets need level 34 and are left out.
+  A step done inside a dungeon and ready to hand in no longer sends the
+  route back through the entrance.
+- Route: at a place to kill or collect things (Kurzen's Compound, the
+  Valley of Bones, Demon Fall Canyon) the arrow no longer goes away, which
+  looked like it had stopped working: it stays, and in place of the yards
+  it shows what to kill or collect there, as the tracker does ("0/15
+  Kurzen Jungle Fighter slain", with Bad Medicine's lines under it as both
+  are done there), counting up as you go. The pointer rests while you
+  stand on the spot itself. Leave the area and the yards come back.
+- Route: the arrow from the Rebel Camp to the four troll tablets of
+  Kurzen's Mystery no longer points through the mountains round the camp:
+  it follows the walked way, corner by corner, from the camp to each
+  tablet, from tablet to tablet, and back to Brother Nimetz. The yards are
+  those of the way. Seen by M at the camp.
+
+CHANGES IN 2.0.8 (the release after 2.0.7)
+- RPG Mode, for players who installed the journal late: a dungeon done
+  before then can be marked as done. Quests come first: a handed-in quest
+  that proves the final boss died (e.g. The Unsent Letter, from VanCleef:
+  The Deadmines) opens the page for real, and is checked again the moment
+  a locked page is clicked. Only when no quest proves it, clicking a
+  locked page opens a small box with the usual locked text and "I already
+  did this dungeon before installing"; that shows the dungeon's name and
+  asks to confirm, then the whole page opens, as when its final boss dies
+  (a line in chat, no achievement popup). A page half opened by its
+  quests has the same button under each hidden boss ("???"). The locked
+  page's tooltip says it can be clicked. Only the whole dungeon, not
+  single bosses. The box is as wide as its buttons need in every language.
+  In every language. (Asked on Discord by Akaria: Horde Deadmines has no
+  quest that proves it.)
+- RPG Mode reads WoW Forever's Legacy Challenges. With Account-Wide
+  Unlocks on, every dungeon your account has completed in Novice,
+  Experienced and Master Spelunker opens its page, as if its final boss
+  had died: one line in chat, no popups. It is read after logging in and
+  whenever a challenge moves on, in every client language. Not from
+  Legacy: Ragefire Chasm and Hall of Thanes (Legacy has one tick for
+  both) and The Stockade (not in its lists); they keep the quests, the
+  kills and "I already did this dungeon". The other dungeons Legacy lists
+  no longer have that button while the option is on: their locked page
+  says it opens by itself once Legacy shows the dungeon done. Switched
+  off, the journal stops reading Legacy and every character is back to
+  its own unlocks, with the button on every page; nothing saved changes.
+  In every language.
+- RPG Mode: Account-Wide Unlocks is now on by default. Switching it off
+  is kept (before, off was simply not saved, so it shows on once).
+- RPG Mode: a locked dungeon page tears open as its bosses die, on every
+  dungeon. The parchment tears away diagonally and the dungeon's picture
+  shows through, as much of the card as bosses are dead, counted for each
+  dungeon (Ragefire Chasm, 4 bosses: a quarter each; The Deadmines, 8: an
+  eighth each; Blackrock Depths, 25: a little each). A group of bosses
+  (Sunken Temple's Altar Bosses) counts once, as on the boss list. The
+  final boss opens the whole page as before. With "Show dungeon quests",
+  the half-open pages tear the same way.
+- New: the Tier 0.5 (Dungeon Set 2) questline, as a page of its own. A
+  round icon on the home page, right of the Onyxia Attunement's, from
+  level 58 (right-click hides it; /dj t05 opens the page at any level and
+  brings the icon back). Click: your class's and faction's chain, all 29
+  steps from An Earnest Proposition to Saving the Best for Last, opened at
+  the step you are on. The four armor exchanges use your class's own
+  quests (Deliana in Ironforge, Mokvar in Orgrimmar); Bodley's four
+  "one of four" steps (the components and the summoned spirits) are shown
+  as a choice, and count once whichever he gave you. Three Kings of Flame
+  asks for the Ash of Asharell, as in Forever. In every language (quest
+  texts in English).
+- Scarlet Monastery: Cathedral, new for Alliance Paladins: A Brother In
+  Need (Katherine the Pure in Stormwind sends you to Aeonas in the
+  Cathedral's rear chamber), with its whole chain: the Strange Orb from
+  Darkshore to Return to Delgren (6 steps), then Battle at the Mannoroc
+  Coven, The Broken Hammer, A Lost Brother and Orders from the Grand
+  Crusader (the boat from Menethil Harbor to Aeonas's hut). Its quest page
+  links to what follows: By The Light's Grace (heal Aeonas inside the
+  dungeon) and Aeonas the Vindicated (Stormwind; Pauldrons of
+  Vindication). That the orb chain unlocks it is what players report.
+- Zul'Farrak: Sul'thraze the Lasher (epic two-hand sword, level 50) is
+  now on Antu'sul's and Chief Ukorz Sandscalp's loot, on a row of its own
+  right under the sword it comes from (Sang'thraze the Deflector on
+  Antu'sul, Jang'thraze the Protector on the Chief), joined to it by a
+  line and always shown. Its row says what to combine it with; its
+  tooltip names both halves and their bosses. It works like any other
+  row (Shift-click to link, Ctrl-click to try on, right-click to
+  favourite), the search finds it on both bosses, and the Loot Filter
+  greys it out for classes that can't use it. In every language.
+- Arrow: Raleigh the Devout (Southshore) stands upstairs in the inn: once
+  the arrow shows his portrait, it says "Go upstairs" under the yards. In
+  every language.
+- Arrow: after you hand Raleigh the Devout Brother Anton's letter (Down the
+  Scarlet Path), he reads it in a short scene before he offers In the Name
+  of the Light. The arrow stays on him and says "Wait for the RP" until
+  the scene's last line; the journal times it, so the next time (any
+  character) it counts down the seconds. In every language.
+- Quests you only see because "Show all class quests" or "Show all
+  profession quests" is on (another class's quest, or one for a
+  profession you don't have) no longer count: not in the home page's
+  quest count, not for its green tick, not for hiding dungeons whose
+  quests are done, not in the quest tracker or the Route, not in the
+  character export. They still show in the dungeon's quest list. (Asked on
+  Discord by Doudou: a warrior never got The Deadmines' tick because of
+  the paladin quest.)
+- Shaper's Terrace: Bolt's Charged Eyeball now also on Vitrix's loot
+  (it drops from Bolt and Vitrix).
+- Quest list: a quest whose quest chain you have finished, and that you
+  can take now (your level, faction and class allow it), gets the game's
+  golden spell-alert glow round its row, the swirling aura of a proc on an
+  action button (Destruction in Deadmines once the Toxic Soil steps are
+  handed in). It goes once you take the quest.
+- Quest list, in every dungeon (tried on The Deadmines and Scarlet
+  Monastery: Library first):
+  - Only your faction's quests are listed, with your faction's crest
+    alone at the top. New option "Show both factions' quests" (Options)
+    brings back the Alliance / Horde switch.
+  - The rows no longer show faction crests. In their place, a quest you
+    haven't taken has a round ! (as big as the turn-in ?). Its quest chain
+    not done yet: "Show Quest Chain", and a click opens the chain at the
+    step to do next (as the Show Quest Chain button), so nobody runs to
+    the quest giver too early. The chain done (or no chain): "Show pickup
+    on map", and a click shows where the quest is picked up on the map. A
+    quest with no spot on the map (one an item starts) says "How to pick
+    it up" and opens its page.
+  - A dungeon with no quests for your faction says so (it no longer
+    switches to the other faction's list).
+  - Once its quest chain is done, "Pick it up" shows beside the !, so the
+    quest isn't forgotten.
+    It sits on the title's line, clear of the quest chain and In Dungeon
+    icons, which stay side by side on the line below.
+- The golden glow on a quest you can now take is a little calmer, and
+  cleaner: no more little squares running round the edge. The soft golden
+  glow round the row now breathes slowly, and a soft beam of light glides
+  across the row once each time you open the quest page (journal opened,
+  dungeon changed, Quests tab); after that only the glow
+  (Media/ChainSheen.tga: restart the game once to see it). It only glows while the row says "Pick it up" (not once the
+  quest is in your log). New option on the Quests page: Remove quest glow
+  on chain step "Pick it up" ("Pick it up" stays).
+- Scarlet Monastery, the big map (M): once the dungeon tracker knows the
+  wing (a kill of a mob or boss only that wing has), the map shows that
+  wing straight away. The Graveyard / Library / Armory / Cathedral buttons
+  now really switch the map (in the Armory they did nothing, the game's
+  room name won), and they sit down the map's left side, clear of other
+  addons' map buttons, boss pins and the Hide quests / Boss icons boxes,
+  no longer over the bosses at the top right. World Map stays top right.
+- Fixed, Scarlet Monastery: walking into the Cathedral, the tracker and
+  the map said Graveyard until a Scarlet Wizard died. The four portals
+  stand side by side and the Cathedral's was taken for the Graveyard's.
+  Now an entrance only counts as a wing's when it is that exact portal,
+  and the guess from the entrance is no longer taken as proof: the
+  tracker waits for the room name or a kill. A mob two wings share rules
+  the others out: the first Scarlet Myrmidon or Defender (Armory or
+  Cathedral) says Cathedral at once, the likeliest; if it was the Armory,
+  its first mob of its own (a Scarlet Soldier, Evoker, Guardsman,
+  Protector or Conjuror) puts it right.
+- Route arrow, Durotar: off the zeppelin (the towers outside
+  Orgrimmar) the arrow pointed at the city straight through the cliff.
+  It now follows the road west from the towers and up the canyon to
+  Orgrimmar's gate, corner by corner, and counts the whole way; inside
+  the city it follows the city's roads as before. Only for a way into
+  Orgrimmar (or to the zeppelins); anywhere else in Durotar is as before.
+- Options: a new Quests page, after Dungeon list, with the quest options
+  moved there from Dungeon list: Show all class quests, Show all
+  profession quests and Show both factions' quests (with it on, the quest
+  list's crests let you switch to the other faction's quests as before).
+- Quest rewards: In the Name of the Light now shows its reputation
+  (Stormwind +200; Alliance, Darnassus, Ironforge and Gnomeregan Exiles +50
+  each), and Past Due its Kirin Tor +100.
+- Search: the search bar finds bosses too (two letters or more, like
+  items): their picture, their dungeon under the name, and a click opens
+  the boss's page. A boss comes before items that match the same way.
+  Faster search: only the results on screen look up their icons (and a
+  recipe's skill), and scrolling the results no longer searches again
+  (a search like "ma" used to look up over 600 icons each time).
+- Stratholme: Living: Ezra Grimm, a boss page of his own after Postmaster
+  Malown (the smoke shop's keeper, who comes when you touch the box of
+  tobacco for The Great Fras Siabi; not on the Dungeon Tracker, like Death
+  Knight Darkreaver). Loot: Ezra's Seal of
+  Authenticity, Grimm's Packing Gloves, Luxurious Smoking Jacket (it was on
+  the Trash Drops), Grimm's Premium Tobacco (the quest's item), Essence of
+  Anarchy and Blueprint: Anarchist's Workbench. Found by "Fras Siabi" too.
+  His page shows his quest, The Great Fras Siabi, right of his name with a
+  !: click it to open the quest.
+- Scholomance: Death Knight Darkreaver, a boss page of his own after
+  Darkmaster Gandling, marked "Paladin Mount Quest Boss" (in every
+  language) where other bosses say Rare. He is summoned in Rattlegore's
+  room for the paladin's epic mount quest and the shaman's The Darkreaver
+  Menace. Loot: Specter's Blade, Malicious Axe, Necromantic Band,
+  Oblivion's Touch, and the two quest items, Charger's Lost Soul and
+  Darkreaver's Head.
+- Scholomance: Kormok, a boss page of his own after Death Knight
+  Darkreaver, marked "0.5 Quest Event" like Theldren and Lord Valthalak:
+  summoned in Ras Frostwhisper's room with the Brazier from the Dungeon Set
+  2 quests. Not on the Dungeon Tracker. Loot: Blade of Necromancy, Ironweave
+  Pants, Amalgam's Band, and the Left and Right Piece of Lord Valthalak's
+  Amulet.
+- Loot: more of the audit's items, now confirmed: Krol'dok Stronghold's
+  Trash Drops: Twilight Enforcer's Legs, Guise of Battle, Supreme Smasher
+  and Shadow-Seer Orb. Its trash drops them all, so that page names no
+  mobs and shows no mob pictures.
+  Maraudon, Lord Vyletongue: Putridus Wall. Scarlet Monastery: Swampchill
+  Fetish (Library, Armory and Cathedral trash, very rare).
+- Loot: 68 items that were missing from the journal, added where they
+  drop (and the Wildheart Belt on Quartermaster Zigris too):
+  Blackrock Depths: Backroom Bulwark (Phalanx), Savage Gladiator
+  Shoulders (Grizzle). Lower Blackrock Spire: Quartermaster Zigris's
+  Dungeon Set 1 belts and bracers. Upper Blackrock Spire: Blackblade of
+  Shahram (General Drakkisath). The Deadmines: Goblin Mail Leggings
+  (Goblin Shipbuilder). Razorfen Kraul: Armor Piercer (Razorfen
+  Spearhide). Dire Maul East: Band of Vigor and Pimgib's Collar
+  (Lethtendris and her imp), Breakwater Legguards and Riptide Shoes
+  (Hydrospawn), and a new Trash Drops page (Marksman Bands). Dire Maul
+  West: two each for Tsu'zee, Illyanna Ravenoak and Magister Kalendris.
+  Dire Maul North: the three guards' eight greens. Scarlet Monastery: 12
+  very rare Scarlet drops (Mark of Kern, Watchman Pauldrons, Beguiler
+  Robes, Chesterfall Musket, Fight Club, Bloodspiller, Flintrock
+  Shoulders, Ruthless Shiv, Archon Chestpiece, Warchief Kilt, Tainted
+  Pierce, The Butcher), each on the Trash Drops of the wings whose mobs
+  drop it. Scholomance: Alanna's Embrace, Death's Clutch and Spellbound
+  Tome (Ras Frostwhisper), Headmaster's Charge, Coif of Elements and
+  Lightforge Helm (Darkmaster Gandling). Stratholme: Hand of the Zealous (Malor), The
+  Postmaster's Band (Postmaster Malown), Luxurious Smoking Jacket (Ezra
+  Grimm), and Maleki's, Nerub'enkan's and
+  Baroness Anastari's four each, Idol of Brutality (Barthilas). Zul'Farrak:
+  Spellshock Leggings (Antu'sul), Bloodletter Scalpel (Ruuzlu). The new
+  trash rows show their mobs' pictures.
+- Loot pages: when an item has the item it makes on a row under it
+  (Sul'thraze the Lasher under Sang'thraze), the next item takes the
+  space under its neighbour: on Antu'sul, Spellshock Leggings now sits
+  right under Lifeblood Amulet.
+- Razorfen Kraul: An Unholy Alliance is now its first step only (the
+  Small Scroll from Charlga Razorflank, taken to Varimathras). The final
+  step and the whole chain are on Razorfen Downs, with its warning: the
+  quest is done OUTSIDE Razorfen Downs, so do it before going in.
+- Krol'dok Stronghold, Horde: the quest chain of Eye of Mugg, Tome of
+  Twilight and A Token of Vengeance is whole now (it jumped from
+  Encroaching Twilight to Clugfist's Decree). Added: A Message in Blood,
+  Food for the Taking, Twilight Missives, Digging for Answers, The Purple
+  Ones (two quests with that name), Sickening Lights, Twilight No More!,
+  Spread the Word, Land of Giants, Might Makes Right, Unworthy Champion,
+  and Rumblings of Discontent before Rise Up!. Each step has its giver,
+  hand-in and place. The Alliance chain is unchanged.
+- Quest list: with "Pick it up" showing, "Available from Level X" no
+  longer wraps onto two lines; the chain and In Dungeon icons stay right
+  after it.
+- Stratholme, Baron Rivendare: added the drops that were missing:
+  Skullforge Reaver, Bonescraper, the other five Dungeon Set 1 legs (Kilt
+  of Elements, Dreadmist Leggings, Wildheart Kilt, Lightforge Legplates,
+  Legplates of Valor) and the Head of Baron Rivendare (Above and Beyond).
+- Fixed, arrow: it could say "Fly to" a flight point the character has
+  never found (Chillwind Camp from Southshore). The journal's list of
+  found flight points only ever grew; now every flight map you open puts
+  it right: a place the map shows as not found is taken off.
+- Fixed, arrow: it still said "Fly to Chillwind Camp" at Southshore's
+  gryphon master after the flight map was opened. The Forever client
+  marks the flight points you have not found as "distant", not "none", so
+  they stayed on the list. Now only the place you are at and the places
+  you can fly to count as found, and the arrow changes as soon as the
+  flight map opens.
+- Fixed, Route: the automatic flight to a place with stops on the way
+  (Stormwind to Southshore, through Ironforge and Menethil Harbor) got
+  "There is no direct path to that destination!". The flight map works
+  such a flight out only when asked (as when you hover the place), so the
+  journal now asks first, and tries once more if the game still says no.
+- Route: a stop that is a place to kill or collect things, not a person
+  (Down the Scarlet Path's Undead Ravagers in the Valley of Bones, the
+  motes in Demon Fall Canyon) has no arrow once you are there: within 250
+  yards of it, or anywhere in its subzone (learned the first time you get
+  close, and kept, so a /reload in the area doesn't bring it back). It
+  stays away while you hunt around (400 yards); leave and it comes back. When the goal is done, it
+  points to where you hand it in. A person to talk to keeps the arrow.
+- Item sets: click a piece of a set (e.g. Dreadmist Belt) and the whole
+  set shows in a row of icons right over the item, head to feet, the
+  piece you clicked framed in gold; the tooltip always goes over the row
+  (never covered) and may reach right up to the screen's top there (the
+  game no longer moves it while the row is open). Only one still
+  too tall is made wider, so its long lines wrap less and it gets
+  shorter. Only if the journal sits so high
+  that even the widest can't fit does it go beside the row. Move onto the row and hover
+  any piece for its own tooltip; Shift-click links
+  it, Ctrl-click tries it on. Click the item again, or move off both, and
+  it goes. The tooltip says "Click to show the whole set". Every set with a
+  piece in the journal: Dungeon Set 1, Defias Leather, the Scholomance
+  sets, The Postmaster, Ironweave and Forever's own (Violet Sorcerer's,
+  Rotmender's, Krol'dok, Defias Enforcer's...), 26 in all. In every
+  language.
+- Fixed: a few seconds of lag after logging in or /reload (reported on
+  Discord). A few seconds after login the journal draws the bosses'
+  portraits in the background, so they show at once when you open it; it
+  drew dozens a second (each one loads a creature model), and most of
+  them twice. Now each one once, at most one new one every tenth of a
+  second, so the work is spread over about twenty seconds instead of five.
+- Item sets: once you move on to another item, the set's row is gone for
+  good: back on the piece it stays closed until you click it again.
+- Zul'Farrak: Spellshock Leggings (Antu'sul) and Bloodletter Scalpel
+  (Ruuzlu) say "Extremely rare drop" in their tooltip (in every language).
+- Item sets: going up from the item to its set's row of icons no longer
+  closes it when the mouse crosses the item above (compact view, a quick
+  move): the space between the item and the row keeps the mouse on its
+  way. Stopping there for a second closes the row as before, so the item
+  under it can be hovered.
+- Fixed, Scholomance: Dreadmist Wraps are hands, not wrist (their row
+  said "Wrist, Cloth").
+- Upper Blackrock Spire, Blackhand's Command: not in WoW Forever for now,
+  like Attunement to the Core. It is greyed out in the list ("Not available
+  as of now" on hover) and no longer counts towards the dungeon's quests or
+  the quest tracker.
+- Fixed, Loot Filter: an item could stay greyed out for the whole session
+  though it had a stat you picked (reported on Discord by swisp for items
+  with a green "Equip:" line, e.g. Slitherwrap Girdle, +9 Agility). When
+  the filter read an item before the server had sent its details, it kept
+  that empty read: other addons' lines (vendor price, item level...) made
+  it look complete. Now such a read is never kept, every item is read
+  again once its details arrive, and the five main stats (Strength,
+  Agility, Stamina, Intellect, Spirit) are also checked against the game's
+  own item stats.
+- Fixed, Loot Filter: "Only show loot my class can use" greyed out every
+  polearm for Druids, who can train Polearms in WoW Forever (Felbough Arm,
+  same report).
+- Route is back in the release: the Route button on a dungeon's quest list
+  (City of Dalaran, Razorfen Kraul and Scarlet Monastery: Library for the
+  Alliance) with the tick boxes in the tracker, the walked ways, "Not
+  found? Next spot" and the "use the item" reminder. It had been held back
+  since 2.0.6.
+- Route, new: Excavation Site: Wetlands for the Horde. From where you
+  stand: Changing Tastes (Borstan, Orgrimmar), Dragonmaw Rumors (Zaruk,
+  Hammerfall) to the Deathstalker Agent, Open the Maw, the dungeon, then
+  the hand-ins. Elder Knowledge starts from the Titan Relic inside, so its
+  hand-in in Thunder Bluff, Earthen Echo and Muln Earthfury come after the
+  run (with the relic already in your bags, no run is planned for it).
+- Arrow: the destination is not said twice. "Take the zeppelin to
+  Orgrimmar", "Take the boat to ..." or "Fly to Undercity" already says
+  where to, so the "Get to Orgrimmar" line over it is gone; it shows again
+  once the ride or flight is behind you, if still needed.
+- Arrow, down in Undercity: a way that leads out of the city points at the
+  nearer elevator (east or west of the Trade Quarter) with "Take the
+  elevator up" under the next step, not straight through the rock at the
+  zeppelin tower. A way that stays in the city (a quest giver there, the
+  bat handler) is as before; up in the ruins it is the straight line
+  again. In every language.
+- Arrow, inside Orgrimmar: it follows the city's roads instead of pointing
+  straight through the cliffs (Borstan in the Drag, from the Valley of
+  Strength: round the bank's ring and up into the Drag). It aims at the
+  next corner of the shortest way along the city's roads, taken from the
+  guards' patrol paths shown on the map (Valley of Strength, the Drag, the north and west
+  roads, the Cleft of Shadow, into the Valleys of Honor, Wisdom and
+  Spirits); the yards shown are the whole way. A way that leaves the city
+  (a zeppelin, a spot outside) goes to the gate first. Coming into the
+  city from outside is still the straight line.
+- Quest list: the Route button sits beside Track under the "Quests" title
+  (Route first).
+- Arrow: "Fly to ..." starts with a small flight icon, the cursor the
+  game shows over a flight master.
+- Arrow: it learns where quest NPCs really stand. The journal's spots
+  come from web maps and can be some yards off (Zaruk in Hammerfall: the
+  arrow pointed 12 yards past him; his spot is now the game's own). Now, whenever
+  you talk to an NPC the arrow knows, the place is kept for your account
+  and the arrow leads there from then on.
+- Route: when everything before the run is picked up and handed in, the
+  arrow goes away and a small card with the dungeon's picture and name
+  comes up in its place, saying "You're ready to go in!" in green. Under
+  it, the show-location icon: click it and the arrow leads to the
+  entrance. The X closes the card without the arrow. In every
+  language.
+- Arrow, Wetlands: it walks the real way to the Deathstalker Agent and to
+  Excavation Site: Wetlands' entrance. Both are up in the hills, reached
+  only from the south: down the main road past the Dragonmaw gate, then
+  the path that climbs north-west. Before, it pointed straight at them,
+  into the hillside. From the Thandol Span, Menethil Harbor and Dun Algaz;
+  the yards shown are the whole walk.
+- Route: a chain step that is in your log and not done yet leads to where
+  it is done, then to its hand-in (Down the Scarlet Path: the Undead
+  Ravagers in the Valley of Bones, Desolace, then back to Brother Anton).
+  Before, the arrow only knew the hand-in, so it showed nothing while you
+  stood by him.
+- Route: it does the clicking. When the arrow says "Fly to ...", talking
+  to the flight master takes that flight at once. The dungeon quests on
+  the Route (the ones it lists to pick up or hand in) are accepted and
+  handed in by themselves, picked from the quest giver's list; a reward
+  with a choice to make waits for you. Every other quest is left alone.
+
+CHANGES IN 2.0.7 (the release after 2.0.6)
+- Blackrock Depths, Fragment of the Firelands (Horde): the fragment drops
+  from Magmus. The quest says so, lists the fragment
+  as the item it needs, and Magmus' loot lists it; the old "which one
+  drops it isn't confirmed yet" note is gone (reported on Discord by
+  Vakos).
+- Recipes & Patterns pages: small profession icons (the game's own:
+  Alchemy, Blacksmithing, Enchanting, Engineering, Leatherworking,
+  Tailoring, Cooking) in the middle of the "N items" line, between the
+  count and the Compact view button. Only the professions the page has
+  recipes of (no Tailoring icon in a dungeon with no Tailoring recipe),
+  and only when it has two or more. They glow softly like the journal's
+  other round buttons; a click shows that profession's recipes only and
+  lights the icon up like the Forever-only emblem, a second click shows
+  all again. Hovering names the profession. The choice is dropped on
+  another dungeon's page. The icons sit in a small rounded dark box, and
+  a click only hides the other professions' recipes: the page keeps its
+  layout (columns, Compact view button, scroll bar, the icons' place).
+- Fixed: going into or out of a dungeon (reported for Wailing Caverns) could
+  leave the loading screen flickering for ever, so the game had to be ended.
+  2.0.6 added 38 trash mobs whose portraits the journal looked up in the
+  background with hidden models after every login, for minutes (most of
+  them never found). Now: nothing is looked up by itself after logging in,
+  a mob's portrait is looked up when a page shows it, never while you are
+  inside a dungeon (it waits until you are out), only while the journal
+  window is open, and a mob the game doesn't give is remembered and not
+  tried again for a week. (Reported on Discord as crashes on loading
+  screens: boats, the Deeprun Tram, entering cities.)
+- Fixed, RPG Mode: a final boss the Dungeon Tracker counted could leave its
+  page locked. Inside dungeons Forever hides who died, and RPG Mode only
+  went by the boss's name; the tracker knows a boss by its encounter ID,
+  the same number in every client language. Now every boss the tracker
+  counts counts in RPG Mode too (the final boss unlocks the page), and so
+  does a boss event's encounter ID on its own. At login, the bosses
+  already in your Character Logs are counted, so pages missed before open
+  then. (Reported on Discord by Matanaliz: Scarlet Monastery Armory on a
+  Russian client, Herod killed, run completed, page still locked.)
+- Quest list: the Track button sits under the "Quests" title instead of
+  beside it.
+- Open the Maw: the Deathstalker Agent's pickup spot is where he stands
+  (51.4, 59.2), the same as his turn-in; it pointed at the dungeon's door.
+- Dungeon Tracker: a boss also counts as killed when its own loot shows up:
+  an item only that boss drops (not the dungeon's trash, not shared loot,
+  no recipe) being rolled on, looted or seen in a loot window. Inside a
+  dungeon the game hides which mob died, so a boss with no "fight over"
+  event, killed by a character it gives no XP, wasn't crossed off: the Ring
+  of Law stayed a skull while the group rolled on Ok'thor's Ban'thok Sash.
+  It is crossed off now, with the challenger's own portrait.
+- Dungeon Tracker, Shadowfang Keep: the Fel Steed / Shadow Charger (the
+  stable horses, no boss fight) are off the tracker and the run pages; their
+  kills count as trash. A run used to need them dead, so it stayed "In
+  progress" when they were skipped, or killed without the journal seeing it
+  (inside a dungeon the game names a dying mob only in the XP line, and they
+  give no XP to a higher character). Runs stuck that way are put right at
+  login. They stay in the journal with their loot.
+- Scarlet Monastery: Cathedral: every boss lists the recipes recorded
+  dropping from it (the Boots plans, Leather Shoes, Mail Boots and Cord
+  patterns): High Inquisitor Fairbanks 19, Scarlet Commander Mograine 20,
+  High Inquisitor Whitemane 18.
+- Scarlet Monastery: Armory: Herod lists the 20 recipes recorded dropping
+  from him (5 Boots plans, 5 Leather Shoes and 4 Mail Boots patterns, 6
+  Cord patterns, the same set as Arcanist Doan). The Drowned City: no recipe
+  is recorded from its bosses yet, so nothing was added there.
+- Scarlet Monastery: Graveyard and Library: every boss lists the recipes
+  it has been recorded dropping on WoW Forever (Recipes & Patterns tab).
+  Graveyard: the 5 Chain Helm plans, 6 Leather Helm patterns and 6 Filigreed
+  Circlet patterns on Interrogator Vishas and Bloodmage Thalnos (all 17),
+  Azshir the Sleepless (15), Ironspine (15) and Fallen Champion (9).
+  Library: Houndmaster Loksey the same 17 plus Blueprint: Trapper's
+  Workbench (in his loot); Arcanist Doan 5 Boots plans, 5 Leather Shoes
+  and 4 Mail Boots patterns, 6 Cord patterns. Nothing already listed was
+  taken out (Pattern: Defender's Leather Kilt stays on Thalnos).
+- Uldaman: 12 recipes recorded dropping from its bosses are listed:
+  The Lost Dwarves (from Eric "The Swift") Plans: Warder's Boots and
+  Pattern: Stalker's Mail Boots; Galgann Firehammer Plans: Justicar's
+  Boots; Archaedas 9 gloves recipes (Skulker's, Mender's and Skycaller's
+  Leather Gauntlets, Skycaller's Mail Gauntlets, Fiery, Gilded and Radiant
+  Gloves, Plans: Sentinel's and Warder's Gloves). Warder's Boots stays on
+  Obsidian Sentinel too. Krol'dok Stronghold: nothing new (Blueprint:
+  Expert Campfire was already on Slavecrusher Grox).
+- Maraudon: every boss lists the gloves recipes recorded dropping from it
+  (37 in all): Noxxion 4, Razorlash 5, Meshlok the Harvester 1, Celebras
+  the Cursed 4, Landslide 8, Tinkerer Gizlock 6, Rotgrip 4, Princess
+  Theradras 5.
+- Zul'Farrak: the same for Antu'sul 7, Witch Doctor Zum'rah 9,
+  Shadowpriest Sezz'ziz 7, Gahz'rilla 7, Zerillis 1 (Plans: Warder's
+  Boots), Dustwraith 1 (Plans: Sentinel's Boots) and Chief Ukorz Sandscalp
+  10, and Theka the Martyr 4, Nekrum Gutchewer 3, Sergeant Bly 3 (with
+  his Stalker's Mail Boots) and Ruuzlu 9.
+- Razorfen Downs: every boss lists the recipes recorded dropping from it
+  (the Boots plans, Leather Shoes, Mail Boots and Cord patterns, as in
+  Scarlet Monastery): Tuten'kash 16, Plaguemaw the Rotting 17, Mordresh
+  Fire Eye 18, Glutton 17, Ragglesnout 6 (and his Sentinel's Boots),
+  Amnennar the Coldbringer 15.
+- Recipes & Patterns pages with many of the Forever recipe sets that drop
+  all over (the gloves, boots, cords and helms; 10 or more, e.g. The
+  Deadmines, Blackfathom Deeps, The Stockade, Gnomeregan, Razorfen Kraul
+  and Downs, Scarlet Monastery, Uldaman, Zul'Farrak, Maraudon) show no
+  portraits any more: up to 180 of the same faces on a page, all drawn
+  by the game at once (Gnomeregan could freeze). Like Dire Maul: North,
+  they go to two columns when long, with the bosses after the recipe's
+  profession and in its tooltip ("Drops from"). Epic recipes keep their
+  bosses' portraits. Pages of a dungeon's own recipes (Blackrock Depths,
+  Blackrock Spire, Stratholme, Scholomance...) are unchanged.
+- Sunken Temple: Jammal'an the Prophet lists the 5 recipes recorded
+  dropping from him (Pattern: Black Gloves, Skycaller's Mail Gauntlets,
+  Stalker's Mail Gauntlets, Warden's Leather Gauntlets, Plans: Warder's
+  Gloves) and Blueprint: Fishing Hut. Alcaz Prison: no recipe drops known.
+- Blackrock Depths: Lord Roccor (Formula: Smoking Heart of the Mountain),
+  Pyromancer Loregrain (Formula: Enchant Weapon - Fiery Weapon), Golem
+  Lord Argelmach (Blueprint: Master Forge) and Plugger Spazzring
+  (Schematic: Goblin Jumper Cables XL); Trash Drops: Plans: Dark Iron
+  Sunderer, Dark Iron Mail and Dark Iron Shoulders (the Blacksmithing
+  Plans), Schematic: Dark Iron Bomb, Dark Iron Rifle, Gnomish Alarm-O-Bot,
+  Master Engineer's Goggles and World Enlarger, each with the mob that
+  drops it.
+- Lower Blackrock Spire: Quartermaster Zigris also drops Blueprint: Iron
+  Oven; and five trash recipes with their mobs (Plans: Stalwart Helm,
+  Pattern: Robe of the Archmage, Volcanic Shoulders, Formula: Enchant
+  Weapon - Superior Striking, Enchant Gloves - Greater Strength) are on its
+  Recipes & Patterns page. (Their Trash Drops entry has no row of its own:
+  it would be an empty page.) Plans: Stalwart Helm is listed with the
+  dungeon's own recipes at the top (under Robe of the Archmage), not with
+  the Forever recipe sets that drop all over.
+- Blackrock Depths and Lower Blackrock Spire: the mobs that drop these
+  trash recipes have their portraits on the Recipes & Patterns page
+  (Weapon Technician, Doomforge Craftsman and Arcanasmith, Ribbly's Crony,
+  Hammered Patron, Bloodaxe Veteran, Firebrand Pyromancer and Legionnaire,
+  Spirestone Warlord and Mystic).
+- Upper Blackrock Spire: Pyroguard Emberseer (Formula: Molten Heart of the
+  Mountain), Solakar Flamewreath (Schematic: Hyper-Radiant Flame
+  Reflector), Goraluk Anvilcrack (Pattern: Invulnerable Mail, Elemental
+  Leatherworking), Gyth (Recipe: Flask of Chromatic Resistance), General
+  Drakkisath (Recipe: Flask of the Titans), and Blackhand Elite's Formula:
+  Enchant 2H Weapon - Superior Impact on the Recipes & Patterns page.
+- Lower Blackrock Spire: Mother Smolderweb drops Formula: Dormant Heart of
+  the Mountain.
+- Dire Maul: East: Hydrospawn lists Pattern: Truefaith Gloves.
+- Dire Maul: West: Magister Kalendris drops Pattern: Big Bag of
+  Enchantment.
+- Dire Maul: North: the 11 patterns from Knot Thimblejack's Cache (the
+  crate Knot leaves after Free Knot!) are on the Recipes & Patterns page:
+  Belt of the Archmage, Felcloth, Inferno and Mooncloth Gloves, Cloak of
+  Warding (Tailoring); Girdle of Insight, Mongoose Boots, Swift Flight
+  Bracers, Chromatic Cloak, Hide of the Wild, Shifting Cloak
+  (Leatherworking). The cache has no row of its own in the list.
+- Stratholme: Living: Cannon Master Willey drops Plans: Heartseeker
+  (Weaponsmith), Balnazzar Pattern: Truefaith Vestments and Recipe: Flask
+  of Distilled Wisdom; Plans: Serenity (Master Hammersmith) is in the
+  Blacksmithing Plans on the Scarlet side, under Trash Drops.
+- Stratholme: Undead: Maleki the Pallid drops Plans: Hammer of the Titans
+  (Master Hammersmith); Plans: Corruption (Master Swordsmith) is in the
+  Blacksmithing Plans on the Service Gate side, under Trash Drops.
+- Scholomance: Ras Frostwhisper drops Recipe: Flask of Supreme Power and
+  Blueprint: Alchemy Laboratory;
+  Darkmaster Gandling Pattern: Robe of the Void and Recipe: Major Mana
+  Potion; Spectral Researchers Pattern: Pristine Scorpid Leggings (new in
+  Forever), listed with Scholomance's own recipes at the top.
+
+CHANGES IN 2.0.6 (the release after 2.0.5; the builds below, 2.0.6 to
+2.0.54, were its test builds)
+- Options > General > Auto Item Comparison: the journal's item tooltips
+  compare with your equipped item right away, without holding Shift. Off
+  by default (Shift as before). In every language.
+- Scholomance: Trash Drops page: Magister's Belt
+  (Scholomance Adept), Dreadmist Belt (Scholomance Necromancer), Wildheart
+  Bracers (Diseased Ghoul), Formula: Enchant Weapon - Lifestealing and
+  Pattern: Wicked Leather Armor (Spectral Researcher), Formula: Enchant 2H
+  Weapon - Major Spirit (Scholomance Adept), Pattern: Runic Leather Armor
+  (Scholomance Dark Summoner), Dark Rune, Skin of Shadow, Shadowcraft
+  Bracers, Wildheart Belt, Bindings of Elements, Lightforge Bracers, each
+  with its mobs' portraits, and the seven rare BoEs of its trash (Coldstone
+  Slippers, Tattered Leather Hood, Icy Tomb Spaulders, Malefic Bracers,
+  Innervating Band, Belt of the Ordained, Bonebrace Hauberk). All
+  confirmed. The four recipes are on the Recipes & Patterns tab.
+- Blackmaw Hold trash: Plans: Breastplate of Salvation drops from Legashi
+  Summoner (was "Blackmaw Hold trash"), Pattern: Timbermaw Tunic from
+  Blackmaw Druid: both with the mob's portrait.
+- Stratholme: Trash Drops pages on both sides, each item with the mobs of
+  that side as portraits: the Tier 0 bracers and belts (Magister's,
+  Dreadmist, Devout, Wildheart, Shadowcraft, Beaststalker's, Elements,
+  Lightforge; Belt of Valor on the Undead side), the seven rare BoEs of all
+  its trash (Gracious Cape, Sacred Cloth Leggings, Plaguehound Leggings,
+  Morlune's Bracer, Stratholme Militia Shoulderguard, Plaguebat Fur Gloves,
+  Juno's Shadow: "Drops from: ALL Trash"), Righteous Orb (Living) and
+  Frayed Abomination Stitching (Undead). Recipes, on the Recipes & Patterns
+  tab: Living: Formula: Enchant 2H Weapon - Major Intellect (Crimson
+  Sorcerer), Pattern: Runic Leather Shoulders (Crimson Battle Mage),
+  Schematic: Ultra-Flash Shadow Reflector and Schematic: Voice
+  Amplification Modulator (Crimson Inquisitor). Undead: Formula: Enchant
+  Weapon - Unholy Weapon (Thuzadin Shadowcaster), Pattern: Ghostweave Pants
+  (Spectral Citizen), Pattern: Wicked Leather Belt (Ghoul Ravener).
+- Sunken Temple map: the six serpent statues that bring Atal'alarion are
+  on it, drawn as the statue itself with its number (1 to 6, the order to
+  use them: South, North, Southwest, Southeast, Northwest, Northeast) over
+  its head, all facing the pit; mouse-over says which one and where it
+  stands ("Statue 1 of 6 - South") and what to do. In every language.
+- Quest items that are green in the game show green in the journal (they
+  were white): Frayed Abomination Stitching, Essence of Eranikus and the
+  Gemstones of Spirestone, Smolderthorn and Bloodaxe.
+- Item colours: the journal asked the game for quality colours in an old way
+  this client no longer has, so any colour it worked out itself came out
+  blue (green quest items, and items whose data was still loading). It now
+  asks the game the current way, with the standard colours as backup.
+- Stratholme: Undead, Baron Rivendare: Runeblade of Baron Rivendare (epic
+  two-hand sword).
+- Gnomeregan: Grubbis' portrait is a picture bundled with the addon, like
+  the other bosses'. The game drew his new Forever model live, and on the
+  Recipes & Patterns tab (he is on 17 rows there) that could freeze the
+  game: black screen, then a graphics card error.
+- Track (the quest tracker window) is on every dungeon's quest list again,
+  as in 2.0.5: 2.0.50 had taken it off by mistake. Only the dungeon route
+  (the arrow guide through a dungeon's quests) is held back for now.
+- Trash Drops pages with items from certain mobs and items from all trash:
+  the all-trash ones say "Drops from: ALL Trash" in their tooltip (no label
+  on the row): Ruins of Lordaeron (Rotmender's Garb, Gloves, Sash), Sunken
+  Temple (its twelve rare BoEs), Scholomance (its seven rare BoEs). In
+  every language.
+
+CHANGES IN 2.0.54
+- Show Quest Chain opens "You just need 1 of the following quests:" (even
+  if you closed it) and its quests light up gold for about 3 seconds, the
+  same pulse as an option the journal points you to in Options.
+
+CHANGES IN 2.0.53
+- Quest chains: "1. You just need 1 of the following quests:" is open
+  from the start, its quests listed below it (players missed the +). The
+  - still closes it.
+
+CHANGES IN 2.0.52
+- The Mallet of Zul'Farrak page: Track brings up the waypoint arrow
+  again, as in 2.0.5 (players already use it). 2.0.51 had taken it off.
+
+CHANGES IN 2.0.51
+- Dungeon Tracker, Altar Bosses: the + sits a little higher on the
+  portrait, clear of the portrait under it.
+- Quest tracker windows (Track) are drawn above the game's own quest list:
+  where the two met, the game's quest lines showed through the window.
+- The Mallet of Zul'Farrak page: Track no longer brings up the waypoint
+  arrow (the arrow is for the Cozy Sleeping Bag's chain only, as Onyxia
+  Attunement already was).
+
+CHANGES IN 2.0.50
+- Dungeon Tracker, Altar Bosses: the + is on the bottom edge of the
+  portrait now, and the row of the six opens inside the tracker, under
+  all the bosses (it opened in a box over the portrait).
+- Track (the quest tracker window) is off the dungeons' quest lists for
+  now; it comes back once it is ready. The Cozy Sleeping Bag keeps it,
+  with its arrow, as before (the Onyxia Attunement and Mallet of
+  Zul'Farrak pages keep their Track too).
+
+CHANGES IN 2.0.49
+- Dungeon Tracker, Sunken Temple: the Altar Bosses are on it as one
+  portrait with a small + on top. Click it (or the portrait) and a row of
+  the six (Gasher, Hukku, Loro, Mijan, Zolo, Zul'Lor) opens above it, each
+  crossed out when killed; with all six dead the Altar Bosses portrait is
+  crossed out too. Click again to close it (it stays as you left it).
+  Hover: how many are dead. Right-click: their loot, as for every boss.
+
+CHANGES IN 2.0.48
+- Quest chains: the header over interchangeable steps now reads
+  "You just need 1 of the following quests:" (was "Pick one of the
+  following quests:"), in all 10 languages.
+
+CHANGES IN 2.0.47
+- Clicking Report no longer nudges the options cogwheel a few pixels:
+  the Report button keeps its width (it was measured again on the click).
+
+CHANGES IN 2.0.46
+- Options cogwheel in the journal's title bar, left of Report: Blizzard's
+  own cogwheel from the Looking For Group panel. "Options" on mouse-over;
+  a click opens the journal's options (as right-clicking the minimap
+  button or /dj options does).
+
+CHANGES IN 2.0.45
+- A Lost Memento (Blackmaw Hold): its note is gone (in every language).
+
+CHANGES IN 2.0.44
+- Repeatable quests, in every dungeon, have Blizzard's blue ? instead of
+  the yellow !: in the quest list, on the dungeon maps' quest pins and the
+  arrow (a spot with only repeatable quests), in item sources and in
+  Favourites.
+
+CHANGES IN 2.0.43
+- Blackmaw Reclamation's chain: the turn-in ? of Timbermaw Reinforcements
+  and Chieftain Bloodmaw now shows Gorn One Eye in Timbermaw Hold (Felwood
+  65.2, 2.6) on the map (it did nothing before); Show on Map for Chieftain
+  Bloodmaw and Blackmaw Counter-Offensive too, and his portrait on the
+  arrow.
+- "1. Pick one of the following quests:" closed with one of its quests
+  ready to hand in: the clickable round ? on that line (was a plain ?).
+
+CHANGES IN 2.0.42
+- Blackmaw Reclamation's chain: step 1 is "1. Pick one of the following
+  quests:" with a + after it; a click opens the three below it, one a
+  line ("- Master Feardred", "- Thinning Their Forces", "- Later, Satyr").
+  Any one of them does step 1 (the others are not needed); then 2. Return
+  to Rageroar to 5. Blackmaw Counter-Offensive. The quest tracker lists
+  them the same way. "Pick one of the following quests:" in every language.
+
+CHANGES IN 2.0.41
+- Blackmaw Reclamation's chain: 1. Master Feardred, then 2. Thinning
+  Their Forces / Later, Satyr (either one) on the line below it, then
+  3. Return to Rageroar to 6. Blackmaw Counter-Offensive. In the quest
+  tracker too.
+
+CHANGES IN 2.0.40
+- A chain step that is a choice of quests (Blackmaw Reclamation's step 1)
+  is one line now, without "or": "1. Master Feardred / Thinning Their
+  Forces / Later, Satyr". Each quest name is still clickable on its own.
+  In the quest tracker too (there, once one of them is in the quest log,
+  that one is shown alone).
+- Chain lists never run over their border: a name too long for its line
+  ends in "..." (the one that runs over it; the whole name shows on
+  mouse-over). Measured as drawn, so in every language.
+
+CHANGES IN 2.0.39
+- The Twin Bears (Blackmaw Hold): Lorekeeper Nok at Ursolan gives it and
+  takes it back (confirmed), with a map pin (41.4, 20.0). In every language.
+- The waypoint arrow shows the portraits of the Blackmaw Hold quest NPCs
+  pinned lately: Commander Truesong, Gatekeeper Rageroar, Korsa, Graal,
+  Unele and Lorekeeper Nok.
+
+CHANGES IN 2.0.38
+- A Lost Memento (Blackmaw Hold): the Feathered Charm Necklace drops from
+  the satyrs and imps in Blackmaw Hold (seen in game), in every language.
+
+CHANGES IN 2.0.37
+- Blackmaw Hold:
+  - Blackmaw Reclamation's chain starts at the beginning now: step 1 is
+    any ONE of Korsa's three quests (Master Feardred, or Thinning Their
+    Forces, or Later, Satyr). They share the number 1 and doing one of
+    them ticks the whole step; the steps after count on from 2. The quest
+    tracker does the same.
+  - Blackmaw Magic (Alliance): Archmage Timear takes it back (confirmed).
+  - Blackmaw Magic (Horde): the Desolace note is gone; in Forever Muln
+    Earthfury is only in Mulgore.
+  - A Lost Memento: Unele at Ursolan takes it (confirmed).
+  - Blackmaw Reclamation and The Twin Bears: required level 47 is
+    confirmed, so "the required level isn't confirmed yet" is gone.
+  - All of these texts are translated into every language.
+
+CHANGES IN 2.0.36
+- Blackmaw Hold quests:
+  - Blackmaw Magic: Archmage Timear in Dalaran gives the Alliance quest
+    (his hand-in is not confirmed yet); Muln Earthfury in Mulgore gives and
+    takes the Horde one. Both have map pins now.
+  - Blackmaw Reclamation: Gatekeeper Rageroar at Ursolan (42.4, 20.2), with
+    a map pin, and the quest chain that unlocks it: Return to Rageroar,
+    Timbermaw Reinforcements, Chieftain Bloodmaw, Blackmaw Counter-Offensive
+    (the first step comes after any one of Korsa's three quests). Players
+    report it needs Timbermaw Hold reputation Friendly, not Neutral.
+  - Beneath Nordrassil (Alliance): Commander Truesong in Azshara gives it.
+  - Claws That Rend, Tusks that Gore: Ogtinc both gives and takes it.
+  - A Lost Memento: probably handed in to Unele at Ursolan (a guide's
+    report), with a map pin.
+  - Blackmaw Pouches: Ekkal's exact spot (42.0, 38.9).
+  - Feeding Time!: the note now follows the quest's completion text (you
+    feed a hungry lasher).
+  - All of these texts are translated into every language.
+
+CHANGES IN 2.0.35
+- Gnomeregan and Razorfen Kraul: every boss now lists every recipe it has
+  been seen dropping (Wowhead and Icy Veins Forever drop records): the
+  Chain Helm plans, Leather Helm patterns and Filigreed Circlet patterns
+  (the rares: the ones recorded so far). Mekgineer Thermaplugg also has 15
+  engineering schematics (Mechanical Squirrel, Shadow Goggles, Flame
+  Deflector, Moonsight Rifle, Discombobulator Ray, Goblin Rocket Boots,
+  Gnomish Cloaking Device, Craftsman's Monocle and more), Crowd Pummeler
+  9-60 Schematic: 9-60 Battery Pack, Viscous Fallout Pattern: Truefaith
+  Gloves. These dungeon-own recipes sit at the top of the Recipes &
+  Patterns tab.
+
+CHANGES IN 2.0.34
+- Dungeon Tracker, Upper Blackrock Spire: Warchief Rend Blackhand counts
+  as killed. The Gyth / Rend fight's end (Rend's death) was counted as Gyth
+  only; it now counts Rend, and Gyth too if his own death wasn't counted
+  already.
+- Dungeon Tracker: a boss's name learned in the game can no longer take
+  another boss's own name (Gyth had learned Rend's, and took his kills).
+
+CHANGES IN 2.0.33
+- The Stockade and Blackfathom Deeps: every boss now also lists every
+  recipe it has actually been seen dropping (Wowhead and Icy Veins Forever
+  drop records, thousands of kills each). Targorr, Ghamoo-ra and Lady
+  Sarevess: the Chain Leggings plans, Leather Pants patterns and Filigreed
+  Leggings patterns. Kam Deepfury, Hamhock, Dextren Ward, Bazil Thredd,
+  Bruegal Ironknuckle, Gelihast, Lorgus Jett, Old Serra'kis, Twilight Lord
+  Kelris and Aku'mai: the Chain Helm plans, Leather Helm patterns and
+  Filigreed Circlet patterns. Nothing already listed was taken out.
+
+CHANGES IN 2.0.32
+- Razorfen Downs, Agamaggan's Blood: its two Maraudon disclaimers (the
+  quest's and the Rot and Regret step's) in all ten languages.
+
+CHANGES IN 2.0.31
+- Razorfen Downs, Agamaggan's Blood: the quest's page says "WARNING: This
+  chain has a step in Maraudon" at the top, and the chain's Rot and Regret
+  step has its Maraudon line at the top too, above the Objective. Other
+  steps' warnings stay where they were.
+
+CHANGES IN 2.0.30
+- Razorfen Downs, Agamaggan's Blood chain: the Rot and Regret step says
+  "Yes, this step is in MARAUDON. It's needed to unlock this Razorfen
+  quest." (in red, as the other step warnings). Maraudon's own Rot and
+  Regret page is unchanged.
+
+CHANGES IN 2.0.29
+- Recipes & Patterns tab: the dungeon's own recipes are at the top now,
+  above the usual Forever sets that drop everywhere (Sunken Temple: Green
+  Dragonscale Leggings and Enchant Cloak - Greater Resistance first; also
+  Blackrock Depths, Blackrock Spire, Dire Maul, Blackmaw Hold).
+- Sunken Temple: Atal'ai Witch Doctor's portrait shows (the game is asked
+  for its look by its NPC ID, as for the Dalaran mobs).
+
+CHANGES IN 2.0.28
+- Sunken Temple: a Trash Drops page. Twelve rare BoEs that drop from all
+  kinds of trash there (Soulcatcher Halo, Mistwalker Boots, Murkwater
+  Gauntlets, Slimescale Bracers, Silvershell Leggings, Mindseye Circle,
+  Winter's Bite, Stealthblade, Ragehammer, Deathblow, Bludgeon of the
+  Grinning Dog, Stinging Bow), and Slitherscale Boots from Spawn of
+  Hakkar, with its portrait. Two trash recipes on the Recipes & Patterns
+  tab, each with its mob's portrait: Pattern: Green Dragonscale Leggings
+  (Murk Worm), Formula: Enchant Cloak - Greater Resistance (Atal'ai Witch
+  Doctor).
+
+CHANGES IN 2.0.27
+- Blackfathom Deeps: every boss now lists every recipe it drops, not one
+  boss per recipe: all the recipes the game's own Encounter Journal gives
+  for Ghamoo-ra, Lady Sarevess, Gelihast, Twilight Lord Kelris, Old
+  Serra'kis and Aku'mai (46 more boss entries; the same 35 recipes on the
+  Recipes & Patterns tab). Ghamoo-ra and Lady Sarevess share the helm,
+  hood and leggings patterns; the later four share the chain leggings,
+  leather leggings and circlet patterns.
+
+CHANGES IN 2.0.26
+- Sunken Temple, Altar Bosses: the + sits right after the name now (at
+  the row's far end it was easy to miss).
+- Blackfathom Deeps: 13 more recipes on its bosses (Recipes & Patterns
+  tab, 35 now): Plans: Crusader's Silvered Chain Helm, Pattern: Defender's
+  Leather Hood and Pattern: Filigreed Pristine Leggings (Ghamoo-ra); Plans:
+  Veteran's and Guard's Silvered Chain Helm, Pattern: Stormrider's,
+  Wisdom's and Trapper's Leather Hood, Pattern: Filigreed Pearly and
+  Shining Leggings (Lady Sarevess); Pattern: Filigreed Pristine Circlet
+  (Gelihast); Plans: Crusader's Silvered Chain Leggings (Twilight Lord
+  Kelris); Pattern: Filigreed Shining Circlet (Old Serra'kis).
+- Excavation Site: Wetlands: nothing to add (its two blueprints were
+  already in).
+
+CHANGES IN 2.0.25
+- Sunken Temple, Altar Bosses: no level on the group itself (the list and
+  its page). A + at the right of its row unfolds the six trolls under it,
+  a - folds them away again; folded until opened, and remembered. Opening
+  one of the trolls' pages (a favourite, a tooltip) unfolds them; folding
+  them away while a troll's page is shown shows the group's page instead.
+
+CHANGES IN 2.0.24
+- Sunken Temple: a new first entry, "Altar Bosses", with the six Atal'ai
+  troll guardians under it as their own smaller rows: Gasher, Hukku, Loro,
+  Mijan, Zolo and Zul'Lor (portraits and levels too). All six share one
+  loot table: Atal'ai Spaulders, Breastplate and Gloves (blue), Atal'ai
+  Leggings, Boots and Girdle (green), every piece Binds when picked up with
+  a <Random enchantment>. The group's page and each troll's page list it.
+- The Loot Filter page, the search bar and item tooltips name the group
+  once ("Altar Bosses"), not each troll again.
+- RPG Mode: the group opens once any of the six has been seen.
+- The six stay off the Dungeon Tracker and out of the run history's boss
+  list, as before (their kills count as trash there).
+
+CHANGES IN 2.0.23
+- Loot list: the Compact view / Detailed view button shows no tooltip on
+  hover any more. It still lights up under the mouse and switches the view.
+
+CHANGES IN 2.0.22
+- Waypoint arrow: a destination helper under the yards. When the spot is
+  in a city or a named town, the arrow says where to go: "Get to Dalaran",
+  "Get to Ironforge", "Get to Southshore". A spot out in the open says
+  nothing (its zone alone would be too broad). The line goes away once
+  you are in the city or the town. The next step (fly, boat, the point on
+  the way) stays under it. In all ten languages.
+- Magus Olvek's second map spot is labelled Dalaran too (was Alterac
+  Mountains), as his other one already was.
+
+CHANGES IN 2.0.21
+- Wailing Caverns: 9 recipes on its bosses (Recipes & Patterns tab):
+  Pattern: Wisdom's Leather Gloves (Lord Cobrahn), Blueprint: Field Guide
+  (Lady Anacondra), Pattern: Filigreed Pristine / Silky / Pearly Leggings
+  (Lord Pythas), Filigreed Shadow Leggings (Skum), Filigreed Flame
+  Leggings (Lord Serpentis), Filigreed Shining Leggings (Verdan the
+  Everliving), Pattern: Brawler's Leather Hood (Mutanus the Devourer).
+- Shadowfang Keep: Pattern: Filigreed Pristine, Flame and Shadow Leggings
+  on Razorclaw the Butcher.
+
+CHANGES IN 2.0.20
+- Ruins of Lordaeron, Trash Drops: the ALL TRASH label is off Rotmender's
+  Garb, Gloves and Sash again. They are listed without a mob, as the
+  trash drops of Alcaz Prison are.
+
+CHANGES IN 2.0.19
+- Blackrock Depths: the quest Rocknot's Ale is gone from the quest list
+  and from the dungeon map (11 quests, was 12).
+
+CHANGES IN 2.0.18
+- Waypoint arrow: the NPC's portrait instead of the raid mark. The arrow
+  asked the game for the NPC's look once and gave up for the whole session
+  if the game had not met that NPC yet (Librarian Mae Paledust in
+  Ironforge showed the blue square). It now asks again every few seconds,
+  as the trash mob portraits do, tries again later if that fails too, and
+  keeps the look it learned for next time.
+
+CHANGES IN 2.0.17
+- The Deadmines: 30 more recipes on its bosses (Recipes & Patterns tab):
+  Plans: Acolyte's Gloves (Rhahk'Zor), Plans: Guard's Gloves (Sneed), the
+  five Chain Shirt plans, the six Leather Armor patterns and Pattern:
+  Filigreed Shadow Gown (Gilnid), the five Chain Leggings plans, Plans:
+  Acolyte's Silvered Chain Helm, the six Leather Pants patterns and the
+  four Filigreed Leggings patterns (Edwin VanCleef).
+
+CHANGES IN 2.0.16
+- Small internal changes.
+
+CHANGES IN 2.0.15
+- Lower Blackrock Spire, Overlord Wyrmthalak: Mark of the Dragon Lord (epic
+  ring) added to his loot.
+
+CHANGES IN 2.0.14
+- Blackmaw Hold, Trash Drops: Nature Guardian's Legguards, Blackmaw
+  Bindings, Furbolg Berserker's Boots and Pattern: Timbermaw Tunic (epic,
+  in Recipes & Patterns), with the mobs that drop them. Spearfisher's Waders
+  and Demon Worshipper's Necklace under "probable drop".
+- Shaper's Terrace, Trash Drops: Predator's Shroud and Ancient Mattock,
+  with the mobs that drop them. Naturopathy Footpads, Tattered Explorer's
+  Cuffs, Dinosaur Hide Belt, Time-Forgotten Bindings, Pauldrons of the Stone
+  Guardian, Predaceous Band and Pylon Poker under "probable drop".
+
+CHANGES IN 2.0.13
+- Loot Filter, game clients in other languages than English: the schools
+  under Spell Damage's arrow (Fire, Frost, Nature, Shadow, Arcane, Holy) now
+  work too, and items that add one school's damage (Flamestarter's Signet:
+  Fire) count as Spell Damage, as they do in English.
+
+CHANGES IN 2.0.12
+- Loot Filter: an armor piece with no armor type listed (Blindwatcher's
+  Sight, Shadowfang Keep) now shows whichever armor type is ticked. With
+  Cloak / Ring / Neck / Trinket ticked too it was left out (reported on
+  Discord by oviar).
+- Armor and weapon types added where they were missing: Unstable
+  Crystalline Shoulderpads, War Handler's Gaze and Withering Grips
+  (Leather), Guardian's Dualblade (Two-Hand Axe), so the Armor and Weapon
+  filters find them.
+
+CHANGES IN 2.0.11
+- Fixed: on a game client in any language other than English (Chinese,
+  German, French, Spanish, Portuguese, Russian, Korean, Italian), the Loot
+  Filter found nothing for Healing, Spell Damage, Attack Power, Critical
+  Strike, Hit, Defense Rating, MP5 and HP5 (reported on Discord by Sunday).
+  These are now read from the game's own item stats, which are the same in
+  every language. English clients work as before.
+  (Spell Damage with schools picked from its arrow still reads the English
+  tooltip wording.)
+
+CHANGES IN 2.0.10
+- Alcaz Prison: the Defias Enforcer's Chest is a confirmed trash drop now
+  (it was under "probably drops"). Every trash mob there drops all of the
+  Trash Drops items, so their rows no longer show single mobs' portraits.
+
+CHANGES IN 2.0.9
+- Ruins of Lordaeron: Rotmender's Garb, Gloves and Sash drop from every
+  trash mob there, not from one mob each. Their rows on the Trash Drops page
+  now say ALL TRASH (in the gold letters of a rare boss's RARE) instead of
+  one mob's portrait, in every language.
+
+CHANGES IN 2.0.8
+- Home page: a dungeon with no quests for your character (e.g. "0 quests")
+  now gets the green checkmark once you have killed its last boss, the same
+  checkmark finished dungeons get for their quests (suggested on Discord by
+  Tim). Hover it: "Last boss killed". It counts kills the addon has seen
+  (the run log), and stays for that character once earned.
+
+CHANGES IN 2.0.7
+- Fixed: on a character's very first login with the addon, going straight
+  into a dungeon could freeze the loading screen (around 80%) until the
+  game was closed (reported on Discord by Caretaker). The addon's
+  background lookups (monster pictures, item IDs) now pause for every
+  loading screen and carry on a few seconds after you arrive.
+- The trash mob pictures looked up the first time are now found a few at a
+  time instead of all at once.
+- Blackmaw Hold: Shamanic Wristguards (Elder Shaman Bloodmane) and Satyr's
+  Touch (trash) now have their item IDs, so they show their real icon,
+  tooltip and name in every language.
+- Uldaman, The Platinum Discs: the Reward Voucher now has its item ID too.
+
+CHANGES IN 2.0.6
+- Loot pages: hovering the Compact / Detailed button no longer throws a
+  Lua error ("bad argument #5 to 'SetText'"); its tooltip shows again
+  (reported on Discord by 585Robin).
+
+CHANGES IN 2.0.46
+- Waypoint arrow: back to the plain arrow for this release. The dungeon
+  Route (City of Dalaran, Razorfen Kraul) and the flying mount shown on
+  flights are taken out for now, to come back once they are fully tested.
+  On a flight the arrow shows the flight's timer, as before. The Cozy
+  Sleeping Bag's arrow works as always.
+
+CHANGES IN 2.0.39
+- Waypoint arrow, on a way walked corner by corner (Razorfen Kraul's
+  route): fixed the arrow pointing sideways when you are not exactly on
+  the path (2.0.37 made it aim only 12 yards ahead on the path, so a few
+  steps beside it the arrow pointed across instead of along). It now aims
+  further ahead the further you are off the path (up to 40 yards), so near
+  the path it leads along the way and gently back onto it.
+
+CHANGES IN 2.0.37
+- Waypoint arrow, on a way walked corner by corner (Razorfen Kraul's
+  route): the arrow no longer swings sideways for a moment just before
+  each corner. It now points at the way a little ahead of you (12 yards
+  further along the path), so it turns into each bend gently.
+
+CHANGES IN 2.0.36
+- Waypoint arrow, things found in more than one place: the arrow leads to
+  the nearest place first. Standing there, a "Not found? Next spot" button
+  under the arrow sends it to the next one (after the last, the first
+  again). First for Lonebrow's Journal (Razorfen Kraul's route): by
+  Henrig Lonebrow's body at the foot of the Great Lift, and by a second
+  body about 110 yards down the road (31.3, 28.1).
+- Once Henrig Lonebrow's Journal is in your bags, the route goes on to
+  Thalanaar by itself, and the arrow says to use the journal to start the
+  quest until you do (all 10 languages).
+
+CHANGES IN 2.0.34
+- Waypoint arrow, on a way walked corner by corner (Razorfen Kraul's
+  route, the ways round Dalaran): the yards under the arrow are now the
+  whole way left to the spot itself, along the path, not the distance to
+  the next corner (it said "12 yds" far from the spot). When a flight or
+  a boat comes first it is still the distance to the flight master or the
+  dock.
+
+CHANGES IN 2.0.33
+- Route, Razorfen Kraul: the arrow led along the walked way even where a
+  flight was quicker (from Theramore to Ratchet for Blueleaf Tubers it
+  pointed down the road instead of at the gryphon master). A flight, boat
+  or portal that is the quicker way to the spot is now taken first; the
+  walked way is picked up again where the ride lands.
+
+- Route, Razorfen Kraul (Alliance): the arrow now walks the real way,
+  corner by corner, instead of pointing in a straight line. Every leg was
+  worked out on walking maps of Kalimdor: from Ratchet and from Theramore's
+  dock to the Great Lift and to the Kraul's entrance, the lift's top to
+  the entrance, and on the canyon floor the lift's foot to Lonebrow's
+  Journal and to Thalanaar, each in both directions. The ways keep clear
+  of the Horde's camps (Camp Taurajo, the Crossroads, Honor's Stand) and a
+  step away from walls where there is room.
+- The way is joined wherever you are along it, the lift is part of it
+  (the arrow leads onto it, with its line "Take the Great Lift ..."), and
+  between a spot's ways the shortest whole way is taken.
+CHANGES IN 2.0.28
+- Route, Razorfen Kraul (Alliance): the Route button is now on Razorfen
+  Kraul's quest list too. It plans the whole way from where you stand:
+  Blueleaf Tubers in Ratchet, Lonebrow's Journal at the foot of the Great
+  Lift, to Thalanaar to hand it in and take The Crone of the Kraul, the
+  dungeon, then the hand-ins (Thalanaar, Ratchet, and Mortality Wanes in
+  Darnassus last).
+- The Great Lift: the arrow no longer points through the cliff between the
+  Barrens and Thousand Needles. From below it leads to the lift ("Take the
+  Great Lift up to the Barrens"), from above likewise down, then on to the
+  spot (all 10 languages).
+- Quests picked up inside a dungeon (Willix the Importer, Mortality Wanes)
+  now count for the route: the dungeon stays on it while they are open,
+  and Mortality Wanes' hand-in in Darnassus is its last stop.
+- Warriors: the Fire Hardened Mail chain is on the route in its real
+  order: Yorus Barleybrew in Lakeshire (now with his spot), Furen
+  Longbeard, the dungeon for the vial, then back to Furen.
+
+- Waypoint arrow, the flying mount: it stayed small however big it was
+  made (a big empty frame round a small mount, the timer far above it).
+  The mount now fills its frame, and the timer sits just over it.
+CHANGES IN 2.0.20
+- Waypoint arrow, the flying mount on a flight: bigger to start with (it
+  was tiny), and its size is yours: scroll the mouse wheel on it during a
+  flight to make it bigger or smaller. The size is saved. The mount grows
+  upward from the arrow's place, the timer staying on top of it. The
+  arrow's tooltip says so on a flight (all 10 languages). On foot the
+  wheel is left alone.
+
+CHANGES IN 2.0.19
+- Waypoint arrow, the flying mount on a flight: it showed nothing (only
+  the timer). The model is now asked for by its look first, which the game
+  knows without having met the creature, then by creature, then the bat
+  (Horde) or hippogryph (Alliance), each given a moment to come in. If
+  none shows, the timer goes back under the quest's name.
+
+CHANGES IN 2.0.18
+- Waypoint arrow, on a flight: where the arrow is, the flight's mount now
+  flies as a small live 3D model (a gryphon for the Alliance, a wind rider
+  for the Horde), with the flight's timer right above it (it was under the
+  quest's name). "Flying to ..." stays under the name. On landing the
+  model goes and the arrow is back. If the game cannot show the model, the
+  timer stays under the name as before.
+
+- Waypoint arrow, Image of Archmage Modera (City of Dalaran's quests): the
+  arrow no longer points through the walled city. It leads round it, point
+  by point: by the west wall from Hillsbrad and the south, by the north
+  shore from Tarren Mill and the Alterac side, with a line under the arrow
+  saying so (all 10 languages); straight to her from the lake north-west of
+  the city. The two ways were worked out on walking maps of the Eastern
+  Kingdoms (the straight line from the south crosses 35 blocked steps; the
+  way round is about 75 yards longer).
+- Arrow routes (for more such places later): a route can be joined
+  anywhere along it without being sent back to its start, and a spot can
+  name a part of the map from where the straight line is the way.
+  quest totals, and stays off the quest tracker and Route. Other races
+CHANGES IN 2.0.6
+- Route is now a full planner: it knows every step of every quest's chain
+  the character has not handed in yet, and plans the whole way at once:
+  take step 1, hand it in, take step 2 ... take the dungeon quest, the
+  dungeon's entrance, then every quest handed in. Each task waits for the
+  ones before it in its chain; a step two quests share (An Alarming
+  Request, for both of Archmage Modera's quests) is done once. The
+  shortest order that keeps to all of that is the one followed (every
+  order weighed up to 12 tasks; beyond that, the nearest allowed task each
+  time). Hovering the Route button lists all of it, in order.
+  A chain step that only has to be accepted, or that is itself one of the
+  dungeon's quests, is handled (no task ever waits for itself). Still
+  City of Dalaran, Alliance only.
 
 CHANGES IN 2.0.5
-Quests
-- Shaper's Terrace: all six quests now have their start and turn-in.
-  Essence of Seeping Slimes (Chemist Fuely) and The Dark Crystal (Master
-  Apothecary Faranell) in the Undercity's Apothecarium; Panic at the
-  Digsite and Mapping the Way Forward with Curator Thorius in Ironforge's
-  Hall of Explorers, who also takes Digestible Research. Digestible
-  Research starts from the Partially Digested Journal lying on the ground
-  inside the dungeon (the Verdant Plains). The Dark Crystal gives 17,650 XP.
-- Profession quests (The Spectral Chalice, A Binding Contract, The Demon
-  Forge) only show for characters with that profession again, on every
-  client language. "Show All Profession Quests" still shows them all.
-- Sunken Temple: every class quest gives all of its rewards on WoW
-  Forever, not a choice of one (Destroy Morphaz, A Better Ingredient, The
-  Green Drake, Forging the Mightstone, Blood of Morphaz, The Azure Key, Da
-  Voodoo, Trolls of a Feather, Voodoo Feathers). Quests that give several
-  items without a choice say "Rewards".
-- Razorfen Kraul, Blueleaf Tubers: a reminder to take the Crate with
-  Holes, the Snufflenose Command Stick and the Snufflenose Owner's Manual,
-  which wait beside Mebok Mizzyrix in Ratchet (all ten languages).
-- Excavation Site: Wetlands, Horrors in the Highland: The Greenwarden is
-  only a breadcrumb; the chain starts with Tramping Paws.
-- Scarlet Monastery: Library, Compendium of the Fallen: Undead can't take
-  it, so for Undead characters it is greyed out ("Unavailable to Undead")
-  and left out of the counts and the tracker.
-- Gnomeregan, The Only Cure is More Green Glow: a note that it can take
-  several tries on a living Slime.
-- Quest spots moved to where the NPC really stands: Image of Archmage
-  Modera (Alterac Mountains), Mebok Mizzyrix (Ratchet), Falfindel
-  Waywarder (Thalanaar), Lonebrow's Journal (Thousand Needles).
-
-Loot
-- Zul'Farrak, Hydromancer Velratha: Zealot Plate and Wall of Water beside
-  the Deep Ritual Girdle.
-- Sunken Temple, Shade of Eranikus: Dragon's Call, Pattern: Radiant
-  Gloves, Pattern: Skycaller's Mail Gauntlets, Plans: Officer's Gloves and
-  the Essence of Eranikus.
-- Trash Drops pages for City of Dalaran (ten rare items), Excavation Site:
-  Wetlands (six) and Razorfen Downs (eleven, from the Classic tables).
-- Trash Drops, every dungeon: items are grouped by the mobs that drop them,
-  each mob's portrait keeps one order across the page, and its name shows
-  on hover. Mob portraits are looked up all at once after logging in and
-  saved, so they show at once from then on.
-
-Maps
-- Sunken Temple: one map of the whole temple with boss pins.
-- Blackmaw Hold: six levels. The Drowned City: Atal'Byzal as its second
-  floor.
-- Razorfen Kraul: the "wall jump" note to Roogug is gone (it no longer
-  works); the vine note stays.
-- "Hide quests" ticks itself on the map of a dungeon where your character
-  has done every quest inside. Untick it there to see them again.
-
-Waypoint arrow
-- Near the NPC it leads to (in reach of a click, out of combat), the NPC's
-  portrait shows by the quest's name: one click targets and marks the NPC.
-  The portrait glows under the mouse; the arrow keeps its tooltip.
-
-Other
-- Options: "Show Onyxia Attunement" is now "Hide Onyxia Attunement",
-  ticked until your character can start the chain.
-- Ruins of Lordaeron, Lordaeron Captain: friendly to the Alliance, so
-  marked HORDE ONLY and not tracked for Alliance characters.
-- Dungeon Tracker, Blackrock Depths: the Ring of Law counts again, and its
-  entry shows which challenger came where the game allows it.
+- Route (first version: City of Dalaran, Alliance characters only): a Route
+  button left of Track on the dungeon's quest list. It tracks the dungeon
+  and sends the waypoint arrow along the quickest way through everything
+  the character can still do for it: the quests to pick up (a chain's next
+  step first), then the dungeon's entrance, then the quests to hand in. The
+  order is worked out from where the character stands, with the flight
+  points it has found, boats and the hearthstone when it is ready, and
+  again whenever a quest is taken or handed in (and every few seconds on
+  the move; the stop being headed for is only dropped for a clearly shorter
+  way). Quests already done, already in the log or too high a level are
+  taken into account.
+  - While the route is on, each quest in the tracker has a tick box at its
+    right: untick it to leave that quest off the route.
+  - Hovering the Route button while it is on lists the stops in order.
+  - Stopping the route (the button again) or untracking the dungeon takes
+    the arrow away.
 
 CHANGES IN 2.0.4
 - Onyxia Attunement: a round Onyxia icon on the home page, right of the
@@ -547,7 +2450,7 @@ CHANGES IN 2.0.23
 
 CHANGES IN 2.0.22
 - Alcaz Prison: every quest now has its quest giver and real quest ID.
-  - Horde: Eitrigg (Grommash Hold) > Nazeer Bloodspike (Brackenwall Village)
+  - Horde: Eitrigg (Grommash Hold) > Nazeer Bloodpike (Brackenwall Village)
     > Sergeant Ulka on Alcaz Island, who gives No Orc Left Behind, A Little
     Payback and Blood Red Bandanas. Thrall Needs to Know shows the whole chain.
   - A Little Payback: given and taken back by Sergeant Ulka; its three

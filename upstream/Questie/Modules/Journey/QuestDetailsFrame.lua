@@ -26,6 +26,8 @@ local l10n = QuestieLoader:ImportModule("l10n")
 local QuestieQuest = QuestieLoader:ImportModule("QuestieQuest")
 ---@type QuestieProfessions
 local QuestieProfessions = QuestieLoader:ImportModule("QuestieProfessions")
+---@type Expansions
+local Expansions = QuestieLoader:ImportModule("Expansions")
 
 local AceGUI = LibStub("AceGUI-3.0")
 
@@ -136,7 +138,7 @@ local function GetLevelDifficultyRanges(questLevel, questMinLevel)
 
     -- Gray Level based on level range.
     if (questLevel ~= -1) then
-        if Questie.IsClassic then
+        if Expansions.Current == Expansions.Era then
             -- values observed on wowhead
             if (questLevel <= 4) then
                 gray = questLevel + 5
@@ -261,6 +263,8 @@ local function AddLinkedParagraph(frame, linkType, lookup, header, query)
         for _, id in pairs(lookup) do
             id = math.abs(id)
             local link = AceGUI:Create("InteractiveLabel")
+            -- Labels are 200 pixels wide unless stretched, which wraps long quest names and rewards needlessly.
+            link:SetFullWidth(true)
             local name = query(id, "name")
             local text
             if linkType == 'quest' then
@@ -490,6 +494,27 @@ function QuestDetailsFrame:Draw(container, quest)
     if quest.preQuestGroup and next(quest.preQuestGroup) then
         QuestieJourneyUtils:Spacer(container)
         AddLinkedParagraph(container, "quest", quest.preQuestGroup, l10n("Requires all of these quests to be finished"), QuestieDB.QueryQuestSingle)
+    end
+
+    local nextQuestInChain = QuestieDB.QueryQuestSingle(quest.Id, "nextQuestInChain")
+    if nextQuestInChain == 0 then nextQuestInChain = QuestieDB.QueryQuestSingle(quest.Id, "breadcrumbForQuestId") or 0 end
+    if nextQuestInChain and nextQuestInChain > 0 and (not QuestieCorrections.hiddenQuests[nextQuestInChain]) then
+        local nextQuestIDs = {}
+        local visitedQuestIds = {}
+        while nextQuestInChain > 0 and (not visitedQuestIds[nextQuestInChain]) and (not QuestieCorrections.hiddenQuests[nextQuestInChain]) do
+            visitedQuestIds[nextQuestInChain] = true
+            nextQuestIDs[#nextQuestIDs + 1] = nextQuestInChain
+            local nextNextQuestId = QuestieDB.QueryQuestSingle(nextQuestInChain, "nextQuestInChain")
+            if nextNextQuestId == 0 then nextNextQuestId = QuestieDB.QueryQuestSingle(nextQuestInChain, "breadcrumbForQuestId") or 0 end
+            if nextNextQuestId > 0 then
+                nextQuestInChain = nextNextQuestId
+            else
+                break
+            end
+        end
+
+        QuestieJourneyUtils:Spacer(container)
+        AddLinkedParagraph(container, "quest", nextQuestIDs, l10n("Next in chain"), QuestieDB.QueryQuestSingle)
     end
 
     QuestieJourneyUtils:Spacer(container)

@@ -891,3 +891,290 @@ This is the final planned feature build. Future releases should focus on bug fix
 - ETA calculation remains available for the warning even when the ETA column itself is hidden.
 - SavedVariables migrate to dbVersion 28.
 - Full DE / EN / ES / FR / KO localization.
+
+
+## v1.8.0 — Native WoW Meter Redesign
+
+- Reworked the main ForeverThreat window to visually match WoW's built-in Damage Meter.
+- Uses Blizzard meter atlases when available:
+  - native meter header
+  - meter background
+  - native bar shadow / edge
+  - native bar texture
+  - class icon atlases
+  - Blizzard settings button artwork
+- Added compact class icons to threat rows.
+- Added a tank marker overlay on the class icon.
+- Reworked the header:
+  - compact native title bar
+  - dynamic `Threat: Target` title
+  - T / F source switch
+  - native settings button
+  - compact hide/minimize area
+- Raw threat and percentage now share the native right-aligned meter value field in WoW Meter style.
+- ETA / TPS / Delta remain available when the window is widened.
+- Old ForeverThreat and Minimal window styles remain available.
+- Existing threat logic, TPS, ETA warnings, raid features and Secure Taunt are unchanged.
+- SavedVariables migrate to dbVersion 29.
+
+
+## v1.8.1 — Font Placeholder Hotfix
+
+- Replaced unsupported special characters in the live meter UI.
+- Header toggle no longer uses the Unicode triangle glyph.
+- Empty / no-value threat placeholders now use a plain hyphen instead of an em dash.
+- Fixes the square placeholder boxes visible in some WoW Forever font contexts.
+
+
+## v1.9.0 — Configuration Redesign
+
+- Reorganized the configuration for first-time users.
+- Added a dedicated Raid tab.
+- Display now focuses on presets, mode, essential values and optional detail values.
+- Appearance now owns all visual style, skin, size and readability controls.
+- General now contains window behavior, language, update rate and maintenance only.
+- Raid performance and raid list options were removed from General and grouped in the Raid tab.
+- Reduced vertical overflow across all main pages.
+- No threat calculation or combat logic changes.
+
+
+## v1.9.1 — Welcome Layout Polish
+
+- Reworked the Welcome page into a centered vertical layout.
+- Moved the ForeverThreat logo to the top center.
+- Welcome title and intro now use the full content width below the logo.
+- Quick Start uses the full page width instead of sharing space with the logo.
+- Centered the main action buttons and added subtle separators for clearer visual hierarchy.
+- No threat logic or SavedVariables changes.
+
+
+## v1.9.2 — Header Alignment Fix
+
+- Right-aligned the native meter header control group.
+- Target/Focus source button, settings button and hide button now sit together at the far right.
+- The dynamic threat title now uses the remaining space to the left of the control group.
+- No threat logic or SavedVariables changes.
+
+
+## v1.9.3 — Native Header Right Alignment
+
+- Anchored the visible native header controls directly to the right edge of the threat window.
+- Settings is now the right-most control.
+- Target / Focus sits directly to its left.
+- Hide / minimize sits directly to the left of the source button.
+- The dynamic title uses only the remaining space on the left.
+- No threat logic or SavedVariables changes.
+
+
+## v1.9.4 — Header Anchor Hotfix
+
+- Fixed `SetPoint would result in anchor family connection`.
+- Removed all chained anchors between native header controls.
+- Settings, Target/Focus, Hide/Minimize and the dynamic title now anchor directly to the main ForeverThreat frame.
+- Keeps the header controls right-aligned without creating protected / invalid anchor families.
+- No threat logic or SavedVariables changes.
+
+
+## v1.9.5 — Russian Localization
+
+- Added full **Russian (Русский)** localization.
+- Added `ruRU` automatic client-language detection on first setup.
+- Added Russian to the live language dropdown.
+- Added `/ft lang ru` and `/ft language ru`.
+- Russian covers all current UI, tooltips, warnings, raid settings, debug text and profile screens.
+- Language selection remains persistent and can be changed live without `/reload`.
+- SavedVariables migrate to dbVersion 30.
+
+
+## v1.9.6 — Russian UI Fit Fix
+
+- Added automatic font fitting for localized configuration buttons.
+- Long translated button labels now shrink only as much as needed to remain inside their button.
+- The fitting is reapplied automatically when switching language live.
+- Added dedicated handling for:
+  - top navigation tabs
+  - display / mode / source buttons
+  - appearance and skin buttons
+  - maintenance / reset buttons
+  - runtime test / confirmation button text
+- Shortened the Russian Welcome tab label to `Старт` so the seven-tab navigation stays readable.
+- No threat logic or SavedVariables changes.
+
+
+## v1.9.7 — Cyrillic Button Font Hotfix
+
+- Fixed square placeholder glyphs on Russian configuration buttons.
+- Some Forever clients use a Latin-only font through `UIPanelButtonTemplate`.
+- Localized ForeverThreat buttons now use WoW's Cyrillic-capable standard GameFont objects.
+- Automatic button text fitting from v1.9.6 remains active.
+- The fix also applies to:
+  - navigation tabs
+  - presets
+  - mode / source buttons
+  - appearance buttons
+  - maintenance buttons
+  - language dropdown and language options
+- No threat logic or SavedVariables changes.
+
+
+## v1.9.8 — Direct Cyrillic Font Hotfix
+
+- Fixed Russian button glyphs still appearing as square placeholders.
+- Russian configuration buttons now bind directly to Blizzard's Cyrillic Friz font:
+  - `Fonts\FRIZQT___CYR.TTF`
+- This bypasses the Latin-only font inherited by `UIPanelButtonTemplate` on some non-Russian clients.
+- Switching away from Russian restores the normal WoW button font automatically.
+- Automatic text fitting from v1.9.6 remains active and now measures the actual Cyrillic font.
+- Applies to all localized configuration buttons, tabs and language controls.
+- No threat logic or SavedVariables changes.
+
+
+## v1.9.9 — Korean / Russian Language Button Font Fix
+
+- Fixed square placeholder glyphs on the Korean and Russian entries inside the language dropdown.
+- Language option buttons now use a font based on the option itself, not the currently active interface language.
+- Korean option uses Blizzard's `Fonts\2002.TTF`.
+- Russian option uses Blizzard's `Fonts\FRIZQT___CYR.TTF`.
+- Other language options continue to use the normal WoW font.
+- Automatic text fitting remains active.
+- No threat logic or SavedVariables changes.
+
+
+## v1.9.10 — Korean Active UI Font Fix
+
+- Fixed square placeholder glyphs when Korean is selected as the active interface language.
+- All localized configuration buttons now choose their font from the active UI language:
+  - Korean -> `Fonts\2002.TTF`
+  - Russian -> `Fonts\FRIZQT___CYR.TTF`
+  - DE / EN / ES / FR -> normal WoW font
+- Language dropdown options still keep their own per-language fonts independently.
+- Automatic button text fitting remains active.
+- No threat logic or SavedVariables changes.
+
+
+## v1.10.0 — Configurable Warning Thresholds
+
+- Added a dedicated High Threat warning threshold.
+- Added a configurable Time to Aggro warning threshold (1–15 seconds).
+- High Threat alerts are now independent from the red threat-color threshold.
+- Time to Aggro warnings keep their existing closing-threat safety check and rearm automatically above the configured threshold.
+- Added both controls to the ForeverThreat configuration and Blizzard AddOn Settings.
+- Updated all six localizations.
+- Existing profiles and positions are preserved through dbVersion 31 migration.
+
+
+## v1.11.0 — Tank Lead Warning & Distinct Alert Sounds
+
+- Added an optional Tank Lead warning for tanks.
+- Added an adjustable Tank Lead warning threshold from 1 to 15 seconds.
+- The warning only fires when the calculated tank lead is critically low and still shrinking.
+- Aggro, High Threat, Time to Aggro and Tank Lead now use distinct alert sounds.
+- Tank aggro-loss keeps its existing separate sound.
+- Added the Tank Lead controls to both ForeverThreat and Blizzard AddOn settings.
+- Added all new labels and messages to DE / EN / ES / FR / KO / RU.
+- Existing settings migrate automatically to dbVersion 32.
+
+
+## v1.12.0 — Raid Focus & Usability
+
+- Added the optional **Tanks + Danger** raid view.
+- The focused raid view keeps assigned tanks, the current aggro holder, the player and only genuinely dangerous threat competitors visible.
+- Added clearer visual emphasis for the current aggro holder and next threat competitor in focused raid views.
+- Added new presets:
+  - Dungeon Tank
+  - Raid Tank
+  - Raid DPS
+- Expanded the in-game help text for TPS, Time to Aggro, Tank Lead, Threat Gap and Optimized Raid Scan.
+- Added Tanks + Danger to Blizzard AddOn settings.
+- Optimized raid scanning now prioritizes assigned tanks when role information is available.
+- Added all new UI text in DE / EN / ES / FR / KO / RU.
+- Existing settings migrate automatically to dbVersion 33.
+
+
+## v1.12.1 — Warning Sound Controls
+
+- Warning sounds are now disabled while playing solo by default.
+- Added an optional **Warning sounds while solo** toggle.
+- Added a dedicated **Warning sound volume** slider (10–100%).
+- Default ForeverThreat warning volume is now 35%.
+- Warning sounds now use the SFX channel instead of forcing playback through Master.
+- Uses the current WoW Forever sound API's per-playback volume control when available.
+- Aggro-loss sounds now also respect the global warning-sound toggle and solo-sound setting.
+- Test buttons still work even when normal warnings are disabled.
+- Added the new controls to Blizzard AddOn settings.
+- Added all new UI text in DE / EN / ES / FR / KO / RU.
+- Existing settings migrate automatically to dbVersion 34.
+
+
+## v1.12.2 — Aggro Crown
+
+- Added the optional **Aggro Crown** visual.
+- In WoW Meter style, the current aggro holder now gets a small crown on the class icon.
+- The crown sits above the existing tank marker so both indicators remain readable.
+- Added an option to enable or disable the crown.
+- Added the option to Blizzard AddOn settings.
+- Added all new text in DE / EN / ES / FR / KO / RU.
+- Existing settings migrate automatically to dbVersion 35.
+
+
+## v1.12.3 — Clean Tanking Streak
+
+- Added the optional **Clean Tanking Streak** gimmick.
+- In Tank mode, ForeverThreat tracks how long you continuously hold aggro.
+- The current streak is shown together with the best streak of the current login session.
+- The active streak ends when you lose aggro or leave combat.
+- Session best is runtime-only and resets on reload/login.
+- The feature uses existing threat state and does not use combat-log events.
+- Added a toggle to the ForeverThreat display settings and Blizzard AddOn settings.
+- Added all new text in DE / EN / ES / FR / KO / RU.
+- Existing settings migrate automatically to dbVersion 36.
+
+
+## v1.12.4 — Threat Race / Top 3
+
+- Added the optional **Threat Race / Top 3** visual.
+- The three highest threat positions are now subtly highlighted.
+- Top positions use clear `#1`, `#2` and `#3` markers.
+- Aggro-change flashes remain higher priority than the Top-3 styling.
+- The feature does not change sorting, threat values, warnings or calculations.
+- Added a toggle to the ForeverThreat display settings and Blizzard AddOn settings.
+- Added all new text in DE / EN / ES / FR / KO / RU.
+- Existing settings migrate automatically to dbVersion 37.
+
+
+## v1.12.5 — Danger Messages / Fun Mode
+
+- Added optional **Danger Messages / Fun Mode**.
+- Fun Mode is disabled by default.
+- Non-tanks can receive small playful messages when they get extremely close to taking aggro.
+- Example situations:
+  - `Living dangerously...` around 97% threat.
+  - `One crit away...` around 99% threat.
+  - `That was close!` after safely dropping back from a dangerous threat level.
+- Fun messages use their own display and never replace real aggro, Time to Aggro or Tank Lead warnings.
+- Fun messages do not play sounds.
+- Fun Mode only reacts to real party/raid threat situations.
+- Added the toggle to ForeverThreat display settings and Blizzard AddOn settings.
+- Added all new text in DE / EN / ES / FR / KO / RU.
+- Existing settings migrate automatically to dbVersion 38.
+
+
+## v1.13.0 — Session Statistics
+
+- Added a dedicated **Statistics** tab.
+- Tracks runtime-only session values:
+  - Longest Clean Tanking Streak
+  - Aggro Lost
+  - Aggro Gained
+  - Detected Tank Swaps
+  - Longest Tank Lead
+  - Best Threat Rank
+  - Highest Threat %
+  - Closest Time to Aggro
+  - Session Time
+- Added a **Reset Session Statistics** button.
+- Test Mode does not affect statistics.
+- Statistics are not written as combat history and reset on reload/login.
+- Uses threat data ForeverThreat already calculates; no combat-log event was added.
+- Added all new UI text in DE / EN / ES / FR / KO / RU.
+- SavedVariables migration updated to dbVersion 39.

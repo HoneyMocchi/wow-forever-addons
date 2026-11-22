@@ -113,6 +113,11 @@ function Warnings.GetScope(data, triggernum)
         if Query("ShouldUnitThreatStateBeSecret", "player", unit) == true or Query("ShouldUnitThreatValuesBeSecret", "player", unit) == true then return L["Threat checks:"] end
       end
     end
+  elseif event == "Crowd Controlled" and (trigger.use_controlType or HasField(fields, "controlType interruptSchool lockoutSchool name spellName spellId")) then
+    -- ForeverAuras (1.4.6-dev.15): in combat the client hides a loss of control's type, school and spell
+    -- (Prototypes.lua, "Crowd Controlled"), so a chosen Specific Type or a condition on those cannot
+    -- match there. No C_Secrets query for this is known, so the warning follows the trigger's settings.
+    return L["Crowd control type checks:"]
   elseif event == "Cast" and HasField(fields, "remaining duration spellId spell spellIds spellNames interruptible") then
     for unit in pairs(Units(trigger)) do
       if Query("ShouldUnitSpellCastingBeSecret", unit) == true then return L["Cast value checks:"] end

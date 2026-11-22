@@ -9,7 +9,7 @@
 	-- Each line is how much the sound file ID goes up from the line before (empty means 1), a |, then the sound kits it's in (empty means the same as the line before)
 	-- The first sound kit is the sound kit ID and each one after it is how much the sound kit ID goes up from the one before
 
-	-- Sound kits for 1.60.1.70888 (35,668 sound files, 23,476 sound kits)
+	-- Sound kits for 1.60.1.70938 (35,668 sound files, 23,478 sound kits)
 	Leatrix_Sounds["KIT"] = [==[
 53183|10804,3018,347970,1
 |361796
@@ -3408,7 +3408,7 @@
 |3520,283073,118
 |3522,283075
 |3521,283075
-|36278,1,173,94375
+|36278,1,173,94375,249423
 |
 |
 |371
@@ -20446,11 +20446,11 @@
 2|
 2|
 2|
-10|200852,70260,9,3065,13959,54489,643
+10|200852,70260,9,3065,13959,54489,643,36972
 2|354000
 |200852,70260,9,3065,13959,54489,643
 3|354000
-2|200852,70260,9,3065,13959,54489,643
+2|200852,70260,9,3065,13959,54489,643,36972
 |354000
 3|
 |200852,70260,9,3065,13959,54489,643
