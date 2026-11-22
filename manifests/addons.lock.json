@@ -7671,10 +7671,12 @@
       "upstream_status": "unverified",
       "files": {
         "Codec.lua": "d716603a57fbbd17c6eb7d8c3a9273a3e610902e670fa6f30c94b7b8b46fd4c1",
+        "EntityLinks.lua": "647e505bf9436737d49aca4da80bf59b1659b4f388a8a7f0c1a5a13a72aeeddd",
         "Inbox.lua": "69b4173f415ebe550baa9992d3aae88f6a156375406f978d88febf26eeba6ca3",
+        "MapLinks.lua": "94b620e36224674dac5c74eb77c238d95a408891d0790058d210091bff2f0fc7",
         "TextFormat.lua": "f8c357c55e229faa827e228b4c0c60538ebcb26334be4105c1c19cab7d92928d",
-        "WoWForeverGPT.lua": "29fc65c58670805facbe34d94fef60370b85817f65e02aabe38ca2d0e4ba88e4",
-        "WoWForeverGPT.toc": "4e916b4a2ac1a121867de7725d66ab4bcdb0b618f6a0fb34367dc720e892bbb0"
+        "WoWForeverGPT.lua": "5b5080e27f26d1931f760cb69ff8ae864afe664de502c37818cd8b567ed39256",
+        "WoWForeverGPT.toc": "06bbf1a8ff180085e532457bc3a99904d022855ea3c5752a4d66e6ec08ca9912"
       },
       "runtime_inbox_template": true
     },

@@ -8,4 +8,6 @@
 Codec.lua
 Inbox.lua
 TextFormat.lua
+MapLinks.lua
+EntityLinks.lua
 WoWForeverGPT.lua

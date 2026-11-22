@@ -21,6 +21,8 @@ local WoWForeverGPT = {}
 _G.WoWForeverGPT = WoWForeverGPT
 local Codec = WoWForeverGPT_Codec
 local TextFormat = WoWForeverGPT_Text
+local MapLinks = WoWForeverGPT_MapLinks
+local EntityLinks = WoWForeverGPT_EntityLinks
 
 -- 제품 이름은 연결 모델과 분리한다. 답변 말풍선의 모델 이름은
 -- ReplyAgentName에서 실제 연결 정보를 표시하므로 이 상수로 덮어쓰지 않는다.
@@ -41,6 +43,7 @@ local POLL_SCHEDULE = { 5, 10, 16, 24, 34, 46, 60, 80, 100, 130, 160, 200, 240, 
 local POLL_TAIL = 60
 local TICK_SECONDS = 2
 local CONNECT_WAIT = 15 -- seconds the Connect button waits for the bridge before giving up
+local PRESENCE_SILENCE_SECONDS = 60 -- 소리 신호가 멈추면 상태등이 꺼지기 전에 슬롯으로 재확인
 local IDLE_POLL_SECONDS = 600 -- without the sound channel, spend one slot this often while idle to check the bridge
 local RS, US = "\30", "\31" -- record / unit separators in the strip payload
 
@@ -167,17 +170,69 @@ end
 
 local function ChatAgent(c)
 	if c and c.agent and c.agent ~= "" then return c.agent end
-	return run.bridgeAgent or "gpt"
+	-- AI를 따로 고르지 않은 대화는 마지막으로 고른 AI를 따른다(새 대화·다른 대화에서도 유지).
+	-- 고른 적이 없으면 브리지 기본값을 쓴다.
+	local last = db and db.settings and db.settings.lastAgent
+	if last and last ~= "" then
+		if not run.bridgeAgents then return last end
+		for _, a in ipairs(run.bridgeAgents) do if a == last then return last end end   -- (Contains는 아래에 정의됨)
+	end
+	return run.bridgeAgent or "claude"
 end
 
+-- 회사(AI)별 선택 가능한 모델. 브리지가 슬롯 파일의 models로 알려 주며, 아직
+-- 연결 전이거나 이전 브리지라면 아래 기본 목록을 쓴다. 실제 허용 여부는 브리지가 다시 확인한다.
+local FALLBACK_MODELS = {
+	gpt = { company = "OpenAI", default = "gpt-6.1-sol", options = {
+		{ id = "gpt-6.1-sol", label = "Sol 6.1" },
+	} },
+	claude = { company = "Anthropic", default = "claude-sonnet-5-5", options = {
+		{ id = "claude-fable-5-2", label = "Fable 5.2" },
+		{ id = "claude-opus-5-5", label = "Opus 5.5" },
+		{ id = "claude-sonnet-5-5", label = "Sonnet 5.5" },
+		{ id = "claude-haiku-5-5", label = "Haiku 5.5" },
+	} },
+}
+
+local function ModelsFor(agent)
+	local m = run.bridgeModels and run.bridgeModels[agent]
+	if type(m) == "table" and type(m.options) == "table" and #m.options > 0 then return m end
+	return FALLBACK_MODELS[agent]
+end
+
+local function ModelLabel(agent, id)
+	if not id or id == "" then return nil end
+	local m = ModelsFor(agent)
+	for _, o in ipairs(m and m.options or {}) do
+		if o.id == id then return o.label or id end
+	end
+	return id
+end
+
+-- 이 대화에 적용될 모델 ID: 그 회사에서 사용자가 고른 모델, 목록에 없으면 회사 기본값.
+local function ChatModel(c)
+	local agent = ChatAgent(c)
+	local m = ModelsFor(agent)
+	if not m then return nil end
+	local chosen = db and db.settings.models and db.settings.models[agent]
+	for _, o in ipairs(m.options) do
+		if o.id == chosen then return chosen end
+	end
+	return m.default
+end
+
+-- 화면에는 회사 이름(GPT/Claude) 대신 짧은 모델 이름만 쓴다. 예: "Opus 5.5", "Sol 6.1"
+-- 이 대화에 다음 질문부터 적용될 모델의 이름.
 local function ChatAgentName(c)
-	return AgentName(ChatAgent(c))
+	local agent = ChatAgent(c)
+	return ModelLabel(agent, ChatModel(c)) or AgentName(agent)
 end
 
--- The name to show on a reply: the agent the bridge says wrote it, else the chat's.
-local function ReplyAgentName(c, agent)
-	if agent and agent ~= "" then return AgentName(agent) end
-	return ChatAgentName(c)
+-- 답변 이름표: 실제로 답한 모델. 모델 정보가 없는 이전 기록은 당시 쓰던 회사 기본 모델로 표시한다.
+local function ReplyAgentName(c, agent, model)
+	if not agent or agent == "" then return ChatAgentName(c) end
+	local m = ModelsFor(agent)
+	return ModelLabel(agent, model or (m and m.default)) or AgentName(agent)
 end
 
 local function Contains(list, v)
@@ -271,6 +326,8 @@ local function InitDB()
 	db.settings = db.settings or {}
 	local s = db.settings
 	if not EFFORT_LABEL[s.effort] then s.effort = "low" end
+	-- 회사(AI)별로 마지막에 고른 모델 ID. 예: { gpt = "gpt-6.1-sol", claude = "claude-opus-5-5" }
+	if type(s.models) ~= "table" then s.models = {} end
 	if s.autoRefresh == nil then s.autoRefresh = true end
 	if s.signal == nil then s.signal = true end
 	-- 이전 버전은 매 로그인 때 정보를 강제로 껐다. 이번 요청에 맞춰 한 번 켠 뒤,
@@ -329,8 +386,8 @@ local function InitDB()
 	end
 end
 
-local function AddHistory(chat, role, text, id, denied, agent, macros)
-	table.insert(chat.history, { role = role, text = text, id = id, t = time(), denied = denied, agent = agent, macros = macros })
+local function AddHistory(chat, role, text, id, denied, agent, macros, model)
+	table.insert(chat.history, { role = role, text = text, id = id, t = time(), denied = denied, agent = agent, macros = macros, model = model })
 	while #chat.history > MAX_HISTORY do
 		table.remove(chat.history, 1)
 	end
@@ -465,18 +522,95 @@ local CONTEXT_WORDS = {
 	"주무기: ", "보조무기: ", "원거리: ", "가슴: ", "다리: ", "머리: ", "어깨: ",
 	"손목: ", "손: ", "허리: ", "발: ", "반지1: ", "반지2: ", "장신구1: ", "장신구2: ", "목: ", "등: ",
 }
+-- SC2는 SC1의 번호를 유지하고 새로 수집하는 대상·스킬북 문구만 뒤에 추가한다.
+-- SC1/원문도 계속 지원하므로 /reload 전후 패킷이 섞여도 복원할 수 있다.
+local CONTEXT_EXTRA = {
+	"Target: ", "; level=", "; type=", "Quest objective: ",
+	"Ranged weapon: ", "Ranged tooltip: ",
+	"Known spells (partial; omission does not mean unlearned): ", "Known spells: not readable",
+}
 local CONTEXT_CODES = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+local REPEAT_CODES = CONTEXT_CODES .. "-_"
+
+local function PackDictionary(text, extended)
+	local packed = text:gsub("~", "~_")
+	-- 긴 추가 문구를 먼저 치환하여 그 안의 "not readable" 같은 SC1 단어가
+	-- 부분 치환되어 더 큰 문구의 압축 기회를 없애지 않도록 한다.
+	if extended then
+		for i, word in ipairs(CONTEXT_EXTRA) do
+			local code = #CONTEXT_WORDS + i
+			packed = packed:gsub(word:gsub("(%W)", "%%%1"), "~" .. CONTEXT_CODES:sub(code, code))
+		end
+	end
+	for i, word in ipairs(CONTEXT_WORDS) do
+		packed = packed:gsub(word:gsub("(%W)", "%%%1"), "~" .. CONTEXT_CODES:sub(i, i))
+	end
+	return packed
+end
+
+local function PackRepeats(text)
+	-- 패킷 안에서만 앞서 나온 문자열을 참조한다. 이전 질문/캐릭터/접수 ACK에
+	-- 의존하지 않으므로 재접속·브리지 재시작·요청 재정렬 시에도 독립 복원된다.
+	-- ^ + 거리 2자리 + 길이 1자리(모두 64진수): 거리 1..4096, 길이 5..68.
+	-- 원문의 ^는 ^^로 이스케이프한다. 한글/이모지의 중간 바이트는 절대 자르지 않는다.
+	local n, parts, positions, pos = #text, {}, {}, 1
+	local function Boundary(at)
+		local b = text:byte(at)
+		return not b or b < 128 or b >= 192
+	end
+	while pos <= n do
+		local best, distance = 0, 0
+		local candidates = positions[text:sub(pos, pos + 4)]
+		if candidates then
+			for k = #candidates, 1, -1 do
+				local previous = candidates[k]
+				if pos - previous > 4096 then break end
+				local length = 0
+				while length < 68 and pos + length <= n and text:byte(previous + length) == text:byte(pos + length) do
+					length = length + 1
+				end
+				while length > 0 and not Boundary(pos + length) do length = length - 1 end
+				if length >= 5 and length > best then best, distance = length, pos - previous end
+			end
+		end
+		local consumed
+		if best >= 5 then
+			local d = distance - 1
+			parts[#parts + 1] = "^" .. REPEAT_CODES:sub(math.floor(d / 64) + 1, math.floor(d / 64) + 1)
+				.. REPEAT_CODES:sub(d % 64 + 1, d % 64 + 1) .. REPEAT_CODES:sub(best - 4, best - 4)
+			consumed = best
+		else
+			consumed = 1
+			while pos + consumed <= n and not Boundary(pos + consumed) do consumed = consumed + 1 end
+			local literal = text:sub(pos, pos + consumed - 1)
+			parts[#parts + 1] = literal == "^" and "^^" or literal
+		end
+		-- 탐색 후보는 같은 5바이트 접두사마다 최근 16개로 제한한다.
+		-- 반복이 많은 툴팁에서도 질문 전송 시 CPU 사용이 과도하게 늘지 않는다.
+		for at = pos, pos + consumed - 1 do
+			if Boundary(at) and at + 4 <= n then
+				local key = text:sub(at, at + 4)
+				local list = positions[key] or {}
+				positions[key] = list
+				list[#list + 1] = at
+				if #list > 16 then table.remove(list, 1) end
+			end
+		end
+		pos = pos + consumed
+	end
+	return table.concat(parts)
+end
+
 local function PackContext(text)
 	if type(text) ~= "string" or text == "" then return text end
-	local packed = text:gsub("~", "~_")
-	for i, word in ipairs(CONTEXT_WORDS) do
-		local pattern = word:gsub("(%W)", "%%%1")
-		packed = packed:gsub(pattern, "~" .. CONTEXT_CODES:sub(i, i))
-	end
-	packed = "SC1\n" .. packed
-	-- 짧거나 비정형인 정보는 치환 후 오히려 커질 수 있으므로 원문으로 보낸다.
-	if #packed >= #text then return text end
-	return packed
+	-- 짧은 원문이나 압축하기 어려운 값은 커지지 않도록 가장 작은 형식을 선택한다.
+	local sc1 = "SC1\n" .. PackDictionary(text, false)
+	local best = sc1
+	-- 원문이 버전 접두사로 시작하면 반드시 감싸서 압축 형식으로 오인되지 않게 한다.
+	if not text:match("^SC[12]\n") and #text < #best then best = text end
+	local sc2 = "SC2\n" .. PackRepeats(PackDictionary(text, true))
+	if #sc2 < #best then best = sc2 end
+	return best
 end
 
 local function RecordFor(id, rec)
@@ -484,7 +618,9 @@ local function RecordFor(id, rec)
 	local fields = { Wire(db.session), Wire(rec.chat), tostring(id), Wire(rec.cwd), flags, Wire(rec.name) }
 	if rec.ctx ~= nil then
 		fields[5] = flags == "" and "c" or (flags .. ";c")
-		table.insert(fields, Wire(PackContext(rec.ctx)))
+		-- 재표시 때 같은 스냅샷을 다시 압축하지 않는다. rec.ctx는 이 요청의 고정 값이다.
+		if rec.packedCtx == nil then rec.packedCtx = PackContext(rec.ctx) end
+		table.insert(fields, Wire(rec.packedCtx))
 	end
 	table.insert(fields, Wire(rec.text))
 	return table.concat(fields, US)
@@ -604,6 +740,8 @@ local function PollPresence()
 		if not SoundValid(PresencePath(k)) then break end
 		p.last = k
 		p.beats = (p.beats or 0) + 1
+		p.lastBeatAt = GetTime()
+		run.presenceFallback = nil
 		NotedBridge()
 	end
 end
@@ -612,7 +750,7 @@ end
 -- (self-test failed, or signal checks turned off), the only evidence of the
 -- bridge is a slot read: the idle poll below and the replies themselves.
 local function PresenceWorks()
-	return signalAvailable and db ~= nil and db.settings.signal
+	return signalAvailable and db ~= nil and db.settings.signal and not run.presenceFallback
 end
 
 -- Returns state ("ok" | "stale" | "down" | "unknown"), a color and a description.
@@ -832,7 +970,8 @@ local function ApplyReplies(replies)
 			MarkAcked(r.id)
 			local denied = type(r.denied) == "table" and #r.denied > 0 and r.denied or nil
 			if r.status == "done" then
-				Finish(c, "assistant", r.text or "", denied, r.agent, r.summary, WoWForeverGPT.CleanMacros(r.macros))
+				if MapLinks then MapLinks.Auto(r.text) end
+				Finish(c, "assistant", r.text or "", denied, r.agent, r.summary, WoWForeverGPT.CleanMacros(r.macros), r.model)
 			elseif r.status == "error" then
 				Finish(c, "system", "오류: " .. tostring(r.text), denied)
 			elseif r.status == "working" then
@@ -866,7 +1005,8 @@ local function ImportRestore(r)
 				local role, agent = m.role, m.agent
 				if role == "claude" then role, agent = "assistant", agent or "claude" end -- an older bridge's transcript
 				if agent == "" then agent = nil end
-				table.insert(chat.history, { role = role, text = m.text, id = m.id, t = m.t, agent = agent })
+				local model = (type(m.model) == "string" and m.model ~= "") and m.model or nil
+				table.insert(chat.history, { role = role, text = m.text, id = m.id, t = m.t, agent = agent, model = model })
 			end
 			RepairChatTitle(chat)
 			-- Keep the chat we're currently using last so it stays where it was.
@@ -916,6 +1056,7 @@ local function TryLoadSlot(why)
 	if type(data) == "table" then
 		if type(data.agent) == "string" and data.agent ~= "" then run.bridgeAgent = data.agent end
 		if type(data.agents) == "table" and #data.agents > 0 then run.bridgeAgents = data.agents end
+		if type(data.models) == "table" then run.bridgeModels = data.models end
 	end
 	ApplyAcknowledgements(data)
 	local matched = ApplyReplies(type(data) == "table" and data.replies or nil)
@@ -934,10 +1075,23 @@ local function Tick()
 	-- Without presence beats, the only evidence is a slot read; spend one every
 	-- IDLE_POLL_SECONDS while idle so the light still reflects reality (and stays
 	-- green while the bridge is up: BridgeState allows for this interval).
+	-- 자동 신호 판별: 최초 자체 검사가 통과해도 이후 WAV 조회가 캐시될 수 있다.
+	-- 신호 중단 60초에 보조 슬롯을 읽고, 이후에는 10분 간격으로 확인해 200개 슬롯을 아낀다.
+	-- 시간 제한을 없애 초록색으로 고정하지 않고, 슬롯에 기록된 실제 브리지 시각으로 판정한다.
+	local presenceAt = run.presence and run.presence.lastBeatAt or run.connectionStartedAt or now
+	if signalAvailable and db.settings.signal and now - presenceAt >= PRESENCE_SILENCE_SECONDS then
+		run.presenceFallback = true
+	end
 	if not PresenceWorks() and db.settings.mode == "pixel" and not AnyPending()
 		and now - (run.lastIdlePoll or -1e9) >= IDLE_POLL_SECONDS then
 		run.lastIdlePoll = now
 		TryLoadSlot("idle")
+	end
+	-- 연결 요청은 AI 호출 없이 hello/접수증만 교환한다. 실패 후에도 60초마다 재시도한다.
+	-- 답변 대기 중에는 원래 전송/재전송 절차를 유지해 질문을 중복 생성하지 않는다.
+	if db.settings.mode == "pixel" and not AnyPending() and not WoWForeverGPT.IsConnected()
+		and not run.connectingAt and now - (run.lastHelloAt or -1e9) >= 60 then
+		WoWForeverGPT.Connect()
 	end
 	WoWForeverGPT.UpdateDot()
 	WoWForeverGPT.CheckConnection()
@@ -1017,6 +1171,8 @@ local function Tick()
 		if c.pendingId and PollActivity(c) then moved = true end
 	end
 	if moved then WoWForeverGPT.Render() end
+	WoWForeverGPT.CheckPendingRecovery()
+	if not AnyPending() then return end
 	for _, c in ipairs(db.chats) do
 		if c.pendingId and CheckSignal("sig", c.pendingId) then
 			TryLoadSlot("signal")
@@ -1035,16 +1191,19 @@ local function ProcessInbox()
 	if type(inbox.cwd) == "string" and inbox.cwd ~= "" then run.bridgeCwd = inbox.cwd end
 	if type(inbox.agent) == "string" and inbox.agent ~= "" then run.bridgeAgent = inbox.agent end
 	if type(inbox.agents) == "table" and #inbox.agents > 0 then run.bridgeAgents = inbox.agents end
+	if type(inbox.models) == "table" then run.bridgeModels = inbox.models end
 	ApplyAcknowledgements(inbox)
 	ApplyReplies(inbox.replies)
 	if inbox.restore then ImportRestore(inbox.restore) end
 	if inbox.map and WoWForeverGPTMap then WoWForeverGPTMap.Sync(inbox.map) end
 end
 
-Finish = function(chat, role, text, denied, agent, summary, macros)
-	AddHistory(chat, role, text, chat.pendingId, denied, agent, macros)
+Finish = function(chat, role, text, denied, agent, summary, macros, model)
+	AddHistory(chat, role, text, chat.pendingId, denied, agent, macros, model)
 	chat.pendingId = nil
 	chat.progress = nil
+	chat.recovering, chat.recoveryStalled = nil, nil
+	if run.recovery then run.recovery[chat.id] = nil end
 	if run.act then run.act[chat.id] = nil end
 	NotedBridge()
 	local visible = ui.frame and ui.frame:IsShown() and db.activeChat == chat.id
@@ -1059,7 +1218,7 @@ Finish = function(chat, role, text, denied, agent, summary, macros)
 		chat.draft = nil
 	end
 	WoWForeverGPT.Render()
-	WoWForeverGPT.Notify(chat, text, agent, summary)
+	WoWForeverGPT.Notify(chat, text, agent, summary, model)
 end
 
 ---------------------------------------------------------------------------
@@ -1414,11 +1573,18 @@ function WoWForeverGPT.ExpandLinks(text)
 	out = out:gsub("|H([^|]+)|h%[([^%]]*)%]|h", Take)
 	if #links == 0 then return text, 0 end
 	local blocks = {}
+	local compared = false
 	for _, l in ipairs(links) do
 		local head = "[" .. l.name .. "] " .. DescribeLink(l.payload)
 		local body = table.concat(TooltipLines(l.payload), "\n  ")
 		local block = body ~= "" and (head .. "\n  " .. body) or head
 		if #block > LINK_BYTES_MAX then block = Utf8Prefix(block, LINK_BYTES_MAX) .. "..." end
+		-- 첫 장비 아이템에는 같은 부위의 현재 장비 툴팁을 추가한다.
+		-- 원본 링크 전체를 사용하므로 랜덤 옵션·인챈트도 현재 값으로 비교한다.
+		if not compared and EntityLinks and l.payload:match("^item:") then
+			local comparison = EntityLinks.ComparisonBlock(l.payload, TooltipLines, Utf8Prefix)
+			if comparison then block, compared = comparison, true end
+		end
 		table.insert(blocks, block)
 	end
 	return out .. "\n\n--- Linked from the game ---\n" .. table.concat(blocks, "\n"), #links
@@ -1470,9 +1636,13 @@ function WoWForeverGPT.Send(text, allow)
 	db.lastSeq = db.lastSeq + 1
 	local id = db.lastSeq
 	local effort = db.settings.effort
+	local model = ChatModel(c)
 	local tokens = { "effort=" .. effort }
 	if c.resetNext then table.insert(tokens, "n") end
-	if c.agent and c.agent ~= "" then table.insert(tokens, "agent=" .. c.agent) end
+	-- 화면에 보이는 AI와 실제 질문이 일치하도록, 고르지 않은 대화도 적용될 AI를 명시해 보낸다.
+	local sendAgent = ChatAgent(c)
+	if sendAgent and sendAgent ~= "" then table.insert(tokens, "agent=" .. sendAgent) end
+	if model then table.insert(tokens, "model=" .. model) end
 	local allowHex
 	if type(allow) == "table" and #allow > 0 then
 		table.insert(tokens, "allow=" .. table.concat(allow, ","))
@@ -1488,13 +1658,15 @@ function WoWForeverGPT.Send(text, allow)
 		text = ToHex(text),
 		cwd = ToHex(c.cwd),
 		ctx = ctx and ToHex(ctx) or nil,
-		agent = (c.agent and c.agent ~= "") and c.agent or nil,
+		agent = (sendAgent and sendAgent ~= "") and sendAgent or nil,
 		allow = allowHex,
 		effort = effort,
+		model = model,
 		newSession = newSession,
 		t = time(),
 	}
 	c.pendingId = id
+	c.recovering, c.recoveryStalled = nil, nil
 	c.draft = nil
 	c.progress = nil
 	AddHistory(c, "user", text, id)
@@ -1548,8 +1720,8 @@ end
 -- Hello: a record with no text that just announces our session token. The bridge
 -- acks it, offers a restore if our saved data is fresh, and refreshes the slots,
 -- so the status light and any lost chats come back before the first message.
--- The game context always rides on it (empty when turned off), so the bridge's
--- copy is brought in line at every login and Connect.
+-- 연결 확인에는 세션/대화 식별자만 필요하다. 브리지의 hello 처리부는 캐릭터 정보를
+-- 사용하지 않으며, 실제 질문이 매번 최신 스냅샷을 독립적으로 전송한다.
 function WoWForeverGPT.SayHello()
 	if db.settings.mode ~= "pixel" then return end
 	local now = GetTime()
@@ -1557,8 +1729,7 @@ function WoWForeverGPT.SayHello()
 	run.lastHelloAt = now
 	db.lastSeq = db.lastSeq + 1
 	local c = ActiveChat()
-	local ctx = db.settings.context and WoWForeverGPT.GameContext() or ""
-	run.outbound[db.lastSeq] = { chat = c and c.id or "", cwd = c and c.cwd or "", flags = "h", name = c and c.name or "", text = "", ctx = ctx, sentAt = now, hello = true }
+	run.outbound[db.lastSeq] = { chat = c and c.id or "", cwd = c and c.cwd or "", flags = "h", name = c and c.name or "", text = "", sentAt = now, hello = true }
 	run.helloPollAt = now + 5
 	-- Deletions the bridge never confirmed ride along with the hello.
 	for id in pairs(db.forget) do SendForget(id) end
@@ -1575,8 +1746,9 @@ function WoWForeverGPT.SayHello()
 end
 
 -- Put the active chat's pending message back on the strip.
-function WoWForeverGPT.Resend()
-	local c = ActiveChat()
+function WoWForeverGPT.Resend(chat)
+	-- 자동 복구는 현재 열어 둔 창과 무관하게 대기 중인 대화를 지정할 수 있다.
+	local c = type(chat) == "table" and type(chat.history) == "table" and chat or ActiveChat()
 	if not c or not c.pendingId then return end
 	local text
 	for i = #c.history, 1, -1 do
@@ -1590,15 +1762,97 @@ function WoWForeverGPT.Resend()
 	local previous = outbox and outbox.id == c.pendingId and outbox.chat == c.id and outbox or nil
 	local pending = run.outbound[c.pendingId]
 	local effort = previous and EFFORT_LABEL[previous.effort] and previous.effort or db.settings.effort
-	local flags = pending and pending.flags or ("effort=" .. effort .. (previous and previous.newSession and ";n" or ""))
-	local ctx = ContextToSend(math.max(0, Codec.MAX_PAYLOAD - 300 - #text))
-	if previous then previous.ctx = ToHex(ctx) end
+	-- 원래 전송 기록이 없으면 저장된 outbox에서 AI와 모델까지 복원해 같은 조건으로 다시 보낸다.
+	local flags = pending and pending.flags
+	if not flags then
+		local parts = { "effort=" .. effort }
+		if previous and previous.newSession then table.insert(parts, "n") end
+		local agent = previous and previous.agent or ChatAgent(c)
+		if agent then table.insert(parts, "agent=" .. agent) end
+		local model = previous and previous.model or ChatModel(c)
+		if model then table.insert(parts, "model=" .. model) end
+		flags = table.concat(parts, ";")
+	end
+	-- 같은 질문의 재전송은 최초 질문 시점의 정보를 유지한다. 새 위치/장비로 바꾸면
+	-- 브리지 재시작 직후 아직 처리되지 않은 질문의 의미가 달라질 수 있다.
+	local ctx = pending and pending.ctx
+	if ctx == nil and previous and type(previous.ctx) == "string" then
+		ctx = previous.ctx:gsub("%x%x", function(pair) return string.char(tonumber(pair, 16)) end)
+	end
+	if ctx == nil then ctx = ContextToSend(math.max(0, Codec.MAX_PAYLOAD - 300 - #text)) end
 	run.outbound[c.pendingId] = { chat = c.id, cwd = c.cwd, flags = flags, name = c.name, text = text, ctx = ctx, sentAt = GetTime() }
 	run.sentAt = GetTime()
 	run.polls = 0
 	ScheduleNextPoll()
 	RefreshStrip()
 	WoWForeverGPT.UpdateStatus()
+end
+
+
+-- 기존 재전송 버튼/명령에서 먼저 완료 답변을 확인하고, 없을 때만 같은 번호를 다시 보낸다.
+-- 자동 복구는 UI를 강제로 새로고침하지 않는다. 슬롯 소진 시에는 사용자의 기존 버튼
+-- 클릭으로만 SafeReload를 호출하며, 전투 중에는 기존 전투 종료 대기 절차를 따른다.
+function WoWForeverGPT.RecoverPending(chat, automatic)
+	local c = type(chat) == "table" and type(chat.history) == "table" and chat or ActiveChat()
+	if not c or not c.pendingId then return false end
+	if not automatic then
+		run.recovery = run.recovery or {}
+		run.recovery[c.id] = { id = c.pendingId, attempts = 0, nextAt = GetTime() + 60, progress = c.progress }
+		c.recoveryStalled = nil
+	end
+	if db.settings.mode ~= "pixel" or run.slotsExhausted or run.slotsMissing or run.pixelFailed then
+		c.recoveryStalled = true
+		if not automatic then SafeReload() end
+		WoWForeverGPT.UpdateStatus()
+		return false
+	end
+	TryLoadSlot("recovery")
+	if not c.pendingId then return true end
+	-- 방금 확인하면서 슬롯 소진이 발견될 수도 있다. 자동 재전송으로 이를 덮어쓰지 않는다.
+	if run.slotsExhausted or run.slotsMissing then
+		c.recoveryStalled = true
+		if not automatic then SafeReload() end
+		WoWForeverGPT.UpdateStatus()
+		return false
+	end
+	c.recovering = true
+	WoWForeverGPT.Resend(c)
+	return false
+end
+
+function WoWForeverGPT.CheckPendingRecovery()
+	-- 활동/진행 문구가 60초 동안 바뀌지 않으면 수신을 다시 확인한다.
+	-- 동일 요청 번호를 유지하므로 브리지는 답변을 다시 게시하고 AI를 중복 실행하지 않는다.
+	-- 대화별 최대 3회로 제한해 장시간 처리나 브리지 종료 시 전송/슬롯을 계속 소비하지 않는다.
+	local now = GetTime()
+	run.recovery = run.recovery or {}
+	for _, c in ipairs(db.chats) do
+		if c.pendingId then
+			local state = run.recovery[c.id]
+			if not state or state.id ~= c.pendingId then
+				state = { id = c.pendingId, attempts = 0, nextAt = now + 60, progress = c.progress }
+				run.recovery[c.id] = state
+			end
+			if state.progress ~= c.progress then
+				state.progress, state.nextAt = c.progress, now + 60
+			end
+			local activity = run.act and run.act[c.id]
+			if activity and activity.last then state.nextAt = math.max(state.nextAt, activity.last + 60) end
+			if now >= state.nextAt and state.attempts < 3 then
+				-- 전투 중에는 애드온 로드/재전송을 새로 시도하지 않고 잠시 미룬다.
+				if InCombatLockdown() then state.nextAt = now + 10; return end
+				state.attempts, state.nextAt = state.attempts + 1, now + 60
+				WoWForeverGPT.RecoverPending(c, true)
+				if c.pendingId and state.attempts >= 3 then
+					c.recoveryStalled = true
+					WoWForeverGPT.UpdateStatus()
+				end
+				return -- 한 틱에 한 대화만 처리한다. 동시 대기의 슬롯 소비가 몰리지 않는다.
+			end
+		else
+			run.recovery[c.id] = nil
+		end
+	end
 end
 
 function WoWForeverGPT.SendFromInput()
@@ -1737,12 +1991,40 @@ function WoWForeverGPT.SetAgent(rest, c)
 	end
 	local changed = rest ~= (c.agent or "")
 	c.agent = rest
+	-- 명령으로 고른 AI도 마지막 선택으로 기억한다. "default"로 되돌리면 기억도 지운다.
+	db.settings.lastAgent = rest ~= "" and rest or nil
 	if rest ~= "" then
-		AddHistory(c, "system", "사용할 AI: " .. AgentName(rest) .. (changed and #c.history > 1 and ". 다음 질문부터 새 세션을 시작합니다." or ""))
+		AddHistory(c, "system", "모델: " .. ChatAgentName(c) .. (changed and " (다음 질문부터 적용)" or ""))
 	elseif changed then
-		AddHistory(c, "system", "AI를 브리지 기본값으로 되돌렸습니다: " .. (run.bridgeAgent and AgentName(run.bridgeAgent) or "연결 후 확인 가능"))
+		AddHistory(c, "system", "기본 모델로 되돌렸습니다: " .. ChatAgentName(c))
 	else
-		AddHistory(c, "system", "현재 AI: " .. (run.bridgeAgent and AgentName(run.bridgeAgent) or "연결 후 확인 가능") .. " (변경: /wow-ai agent <이름> 또는 대화 우클릭 → AI 선택; 사용 가능: " .. AgentList() .. ")")
+		AddHistory(c, "system", "현재 모델: " .. ChatAgentName(c) .. " (변경: 창 오른쪽 위 모델 버튼 또는 /wow-ai agent " .. table.concat(run.bridgeAgents or { "gpt", "claude" }, "|") .. ")")
+	end
+	WoWForeverGPT.Render()
+end
+
+-- 모델 선택 버튼 글자: 이 대화에 적용될 모델 이름만 짧게 쓴다. 예: "Opus 5.5", "Sol 6.1"
+function WoWForeverGPT.UpdateModelButton()
+	local b = ui.modelButton
+	if not b or not db then return end
+	b:SetText(ChatAgentName(ActiveChat()))
+end
+
+-- 메뉴에서 모델을 고르면 그 회사의 선택으로 저장하고, 이 대화의 AI를 그 회사로 바꾼다.
+function WoWForeverGPT.SelectModel(agent, model)
+	local c = ActiveChat()
+	if not c or not agent or not model then return end
+	if run.bridgeAgents and not Contains(run.bridgeAgents, agent) then
+		AddHistory(c, "system", "연결된 PC 프로그램이 " .. AgentName(agent) .. "를 지원하지 않습니다. 사용 가능: " .. AgentList())
+		WoWForeverGPT.Render()
+		return
+	end
+	local beforeAgent, beforeModel = ChatAgent(c), ChatModel(c)
+	db.settings.models[agent] = model
+	db.settings.lastAgent = agent     -- (마지막으로 고른 AI: 고르지 않은 대화와 새 대화가 따른다)
+	c.agent = agent
+	if beforeAgent ~= agent or beforeModel ~= model then
+		AddHistory(c, "system", "모델: " .. (ModelLabel(agent, model) or model) .. (c.pendingId and " (진행 중인 답변 다음 질문부터 적용)" or " (다음 질문부터 적용)"))
 	end
 	WoWForeverGPT.Render()
 end
@@ -2038,6 +2320,10 @@ function WoWForeverGPT.UpdateStatus()
 			status = "질문을 보내지 못했습니다. 브리지와 게임의 창 모드를 확인하세요."
 		elseif mode == "reload" then
 			status = "UI 새로고침으로 답변을 확인할 수 있습니다."
+		elseif c.recoveryStalled then
+			status = "응답 확인이 지연됩니다. 재전송을 눌러 복구하세요."
+		elseif c.recovering then
+			status = "답변을 다시 확인하고 있습니다…"
 		elseif rec and not rec.acked then
 			status = "질문 보내는 중…"
 		else
@@ -2096,6 +2382,8 @@ local function GetBubble(i)
 	end)
 	b.allow:Hide()
 	b.macroBtns = {}
+	b.mapBtns = {}
+	b.entityBtns = {}
 	-- FontStrings can't be selected, so a click opens the message in the copy box.
 	b:EnableMouse(true)
 	b:SetScript("OnMouseUp", function(self, button)
@@ -2107,19 +2395,20 @@ end
 
 function WoWForeverGPT.Render()
 	local c = ActiveChat()
+	if WoWForeverGPT.UpdateModelButton then WoWForeverGPT.UpdateModelButton() end
 	if ui.content and c then
 		local width = ui.scroll:GetWidth()
 		if not width or width < 80 then width = 400 end
 		ui.content:SetWidth(width)
 		local y, n = 0, 0
-		local function Place(role, text, when, dim, denied, agent, macros)
+		local function Place(role, text, when, dim, denied, agent, macros, model)
 			n = n + 1
 			local b = GetBubble(n)
 			local st = ROLE_STYLE[role] or ROLE_STYLE.system
 			b:SetWidth(width)
 			b.bg:SetColorTexture(st.bg[1], st.bg[2], st.bg[3], st.bg[4])
 			b.accent:SetColorTexture(st.color[1], st.color[2], st.color[3], 0.9)
-			b.who:SetText(st == ROLE_STYLE.assistant and ReplyAgentName(c, agent) or st.label)
+			b.who:SetText(st == ROLE_STYLE.assistant and ReplyAgentName(c, agent, model) or st.label)
 			b.who:SetTextColor(st.color[1], st.color[2], st.color[3])
 			b.when:SetText(when or "")
 			b.body:SetWidth(width - 18)
@@ -2127,9 +2416,17 @@ function WoWForeverGPT.Render()
 			-- 같은 메시지를 다시 그릴 때 재파싱하지 않도록 말풍선에 결과를 캐시한다.
 			if b.sourceText ~= text or b.sourceRole ~= role then
 				if role == "assistant" and TextFormat then
-					b.richText, b.copyText = TextFormat.Format(text)
+					local body
+					if MapLinks then body, b.mapPoints = MapLinks.Parse(text) else body, b.mapPoints = text, {} end
+					if EntityLinks then
+						body, b.entityRefs = EntityLinks.Parse(body)
+						for _, ref in ipairs(b.entityRefs) do EntityLinks.Request(ref) end
+					end
+					b.richText, b.copyText = TextFormat.Format(body)
 				else
 					b.richText, b.copyText = Display(text), text
+					b.mapPoints = {}
+					b.entityRefs = {}
 				end
 				b.sourceText, b.sourceRole = text, role
 			end
@@ -2180,6 +2477,59 @@ function WoWForeverGPT.Render()
 				shownMacros = k
 			end
 			for k = shownMacros + 1, #b.macroBtns do b.macroBtns[k]:Hide() end
+			-- 위치 링크는 FontString 대신 버튼으로 표시해 기존 답변 복사 기능과 분리한다.
+			-- 재사용 말풍선의 남은 버튼은 반드시 숨겨 다른 답변의 위치가 남지 않게 한다.
+			for k, point in ipairs(b.mapPoints or {}) do
+				local link = b.mapBtns[k]
+				if not link then
+					link = CreateFrame("Button", nil, b, "UIPanelButtonTemplate")
+					link:SetHeight(22)
+					link:SetScript("OnClick", function(self) MapLinks.Open(self.point) end)
+					b.mapBtns[k] = link
+				end
+				link.point = point
+				link:SetText(MapLinks.Label(point))
+				-- 고정 최소 너비 없이 [위치] 글자 양옆에 10px씩 여유를 둔다.
+				link:SetWidth(link:GetFontString():GetStringWidth() + 20)
+				link:ClearAllPoints()
+				link:SetPoint("TOPLEFT", b.body, "BOTTOMLEFT", 0, -6 - extra)
+				link:Show()
+				extra = extra + 28
+			end
+			for k = #(b.mapPoints or {}) + 1, #b.mapBtns do b.mapBtns[k]:Hide() end
+			-- 참조 버튼은 기존 텍스트 복사 영역과 별도로 동작하며 좁은 창에서는 줄바꿈한다.
+			local entityCount, rowX, rowY = 0, 0, extra
+			local function EntityButton(ref, compare)
+				entityCount = entityCount + 1
+				local button = b.entityBtns[entityCount]
+				if not button then
+					button = CreateFrame("Button", nil, b, "UIPanelButtonTemplate")
+					button:SetHeight(22)
+					button:SetScript("OnEnter", function(self) EntityLinks.Tooltip(self, self.ref) end)
+					button:SetScript("OnLeave", EntityLinks.HideTooltip)
+					button:SetScript("OnHide", EntityLinks.HideTooltip)
+					button:SetScript("OnClick", function(self)
+						if self.compare then WoWForeverGPT.CompareItem(self.ref)
+						else EntityLinks.Click(self.ref, ui.input) end
+					end)
+					b.entityBtns[entityCount] = button
+				end
+				button.ref, button.compare = ref, compare
+				button:SetText(compare and "장비 비교" or ("[" .. Display(ref.name) .. "]"))
+				local bw = math.min(width - 24, button:GetFontString():GetStringWidth() + 20)
+				if rowX > 0 and rowX + bw > width - 24 then rowX, rowY = 0, rowY + 28 end
+				button:SetWidth(bw)
+				button:ClearAllPoints()
+				button:SetPoint("TOPLEFT", b.body, "BOTTOMLEFT", rowX, -6 - rowY)
+				button:Show()
+				rowX = rowX + bw + 4
+			end
+			for _, ref in ipairs(b.entityRefs or {}) do
+				EntityButton(ref, false)
+				if ref.kind == "item" and EntityLinks.Slots(ref.payload) then EntityButton(ref, true) end
+			end
+			for k = entityCount + 1, #b.entityBtns do b.entityBtns[k]:Hide() end
+			if entityCount > 0 then extra = rowY + 28 end
 			b:SetHeight(6 + 12 + 4 + h + 8 + extra)
 			b:ClearAllPoints()
 			b:SetPoint("TOPLEFT", ui.content, "TOPLEFT", 0, -y)
@@ -2190,10 +2540,11 @@ function WoWForeverGPT.Render()
 		local last = #c.history
 		for i, m in ipairs(c.history) do
 			-- The Allow button only makes sense on the newest reply, and only while idle.
-			Place(m.role, m.text, m.t and date("%H:%M", m.t) or "", false, nil, m.agent)
+			Place(m.role, m.text, m.t and date("%H:%M", m.t) or "", false, nil, m.agent, nil, m.model)
 		end
 		if c.pendingId then
-			Place("assistant", "답변을 기다리는 중…", "", true, nil, ChatAgent(c))
+			local sent = db.outbox and db.outbox.id == c.pendingId and db.outbox.model or nil
+			Place("assistant", "답변을 기다리는 중…", "", true, nil, ChatAgent(c), nil, sent or ChatModel(c))
 		elseif #c.history == 0 then
 			if run.restoring then
 				Place("system", "연결 후 이전 대화를 불러오는 중…", "", true)
@@ -2215,6 +2566,7 @@ function WoWForeverGPT.Render()
 	end
 	WoWForeverGPT.UpdateStatus()
 	WoWForeverGPT.RenderChatList()
+	if WoWForeverGPT.UpdateQuickQuestions then WoWForeverGPT.UpdateQuickQuestions() end
 end
 
 -- Copy box (/wow-ai copy): a selectable EditBox with the last reply pre-highlighted for Ctrl+C.
@@ -2274,7 +2626,7 @@ function WoWForeverGPT.RenderChatList()
 				label = label .. " |cff888888" .. Display(folder) .. "|r"
 			end
 			if c.agent and c.agent ~= "" then
-				label = label .. " |cff888888" .. AgentName(c.agent) .. "|r"
+				label = label .. " |cff888888" .. ChatAgentName(c) .. "|r"
 			end
 			if c.pendingId then
 				label = label .. " |cffffd100...|r"
@@ -2381,13 +2733,13 @@ end
 
 -- A reply landed. Always play the sound and echo it to the game chat; if that
 -- chat isn't on screen, also flash the screen text and light up the mini bar.
-function WoWForeverGPT.Notify(chat, text, agent, summary)
+function WoWForeverGPT.Notify(chat, text, agent, summary, model)
 	pcall(PlaySound, 3081)
 	WoWForeverGPT.UpdateMini()
 	-- Until a real whisper arrives, /r replies to this chat.
 	if ui.frame and ui.frame:IsShown() and db.activeChat == chat.id then return end
 	if UIErrorsFrame then
-		UIErrorsFrame:AddMessage(ReplyAgentName(chat, agent) .. " 답변 도착 · " .. Display(chat.name), 0.5, 0.8, 1, 1)
+		UIErrorsFrame:AddMessage(ReplyAgentName(chat, agent, model) .. " 답변 도착 · " .. Display(chat.name), 0.5, 0.8, 1, 1)
 	end
 end
 
@@ -2522,6 +2874,64 @@ local function MakeButton(parent, label, width, onClick)
 	return b
 end
 
+-- 빠른 질문은 버튼 클릭 시점의 대상/선택 퀘스트/장착 장비를 다시 읽는다.
+-- 답변 대기 중에는 비활성화하고, 기존에 입력 중인 초안은 덮어쓰지 않는다.
+function WoWForeverGPT.CompareItem(ref)
+	local chat = ActiveChat()
+	if not chat or chat.pendingId then return end
+	WoWForeverGPT.Send(EntityLinks.Link(ref) .. " 이 아이템을 같은 부위의 현재 장비와 비교해 줘. 실제 툴팁·직업·레벨·특성을 기준으로 교체 여부와 핵심 차이를 알려줘. 누락된 옵션이나 DPS는 추측하지 마.")
+end
+
+function WoWForeverGPT.QuickQuestion(kind)
+	local chat = ActiveChat()
+	if not chat or chat.pendingId or not EntityLinks then return end
+	if kind == "item" then
+		local payload = EntityLinks.FirstItem(ui.input:GetText())
+		if not payload then return end
+		local id = tonumber(payload:match("^item:(%d+)"))
+		if EntityLinks.Slots(payload) then
+			WoWForeverGPT.CompareItem({kind="item", id=id, payload=payload, name="첨부 아이템"})
+		else
+			WoWForeverGPT.Send(EntityLinks.Link({kind="item", id=id, payload=payload, name="첨부 아이템"}) .. " 이 아이템의 용도와 내 캐릭터에게 유용한지 알려줘. 실제 툴팁에 없는 정보는 추측하지 마.")
+		end
+	elseif kind == "target" then
+		local name = Try(UnitName, "target")
+		if type(name) ~= "string" then return end
+		WoWForeverGPT.Send("현재 선택한 대상 " .. name .. "에 대해 알려줘. 관련 퀘스트·상점·기능 또는 전투에서 주의할 점을 내 현재 상황에 맞춰 설명해 줘.")
+	elseif kind == "quest" then
+		local id = EntityLinks.QuestID()
+		if not id then return end
+		local title = Try(C_QuestLog and C_QuestLog.GetTitleForQuestID, id) or "선택 퀘스트"
+		WoWForeverGPT.Send("현재 선택한 퀘스트 " .. title .. " (#" .. id .. ")의 현재 진행도에서 다음에 할 행동을 알려줘. 이동 목적지는 [위치] 버튼으로 안내해 줘.")
+	end
+end
+
+function WoWForeverGPT.UpdateQuickQuestions()
+	if not ui.quickButtons or not EntityLinks then return end
+	local actions = EntityLinks.Actions(ui.input:GetText())
+	local x, chat = 0, ActiveChat()
+	for i, button in ipairs(ui.quickButtons) do
+		local action = actions[i]
+		if action then
+			button.kind = action.kind
+			button:SetText(action.label)
+			local w = button:GetFontString():GetStringWidth() + 20
+			button:SetWidth(w)
+			button:ClearAllPoints()
+			button:SetPoint("BOTTOMLEFT", ui.frame, "BOTTOMLEFT", 8 + x, 84)
+			button:SetEnabled(chat and not chat.pendingId and true or false)
+			button:Show()
+			x = x + w + 4
+		else button:Hide() end
+	end
+	-- 앵커가 바뀔 때만 적용해 OnSizeChanged → Render의 반복 호출을 막는다.
+	local bottom = #actions > 0 and 114 or 86
+	if ui.quickBottom ~= bottom then
+		ui.quickBottom = bottom
+		ui.scroll:SetPoint("BOTTOMRIGHT", ui.frame, "BOTTOMRIGHT", -26, bottom)
+	end
+end
+
 local PANEL_W = 112
 
 function WoWForeverGPT.ApplyCompactLayout()
@@ -2533,7 +2943,7 @@ function WoWForeverGPT.ApplyCompactLayout()
 	-- 목록을 감추면 동일한 창 크기 안에서 답변 영역이 바로 넓어진다.
 	ui.scroll:ClearAllPoints()
 	ui.scroll:SetPoint("TOPLEFT", ui.frame, "TOPLEFT", open and (8 + PANEL_W + 6) or 8, -44)
-	ui.scroll:SetPoint("BOTTOMRIGHT", ui.frame, "BOTTOMRIGHT", -26, 86)
+	ui.scroll:SetPoint("BOTTOMRIGHT", ui.frame, "BOTTOMRIGHT", -26, ui.quickBottom or 86)
 	if ui.frame:IsShown() then WoWForeverGPT.Render() end
 end
 
@@ -2604,11 +3014,133 @@ local function BuildUI()
 	dotHolder:SetPoint("LEFT", sidebarToggle, "RIGHT", 4, 0)
 	ui.dot = dot
 
+	-- 모델 선택: 헤더 오른쪽 버튼을 누르면 회사별로 묶인 모델 목록이 열린다.
+	-- 고른 모델은 그 회사의 기본 선택으로 저장되고, 이 대화의 AI도 그 회사로 바뀐다.
+	local modelBtn = MakeButton(f, "", 136, nil)
+	modelBtn:SetHeight(20)
+	modelBtn:SetPoint("TOPRIGHT", f, "TOPRIGHT", -30, -6)
+	if modelBtn.SetNormalFontObject then modelBtn:SetNormalFontObject("GameFontHighlightSmall") end
+	if modelBtn.SetHighlightFontObject then modelBtn:SetHighlightFontObject("GameFontHighlightSmall") end
+	ui.modelButton = modelBtn
+
+	local modelMenu = CreateFrame("Frame", "WoWForeverGPTModelMenu", f, "BackdropTemplate")
+	modelMenu:SetWidth(176)
+	modelMenu:SetFrameStrata("TOOLTIP")
+	modelMenu:SetBackdrop({
+		bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
+		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+		tile = true, tileSize = 16, edgeSize = 12,
+		insets = { left = 3, right = 3, top = 3, bottom = 3 },
+	})
+	modelMenu:SetBackdropColor(0.08, 0.08, 0.1, 0.97)
+	modelMenu:SetBackdropBorderColor(0.6, 0.6, 0.6, 1)
+	modelMenu:EnableMouse(true)
+	modelMenu.rows = {}
+	modelMenu:Hide()
+	ui.modelMenu = modelMenu
+
+	local MENU_ROW = 18
+	local function MenuRow(i)
+		local row = modelMenu.rows[i]
+		if row then return row end
+		row = CreateFrame("Button", nil, modelMenu)
+		row:SetSize(176 - 12, MENU_ROW)
+		row:SetPoint("TOPLEFT", modelMenu, "TOPLEFT", 6, -6 - (i - 1) * MENU_ROW)
+		row.hl = row:CreateTexture(nil, "HIGHLIGHT")
+		row.hl:SetAllPoints()
+		row.hl:SetColorTexture(1, 1, 1, 0.12)
+		row.check = row:CreateTexture(nil, "OVERLAY")
+		row.check:SetSize(14, 14)
+		row.check:SetPoint("LEFT", row, "LEFT", 2, 0)
+		row.check:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
+		row.label = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+		row.label:SetPoint("LEFT", row, "LEFT", 18, 0)
+		row.label:SetPoint("RIGHT", row, "RIGHT", -4, 0)
+		row.label:SetJustifyH("LEFT")
+		row.label:SetWordWrap(false)
+		row:SetScript("OnClick", function(self)
+			if not self.agent then return end
+			modelMenu:Hide()
+			WoWForeverGPT.SelectModel(self.agent, self.model)
+		end)
+		modelMenu.rows[i] = row
+		return row
+	end
+
+	function WoWForeverGPT.ShowModelMenu()
+		if modelMenu:IsShown() then modelMenu:Hide() return end
+		local c = ActiveChat()
+		local current = ChatAgent(c)
+		local n = 0
+		for _, agent in ipairs(run.bridgeAgents or { "gpt", "claude" }) do
+			local m = ModelsFor(agent)
+			if m then
+				n = n + 1
+				local head = MenuRow(n)
+				head.agent, head.model = nil, nil
+				head:EnableMouse(false)
+				head.check:Hide()
+				head.label:SetFontObject("GameFontNormalSmall")
+				head.label:SetTextColor(1, 0.82, 0)
+				-- 묶음 제목은 회사 이름만 쓴다(OpenAI / Anthropic).
+				local company = (m.company and m.company ~= "") and m.company or AgentName(agent)
+				head.label:SetText(company .. (agent == current and "  (사용 중)" or ""))
+				head:Show()
+				local chosen = (db.settings.models and db.settings.models[agent]) or m.default
+				local valid = false
+				for _, o in ipairs(m.options) do if o.id == chosen then valid = true end end
+				if not valid then chosen = m.default end
+				for _, o in ipairs(m.options) do
+					n = n + 1
+					local row = MenuRow(n)
+					row.agent, row.model = agent, o.id
+					row:EnableMouse(true)
+					row.label:SetFontObject("GameFontHighlightSmall")
+					row.label:SetText("   " .. (o.label or o.id))
+					row.check:SetShown(o.id == chosen)
+					if agent == current and o.id == chosen then
+						row.label:SetTextColor(0.55, 1, 0.55)
+					else
+						row.label:SetTextColor(0.9, 0.9, 0.9)
+					end
+					row:Show()
+				end
+			end
+		end
+		for i = n + 1, #modelMenu.rows do modelMenu.rows[i]:Hide() end
+		modelMenu:SetHeight(n * MENU_ROW + 12)
+		modelMenu:ClearAllPoints()
+		modelMenu:SetPoint("TOPRIGHT", modelBtn, "BOTTOMRIGHT", 0, -2)
+		modelMenu.away = 0
+		modelMenu:Show()
+	end
+
+	-- 마우스가 메뉴와 버튼 밖으로 나가면 잠시 뒤 닫는다(대화 우클릭 메뉴와 같은 방식).
+	modelMenu:SetScript("OnUpdate", function(self, dt)
+		if not MouseIsOver then return end
+		if MouseIsOver(self) or MouseIsOver(modelBtn) then
+			self.away = 0
+		else
+			self.away = (self.away or 0) + dt
+			if self.away > 0.6 then self:Hide() end
+		end
+	end)
+
+	modelBtn:SetScript("OnClick", function() WoWForeverGPT.ShowModelMenu() end)
+	modelBtn:SetScript("OnEnter", function(self)
+		GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+		GameTooltip:SetText("AI 모델 선택")
+		GameTooltip:AddLine("회사별 모델 목록에서 고릅니다. 이 대화의 AI가 그 회사로 바뀌고, 고른 모델은 다음 질문부터 쓰입니다.", 0.8, 0.8, 0.8, true)
+		GameTooltip:Show()
+	end)
+	modelBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
 	local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	title:SetPoint("LEFT", dotHolder, "RIGHT", 4, 0)
 	-- 양쪽 기준점의 높이를 헤더 중앙(-16)으로 맞춘다. 창 중앙을 기준으로
 	-- 잡으면 창 크기를 바꿀 때 제목 영역이 세로로 늘어나 본문과 겹칠 수 있다.
-	title:SetPoint("RIGHT", f, "TOPRIGHT", -34, -16)
+	-- 오른쪽 끝은 모델 선택 버튼 앞에서 멈춘다.
+	title:SetPoint("RIGHT", modelBtn, "LEFT", -4, 0)
 	title:SetJustifyH("LEFT")
 	title:SetWordWrap(false)
 	title:SetText(APP_NAME)
@@ -2871,6 +3403,24 @@ local function BuildUI()
 	end)
 	inputBg:SetScript("OnMouseDown", function() input:SetFocus() end)
 	ui.input = input
+	ui.quickButtons = {}
+	for i = 1, 3 do
+		local button = MakeButton(f, "", 80, function(self) WoWForeverGPT.QuickQuestion(self.kind) end)
+		button:Hide()
+		ui.quickButtons[i] = button
+	end
+	input:HookScript("OnTextChanged", function() WoWForeverGPT.UpdateQuickQuestions() end)
+	-- 창을 열어 둔 동안에만 버튼 표시를 갱신한다. 툴팁/장비 스캔은 전송 시 수행한다.
+	local contextEvents = CreateFrame("Frame")
+	for _, event in ipairs({"PLAYER_TARGET_CHANGED", "QUEST_LOG_UPDATE", "SUPER_TRACKING_CHANGED", "PLAYER_EQUIPMENT_CHANGED", "ITEM_DATA_LOAD_RESULT"}) do
+		pcall(contextEvents.RegisterEvent, contextEvents, event)
+	end
+	contextEvents:SetScript("OnEvent", function(_, event)
+		if ui.frame:IsShown() then
+			if event == "ITEM_DATA_LOAD_RESULT" then WoWForeverGPT.Render()
+			else WoWForeverGPT.UpdateQuickQuestions() end
+		end
+	end)
 
 	-- Send sits to the right of the input box, vertically centred on it.
 	local send = MakeButton(f, "보내기", SEND_W, WoWForeverGPT.SendFromInput)
@@ -2913,7 +3463,7 @@ local function BuildUI()
 	end)
 	clear:SetPoint("LEFT", newQuestion, "RIGHT", 4, 0)
 
-	local resend = MakeButton(f, "재전송", 72, WoWForeverGPT.Resend)
+	local resend = MakeButton(f, "재전송", 72, function() WoWForeverGPT.RecoverPending() end)
 	resend:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -24, 8)
 	resend:Hide()
 	ui.resend = resend
@@ -2925,8 +3475,8 @@ local function BuildUI()
 	effort:SetPoint("LEFT", clear, "RIGHT", 4, 0)
 	effort:SetScript("OnEnter", function(button)
 		GameTooltip:SetOwner(button, "ANCHOR_TOP")
-		GameTooltip:SetText("GPT 추론 강도")
-		GameTooltip:AddLine("클릭하면 낮음 → 보통 → 높음 순으로 바뀝니다. 다음 질문부터 적용됩니다.", 0.8, 0.8, 0.8, true)
+		GameTooltip:SetText("추론 강도")
+		GameTooltip:AddLine("클릭하면 낮음 → 보통 → 높음 순으로 바뀝니다. GPT와 Claude에 모두 적용되며 다음 질문부터 쓰입니다.", 0.8, 0.8, 0.8, true)
 		GameTooltip:Show()
 	end)
 	effort:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -3083,6 +3633,7 @@ local HELP = table.concat({
 	"/wow-ai clear                현재 대화 비우기",
 	"/wow-ai copy                 마지막 답변 복사",
 	"/wow-ai bind 키              질문 창 단축키",
+	"/wow-ai recover              대기 중인 답변 복구",
 	"/wow-ai reload               UI 새로고침",
 }, "\n")
 
@@ -3104,7 +3655,7 @@ end
 
 local COMMAND_ARGS = {
 	mini = 0, min = 0, hide = 0, quit = 0, help = 0, clear = 0, delete = 0, reset = 0, copy = 0,
-	cancel = 0, resend = 0, reload = 0, refresh = 0, slots = 0, diag = 0,
+	cancel = 0, resend = 0, recover = 0, reload = 0, refresh = 0, slots = 0, diag = 0,
 	mode = { [""] = true, pixel = true, reload = true },
 	signal = { [""] = true, on = true, off = true }, longchat = { [""] = true, on = true, off = true },
 	auto = OnOffOrNumber,
@@ -3230,8 +3781,8 @@ SlashCmdList["WOWFOREVERGPT"] = function(msg)
 		end
 		WoWForeverGPT.Render()
 		WoWForeverGPT.Toggle(true)
-	elseif cmd == "resend" then
-		WoWForeverGPT.Resend()
+	elseif cmd == "resend" or cmd == "recover" then
+		WoWForeverGPT.RecoverPending()
 	elseif cmd == "auto" then
 		local n = tonumber(rest)
 		if n then
@@ -3321,6 +3872,8 @@ SlashCmdList["WOWFOREVERGPT"] = function(msg)
 			if run.act then run.act[c.id] = nil end
 			c.pendingId = nil
 			c.progress = nil
+			c.recovering, c.recoveryStalled = nil, nil
+			if run.recovery then run.recovery[c.id] = nil end
 			RefreshStrip()
 			if not AnyPending() then keyCatcher:Hide() end
 		end
@@ -3360,7 +3913,7 @@ ev:SetScript("OnEvent", function(self, event, arg1)
 	elseif event == "PLAYER_LOGIN" then
 		if not db then InitDB() end
 		BuildUI()
-		run = { outbound = {} }
+		run = { outbound = {}, connectionStartedAt = GetTime() }
 		SelfTestSignals()
 		ProcessInbox()
 		if AnyPending() then
