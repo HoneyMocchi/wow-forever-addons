@@ -1535,6 +1535,9 @@ local function modify(parent, region, data)
   function region:DoPositionChildren()
     Private.StartProfileSystem("dynamicgroup")
     Private.StartProfileAura(data.id)
+    -- (1.4.0-dev.17, Astra's live review, item B) counted for /fa phitch, per group when capturing
+    Private.HitchCount("layout: dynamic group positioned")
+    if Private.HitchCounting() then Private.HitchCount("layout: dynamic group positioned: " .. tostring(data.id)) end
 
     local handledRegionData = {}
 

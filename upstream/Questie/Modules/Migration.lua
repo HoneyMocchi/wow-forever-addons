@@ -308,6 +308,40 @@ local migrationFunctions = {
         -- The Blizzard quest timer is always hidden now; timed quests are shown in the Questie tracker.
         Questie.db.profile.showBlizzardQuestTimer = nil
     end,
+    [50] = function()
+        -- Shift + Left Click shares quests now, instead of untracking them
+        local profile = Questie.db.profile
+        if profile.trackerbindUntrack == "shiftleft" then
+            profile.trackerbindUntrack = "disabled"
+        end
+        -- Sharing is checked before the other shortcuts, so it must not take over one of them
+        local isTaken = profile.trackerbindOpenQuestLog == "shiftleft" or profile.trackerbindSetTomTom == "shiftleft"
+        profile.trackerbindShareQuest = isTaken and "disabled" or "shiftleft"
+    end,
+    [51] = function()
+        Questie.db.profile.questAnnounceChannel = "disabled"
+    end,
+    [52] = function()
+        Questie.db.profile.enableTooltipsNextInChainOnActiveQuests = false
+    end,
+    [53] = function()
+        -- Tracker shortcuts can no longer share a click. Every kind of tracker line checks Untrack before Show in Quest Log,
+        -- so Show in Quest Log on Untrack's click never ran: disable it. Other shared clicks stay, because which action ran
+        -- depended on the line or on TomTom: quest lines check TomTom and Share first, achievement and recipe lines neither.
+        local profile = Questie.db.profile
+        local untrackShortcut = profile.trackerbindUntrack
+        if untrackShortcut and untrackShortcut ~= "disabled" and profile.trackerbindOpenQuestLog == untrackShortcut then
+            profile.trackerbindOpenQuestLog = "disabled"
+        end
+    end,
+    [54] = function()
+        -- The pfQuest/ClassicCodex icon toggle is gone; the icon theme choice replaced it.
+        Questie.db.profile.usePfQuestIcons = nil
+    end,
+    [55] = function()
+        -- The Isle of Quel'Danas phase lives in the global scope; this profile copy was never read by the phase logic
+        Questie.db.profile.isleOfQuelDanasPhase = nil
+    end,
 }
 
 function Migration:Migrate()

@@ -370,15 +370,30 @@ local function modify(parent, region, parentData, data, first)
     -- countdown, while its timer is a GCD-length or wand Shoot lockout.
     local timerOnly = type(region.text_text) == "string" and region.text_text:match("^%s*%%[pt]%s*$") ~= nil
     text:SetAlpha(1)
+    region.gcdAlphaWritten = nil
+    -- ForeverAuras (1.4.6-dev.27, issue #193, "buff countdown stays invisible"): the two Cooldown Manager
+    -- buff paths below write the countdown and return before the GCD alpha is read (further down), so a
+    -- text hidden while its display showed a spell cooldown's GCD-length timer kept alpha 0 when a buff
+    -- trigger took the display over: the right number, drawn invisible. A buff countdown has no GCD rule;
+    -- the alpha the GCD rule last wrote is put back to 1 once, when one of those paths takes the text.
+    local function RestoreTimerAlpha()
+      -- (dev.28, Astra's dev.27 review, P2) the write first, the marker cleared after it: a write the
+      -- client refuses raises its error as before and leaves the marker, so the next update tries again.
+      if region.gcdAlphaWritten then
+        text:SetAlpha(1)
+        region.gcdAlphaWritten = nil
+      end
+    end
     if region.text_text and Private.ContainsAnyPlaceHolders(region.text_text) then
       UpdateText = function()
-        if Private.CDMAuraProgress.UpdateText(parent, region, data, nativeKind, nativeTrigger) then return end
+        if Private.CDMAuraProgress.UpdateText(parent, region, data, nativeKind, nativeTrigger) then RestoreTimerAlpha(); return end
         if nativeKind then
           local state = nativeTrigger and parent.states and parent.states[nativeTrigger] or not nativeTrigger and parent.state
           -- The options window's sample (cdmTextPreview) is formatted like
           -- any %p below, so the Time Format settings show in the preview.
           if state and state.cdmBuff and not state.cdmTextPreview then
             if text:GetFont() then Private.CopyCDMCountdownText(text, state, nativeKind, timeFormat) end
+            RestoreTimerAlpha()
             return
           end
         end
@@ -406,9 +421,13 @@ local function modify(parent, region, parentData, data, first)
           local now = GetTime()
           if region.alphaNow or not region.alphaRead or now - region.alphaRead >= 0.25 then
             region.alphaNow, region.alphaRead = nil, now
-            local alpha = state and state.cdmHideGCDText and not state.cdmTextPreview
-              and state.cdmTextDurationObject and Private.GCDTextAlpha(state.cdmTextDurationObject)
+            -- (dev.27) whether the GCD rule applies is remembered before the alpha is read (the alpha
+            -- itself can be a hidden number), so a buff path taking this text over puts it back
+            -- (RestoreTimerAlpha).
+            local ruled = state and state.cdmHideGCDText and not state.cdmTextPreview and state.cdmTextDurationObject
+            local alpha = ruled and Private.GCDTextAlpha(ruled)
             text:SetAlpha(alpha or 1)
+            region.gcdAlphaWritten = ruled and true or nil
           end
         end
         region:UpdateAnchorOnTextChange()

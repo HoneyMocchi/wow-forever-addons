@@ -861,7 +861,7 @@ local function EnsurePresence(missing, region, data, filter, candidates, perUnit
   if missing.presenceFailed then return end
   local presence = missing.presence
   if not presence then
-    presence = Display.CreateAuraContainer(region, data)
+    presence = Display.CreateAuraContainer(region, data, nil, "presence")
     presence:SetEnabled(false)
     presence:SetAuraProcessingPolicy(CustomAuraContainerAuraProcessingPolicy.None)
     -- Placed on the region first, like every aura container; moved below.
@@ -978,7 +978,7 @@ local function EnsureMissing(single, region, data, trigger, instance)
   end
   if not missing then
     missing = {perUnit = perUnit}
-    local container = Display.CreateAuraContainer(region, data, perUnit)
+    local container = Display.CreateAuraContainer(region, data, perUnit, "missing")
     container:SetEnabled(false)
     container:SetAuraProcessingPolicy(CustomAuraContainerAuraProcessingPolicy.None)
     -- TOPLEFT only: Blizzard sizes the container from the group; nothing reads it.
@@ -2203,6 +2203,10 @@ learnEvents:SetScript("OnEvent", function(_, event, unit, updateInfo)
   end
   if not next(watchedIDs) or InCombatLockdown()
     or (C_Secrets and C_Secrets.ShouldAurasBeSecret and C_Secrets.ShouldAurasBeSecret()) then return end
+  -- ForeverAuras (1.4.3-dev.7, garbage review): an aura change on a unit that is never
+  -- learned from (a nameplate, a party member) left only after the table and the two
+  -- functions below had been made for it. The same check further down is unchanged.
+  if event == "UNIT_AURA" and unit ~= "target" and unit ~= "focus" and unit ~= "player" and unit ~= "pet" then return end
   local seen = SeenDurations()
   if not seen then return end
   local changed = {}
@@ -3468,7 +3472,8 @@ function Display.RefreshSingle(instance, unit, shown, force)
   -- Erased: the presence container is never enabled; only the clip follows.
   local enable = not missing.erased and container.faEnabled ~= shown
   local refresh = enable or (shown and force and not missing.erased)
-  if missing.erased and container.faEnabled then container:SetEnabled(false) end
+  -- ForeverAuras (1.4.6-dev.5): also after a refused write (faPending), whose state is unknown.
+  if missing.erased and (container.faEnabled or container.faPending ~= nil) then container:SetEnabled(false) end
   if container:IsShown() ~= shown then container:SetShown(shown) end
   if enable then container:SetEnabled(shown) end
   -- The Modern Aura Group spacing and centring shadow follow the same unit.
@@ -3484,7 +3489,7 @@ function Display.RefreshSingle(instance, unit, shown, force)
       if follower:IsShown() ~= shown then follower:SetShown(shown) end
       local followerEnable = follower.faEnabled ~= shown
       if followerEnable then follower:SetEnabled(shown) end
-      if shown and (followerEnable or force) then follower:UpdateAllAuras() end
+      if shown and (followerEnable or force) then Private.HitchOp("list refresh asked", follower.faOwnerId, follower.faRole); follower:UpdateAllAuras(); Private.HitchOp("list refresh returned", follower.faOwnerId, follower.faRole) end
     elseif follower and missing[key .. "Active"] then
       Display.RequestBoundAuraRefresh(follower, missing[key .. "BoundUnit"], unit, shown, force)
       deferred = true
@@ -3507,11 +3512,11 @@ function Display.RefreshSingle(instance, unit, shown, force)
   missing.unitExists = keepWithoutUnit or Display.SingleUnitExists({unit = unit})
   -- The child alpha has its own recovery if this write is refused.
   Display.RefreshSingleStatus(instance)
-  if shown and refresh then container:UpdateAllAuras(); Private.HitchCount("UpdateAllAuras") end
+  if shown and refresh then Private.HitchOp("list refresh asked", container.faOwnerId, container.faRole); container:UpdateAllAuras(); Private.HitchCount("UpdateAllAuras"); Private.HitchOp("list refresh returned", container.faOwnerId, container.faRole) end
   if deferred then return false end
 end
 
-learnEvents:SetScript("OnEvent", Private.Profiled("aura (modern) - learning", learnEvents:GetScript("OnEvent")))
+learnEvents:SetScript("OnEvent", Private.ProfiledEvent("aura (modern) - learning", learnEvents:GetScript("OnEvent")))
 
 -- ForeverAuras: "/fa modern <id>" report. Plain reads only; secret values
 -- print as such. Everything goes to chat, so a report can be pasted.

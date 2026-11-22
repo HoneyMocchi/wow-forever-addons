@@ -11,6 +11,9 @@ local QuestieProfessions = QuestieLoader:ImportModule("QuestieProfessions")
 ---@type Expansions
 local Expansions = QuestieLoader:ImportModule("Expansions")
 
+---@type l10n
+local l10n = QuestieLoader:ImportModule("l10n")
+
 local playerClass = UnitClassBase("player")
 local playerFaction = UnitFactionGroup("player")
 
@@ -30,7 +33,7 @@ Townsfolk.professionTrainers = {}
 Townsfolk.classSpecificTownsfolk = {}
 ---@type table<string, table<string, NpcId[]>> Faction name to category to NPC IDs
 Townsfolk.factionSpecificTownsfolk = {}
----@type table<string, ItemId[]> Pet food category to Item IDs
+---@type table<string, ItemId[]> Pet food category to Item IDs; the lists stay empty for non-hunters
 Townsfolk.petFoodVendorTypes = {}
 
 ---@type table<ProfessionEnum, NpcId[]> Filled by the files in ProfessionTrainers/
@@ -213,7 +216,9 @@ function Townsfolk.Initialize()
         townfolk["Battle Pet Trainer"] = {}
         for id in pairs(QuestieDB.NPCPointers) do
             local subName = QuestieDB.QueryNPCSingle(id, "subName")
-            if subName and subName == "Battle Pet Trainer" then
+            -- 이름 보정 후에도 분류를 유지합니다. 서비스 카테고리 자체는 영문
+            -- 키로 보존하고, DB 직책의 영문/현재 언어 표현을 모두 인식합니다.
+            if subName and (subName == "Battle Pet Trainer" or subName == l10n("Battle Pet Trainer")) then
                 tinsert(townfolk["Battle Pet Trainer"], id)
             end
         end
@@ -254,18 +259,22 @@ function Townsfolk.Initialize()
     local petFoodVendorTypes = {["Meat"] = {},["Fish"]={},["Cheese"]={},["Bread"]={},["Fungus"]={},["Fruit"]={},["Raw Meat"]={},["Raw Fish"]={}}
     local petFoodIndexes = {"Meat","Fish","Cheese","Bread","Fungus","Fruit","Raw Meat","Raw Fish"}
 
-    local count = 0
-    for id in pairs(QuestieDB.ItemPointers) do
-        -- Number fields read 0 for Items without a food type; only food types 1-8 name a pet food category.
-        local petFoodCategory = petFoodIndexes[QuestieDB.QueryItemSingle(id, "foodType")]
-        if petFoodCategory then
-            tinsert(petFoodVendorTypes[petFoodCategory], id)
+    -- Only hunters get a "Pet Food" vendor list (UpdatePlayerVendors), so other classes skip
+    -- this scan over every Item and keep the categories empty.
+    if playerClass == "HUNTER" then
+        local count = 0
+        for id in pairs(QuestieDB.ItemPointers) do
+            -- Number fields read 0 for Items without a food type; only food types 1-8 name a pet food category.
+            local petFoodCategory = petFoodIndexes[QuestieDB.QueryItemSingle(id, "foodType")]
+            if petFoodCategory then
+                tinsert(petFoodVendorTypes[petFoodCategory], id)
+            end
+            if count > 300 then -- Yield every 300 iterations, 300 is just a madeup number, is pretty fast.
+                count = 0
+                coroutine.yield()
+            end
+            count = count + 1
         end
-        if count > 300 then -- Yield every 300 iterations, 300 is just a madeup number, is pretty fast.
-            count = 0
-            coroutine.yield()
-        end
-        count = count + 1
     end
 
     coroutine.yield()

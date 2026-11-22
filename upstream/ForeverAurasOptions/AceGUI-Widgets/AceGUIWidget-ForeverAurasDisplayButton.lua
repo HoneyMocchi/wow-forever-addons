@@ -613,10 +613,9 @@ local methods = {
         local editbox = GetCurrentKeyBoardFocus();
         if(editbox) then
           local url = type(self.data.url) == "string" and self.data.url:match("^%s*(%S+)%s*$")
-          if not url then
-            print("ForeverAuras: Add a URL to Information to share the link to the Aura.")
-            return
-          end
+          -- ForeverAuras (1.4.3-dev.1, Dan's share-in-chat request): an aura without a
+          -- URL links the classic way again. The receiver's click requests the aura
+          -- from this character over addon whispers (Transmission.lua RequestDisplay).
           if (not fullName) then
             local name, realm = UnitFullName("player")
             if realm then
@@ -626,7 +625,7 @@ local methods = {
             end
           end
 
-          if not (GetCurrentRegion() == 5 or GetLocale() == "zhCN") then -- China region (5), and chinese locale profanity filter doesn't allow links in chat
+          if url and not (GetCurrentRegion() == 5 or GetLocale() == "zhCN") then -- China region (5), and chinese locale profanity filter doesn't allow links in chat
             editbox:Insert("[ForeverAuras: "..fullName.." - "..self.data.id.."] "..url)
           else
             editbox:Insert("[ForeverAuras: "..fullName.." - "..self.data.id.."]")

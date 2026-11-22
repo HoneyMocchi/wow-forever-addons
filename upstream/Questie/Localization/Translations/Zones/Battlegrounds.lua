@@ -6,10 +6,10 @@ local l10n = QuestieLoader:ImportModule("l10n")
 local battlegroundsLocales = {
     ["Warsong Gulch"] = {
         ["enUS"] = true,
-        ["deDE"] = (Expansions:IsEra() and "Warsongschlucht") or "Kriegshymnenschlucht",
+        ["deDE"] = (Expansions.Current == Expansions.Era and "Warsongschlucht") or "Kriegshymnenschlucht",
         ["esES"] = "Garganta Grito de Guerra",
         ["esMX"] = "Garganta Grito de Guerra",
-        ["frFR"] = (Expansions:IsEra() and "Goulet des Warsong") or "Goulet des Chanteguerres",
+        ["frFR"] = (Questie.IsClassic and "Goulet des Warsong") or "Goulet des Chanteguerres",
         ["koKR"] = "전쟁노래 협곡",
         ["ptBR"] = "Ravina Brado Guerreiro",
         ["ruRU"] = "Ущелье Песни Войны",
@@ -51,6 +51,18 @@ local battlegroundsLocales = {
         ["ruRU"] = "Око Бури",
         ["zhCN"] = "风暴之眼",
         ["zhTW"] = "暴風之眼",
+    },
+    ["Darkspear Islands"] = {
+        ["enUS"] = true,
+        ["deDE"] = "Darkspear-Inseln",
+        ["esES"] = "Islas Lanza Negra",
+        ["esMX"] = "Islas Lanza Negra",
+        ["frFR"] = "Îles des Sombrelances",
+        ["koKR"] = "검은창 군도",
+        ["ptBR"] = "Ilhas Lançanegra",
+        ["ruRU"] = "Острова Черного Копья",
+        ["zhCN"] = "暗矛群岛",
+        ["zhTW"] = "暗矛島嶼",
     },
 }
 

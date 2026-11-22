@@ -149,6 +149,45 @@ function CompressDisplay(data, version)
   return copiedData;
 end
 
+-- ForeverAuras (1.4.3-dev.4, Dan's /fa comm results: Forever delivers addon messages
+-- on PARTY and GUILD but drops addon whispers): the chat a link was seen in is the
+-- channel its transfer uses. Keyed by "character - display", bounded.
+-- ForeverAuras (1.4.3-dev.5, Dan's dev.4 report: still times out): "/fa comm trace"
+-- prints every step of a link transfer on both sides.
+local function Trace(...)
+  if Private.transferTrace then print("|cff9900ffFA share|r", ...) end
+end
+local function Shown(value)
+  if issecretvalue(value) then return "<hidden>" end
+  return tostring(value)
+end
+local linkChannels, linkChannelCount = {}, 0
+local chatEventChannels = {
+  CHAT_MSG_PARTY = "PARTY", CHAT_MSG_PARTY_LEADER = "PARTY",
+  CHAT_MSG_RAID = "RAID", CHAT_MSG_RAID_LEADER = "RAID",
+  CHAT_MSG_GUILD = "GUILD", CHAT_MSG_OFFICER = "GUILD",
+  CHAT_MSG_INSTANCE_CHAT = "INSTANCE_CHAT", CHAT_MSG_INSTANCE_CHAT_LEADER = "INSTANCE_CHAT",
+}
+local function RememberLinkChannel(event, characterName, displayName)
+  local channel = chatEventChannels[event]
+  if not channel then
+    Trace("link seen in", event, "(no channel for it)")
+    return
+  end
+  if linkChannels[characterName .. " - " .. displayName] ~= channel then
+    Trace("link seen in", event, "key [" .. characterName .. " - " .. displayName .. "] channel", channel)
+  end
+  local key = characterName .. " - " .. displayName
+  if linkChannels[key] == nil then
+    if linkChannelCount >= 100 then
+      wipe(linkChannels)
+      linkChannelCount = 0
+    end
+    linkChannelCount = linkChannelCount + 1
+  end
+  linkChannels[key] = channel
+end
+
 local function filterFunc(_, event, msg, player, l, cs, t, flag, channelId, ...)
   if hasanysecretvalues(msg, player, t, flag, channelId, ...) then return end
   if flag == "GM" or flag == "DEV" then
@@ -164,6 +203,7 @@ local function filterFunc(_, event, msg, player, l, cs, t, flag, channelId, ...)
     if(characterName and characterName ~= "" and displayName) then
       characterName = characterName:gsub("|c[Ff][Ff]......", ""):gsub("|r", "");
       displayName = displayName:gsub("|c[Ff][Ff]......", ""):gsub("|r", "");
+      RememberLinkChannel(event, characterName, displayName)
       newMsg = newMsg..remaining:sub(1, start-1);
       local url = remaining:sub(finish + 1):match("^ ([^%s|]+%.[^%s|]+)")
       if url then
@@ -241,6 +281,13 @@ local configForLS = {
 
 local tooltipLoading;
 local receivedData;
+-- ForeverAuras (1.4.3-dev.2): the URL of the link being transferred, if it has one.
+local fallbackUrl, fallbackLabel
+local function ShowFallbackUrl()
+  if not fallbackUrl then return end
+  StaticPopup_Show("FOREVERAURAS_COPY_URL", fallbackLabel, nil, fallbackUrl)
+  fallbackUrl, fallbackLabel = nil, nil
+end
 
 StaticPopupDialogs["FOREVERAURAS_COPY_URL"] = {
   text = "%s\nPress Ctrl+C to copy the link.",
@@ -269,10 +316,15 @@ EventRegistry:RegisterCallback("SetItemRef", function(_, link, text)
       local editbox = GetCurrentKeyBoardFocus()
       local inner = label:match("%[(.-)%]")
       if editbox and inner then editbox:Insert("[ForeverAuras: " .. inner .. "] " .. url) end
-    else
-      StaticPopup_Show("FOREVERAURAS_COPY_URL", label, nil, url)
+      return
     end
-    return
+    -- ForeverAuras (1.4.3-dev.2, Dan's dev.1 report): a link that carries a URL
+    -- transfers the aura like any other link. The URL is the fallback, shown when
+    -- the transfer cannot start or gets no answer.
+    fallbackUrl, fallbackLabel = url, label
+    link = "addon:ForeverAurasShare:import"
+  elseif link == "addon:ForeverAurasShare:import" then
+    fallbackUrl, fallbackLabel = nil, nil
   end
   if(link == "addon:ForeverAurasShare:import") then
     local label = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
@@ -286,6 +338,8 @@ EventRegistry:RegisterCallback("SetItemRef", function(_, link, text)
           editbox:Insert("[ForeverAuras: "..characterName.." - "..displayName.."]");
         end
       else
+        local linkChannel = linkChannels[characterName .. " - " .. displayName]
+        Trace("click key [" .. characterName .. " - " .. displayName .. "] remembered channel", tostring(linkChannel))
         characterName = characterName:gsub("%.", "")
         ShowTooltip({
           {2, "ForeverAuras", displayName, 0.5, 0, 1, 1, 1, 1},
@@ -293,13 +347,14 @@ EventRegistry:RegisterCallback("SetItemRef", function(_, link, text)
         });
         tooltipLoading = true;
         receivedData = false;
-        RequestDisplay(characterName, displayName);
+        RequestDisplay(characterName, displayName, linkChannel);
         WeakAuras.timer:ScheduleTimer(function()
           if (tooltipLoading and not receivedData and ItemRefTooltip:IsVisible()) then
             ShowTooltip({
               {2, "ForeverAuras", displayName, 0.5, 0, 1, 1, 1, 1},
               {1, L["Error not receiving display information from %s"]:format(characterName), 1, 0, 0}
             })
+            ShowFallbackUrl()
           end
         end, 5);
       end
@@ -672,8 +727,121 @@ function WeakAuras.Import(inData, target, callbackFunc, linkedAuras)
   return ImportNow(data, children, target, linkedAuras, nil, callbackFunc)
 end
 
+-- ForeverAuras (1.4.3-dev.1, Dan's share-in-chat request): what the client says
+-- about sending addon messages. A missing function reads as "not reported" (nil),
+-- a hidden answer as blocked.
+function Private.ChatTransferState()
+  local state = {}
+  local restricted = C_ChatInfo.AreOutgoingAddonChatMessagesRestricted
+  if restricted then
+    local value = restricted()
+    state.restricted = issecretvalue(value) or value == true
+    state.restrictedKnown = true
+  end
+  local lockdown = C_ChatInfo.InChatMessagingLockdown
+  if lockdown then
+    local value = lockdown()
+    state.lockdown = issecretvalue(value) or value == true
+    state.lockdownKnown = true
+  end
+  return state
+end
+
+function Private.PrintChatTransferDebug()
+  local state = Private.ChatTransferState()
+  local function describe(known, value)
+    if not known then return "not available on this client" end
+    return value and "|cffff4040yes|r" or "|cff40ff40no|r"
+  end
+  print("|cff9900ffForeverAuras|r chat sharing:")
+  print("  addon messages restricted: " .. describe(state.restrictedKnown, state.restricted))
+  print("  chat messaging lockdown: " .. describe(state.lockdownKnown, state.lockdown))
+  print("  in combat: " .. (InCombatLockdown() and "yes" or "no") .. ", in instance: " .. (IsInInstance() and "yes" or "no"))
+  local linked = 0
+  if Private.linked then
+    for _, time in pairs(Private.linked) do
+      if time > GetTime() - 300 then linked = linked + 1 end
+    end
+  end
+  print("  auras you linked in the last 5 minutes: " .. linked)
+  Private.RunChatTransferTest()
+end
+
+-- ForeverAuras (1.4.3-dev.3, Dan's dev.2 report: the whisper was accepted but never
+-- arrived): sends one addon message to this character over each channel it can use
+-- and reports the client's result code and whether the message came back.
+local transferTestFrame
+function Private.RunChatTransferTest()
+  local prefix = "FATransferTest"
+  if not transferTestFrame then
+    transferTestFrame = CreateFrame("Frame")
+    transferTestFrame.waiting = {}
+    transferTestFrame:RegisterEvent("CHAT_MSG_ADDON")
+    transferTestFrame:SetScript("OnEvent", function(self, _, messagePrefix, message)
+      if issecretvalue(messagePrefix) or issecretvalue(message) then
+        if next(self.waiting) then print("  test: an addon message arrived but its content is hidden") end
+        return
+      end
+      if messagePrefix ~= prefix then return end
+      local channel = self.waiting[message]
+      if channel then
+        self.waiting[message] = nil
+        print("  test " .. channel .. ": |cff40ff40came back|r")
+      end
+    end)
+    if C_ChatInfo.RegisterAddonMessagePrefix then C_ChatInfo.RegisterAddonMessagePrefix(prefix) end
+  end
+  local channels = {"WHISPER"}
+  if IsInRaid() then tinsert(channels, "RAID") elseif IsInGroup() then tinsert(channels, "PARTY") end
+  if IsInGuild() then tinsert(channels, "GUILD") end
+  local name, realm = UnitFullName("player")
+  for _, channel in ipairs(channels) do
+    local token = channel .. math.random(100000, 999999)
+    transferTestFrame.waiting[token] = channel
+    local result = C_ChatInfo.SendAddonMessage(prefix, token, channel, channel == "WHISPER" and name or nil)
+    local resultName
+    if not issecretvalue(result) and Enum and Enum.SendAddonMessageResult then
+      for enumName, value in pairs(Enum.SendAddonMessageResult) do
+        if value == result then resultName = enumName end
+      end
+    end
+    print("  test " .. channel .. ": send result " .. (issecretvalue(result) and "hidden" or tostring(result)) .. (resultName and (" (" .. resultName .. ")") or ""))
+    C_Timer.After(3, function()
+      if transferTestFrame.waiting[token] then
+        transferTestFrame.waiting[token] = nil
+        print("  test " .. channel .. ": |cffff4040nothing came back within 3 seconds|r")
+      end
+    end)
+  end
+  if #channels == 1 then print("  join a party and a guild, then run /fa comm again to test those channels too") end
+end
+
 local safeSenders = {}
-function RequestDisplay(characterName, displayName)
+-- ForeverAuras (1.4.3-dev.4): transfers over a group or guild channel reach everyone
+-- on it, so every message starts with the name of the one player it is for.
+-- ForeverAuras (1.4.3-dev.6, Dan's dev.5 trace): Forever names have two parts. A link
+-- writes them "Fojji-Riya", the addon channel reports the sender as "Fojji Riya", and
+-- UnitFullName gives "Fojji", "Riya". Names are compared with spaces and hyphens
+-- removed, and that form (no spaces) is what addresses a message.
+local function PlainName(name)
+  return (name:gsub("[%s%-]", ""))
+end
+local function SameCharacter(a, b)
+  local plainA, plainB = PlainName(a), PlainName(b)
+  if plainA == plainB then return true end
+  -- A same-realm sender on a client with realm names arrives without its realm.
+  local firstA, firstB = a:match("^([^%-]+)%-"), b:match("^([^%-]+)%-")
+  return (firstA ~= nil and PlainName(firstA) == plainB and not b:find("[%s%-]"))
+      or (firstB ~= nil and PlainName(firstB) == plainA and not a:find("[%s%-]"))
+end
+local function IsThisPlayer(target)
+  local name, realm = UnitFullName("player")
+  if realm and realm ~= "" and target == PlainName(name .. realm) then return true end
+  return target == PlainName(name)
+end
+local channelRequest
+
+function RequestDisplay(characterName, displayName, linkChannel)
   local playerName, realm = Private.ExecEnv.UnitFullName("player")
   if characterName == playerName or (realm and characterName == playerName .. "-" .. realm:gsub("%s", "")) then
     tooltipLoading = nil
@@ -686,19 +854,41 @@ function RequestDisplay(characterName, displayName)
     end
     return
   end
-  if C_ChatInfo.AreOutgoingAddonChatMessagesRestricted() then
-    tooltipLoading = nil
-    ShowTooltip({{1, "ForeverAuras", 0.5, 0, 1}, {1, "This realm blocks aura transfers through chat. Ask the sender to export the aura, then paste the export string into Import.", 1, 0.82, 0}})
-    return
-  end
-  if C_ChatInfo.InChatMessagingLockdown() then
+  -- ForeverAuras (1.4.3-dev.1, Dan's share-in-chat request): both checks are read
+  -- through Private.ChatTransferState, which tolerates a client without them, and
+  -- /fa comm prints the same state.
+  -- ForeverAuras (1.4.3-dev.2, Dan's dev.1 report): AreOutgoingAddonChatMessagesRestricted
+  -- reads true on Forever in the open world, so it no longer stops the request. The
+  -- request is sent and the 5 second timeout reports a transfer that got no answer.
+  local transferState = Private.ChatTransferState()
+  if transferState.lockdown then
     tooltipLoading = nil
     ShowTooltip({{1, "ForeverAuras", 0.5, 0, 1}, {1, "Aura sharing is unavailable while chat is restricted. Click the link again after restrictions end.", 1, 0.82, 0}})
+    ShowFallbackUrl()
     return
   end
   local characterNameAmbiguate = Ambiguate(characterName, "none")
   safeSenders[characterName] = true
   safeSenders[characterNameAmbiguate] = true
+
+  -- ForeverAuras (1.4.3-dev.4): a link seen in party, raid, instance or guild chat is
+  -- requested over that channel. A link from anywhere else uses the group channel when
+  -- the sender is grouped with this player, otherwise the whisper below.
+  local channel = linkChannel
+  if channel == "PARTY" and IsInRaid() then channel = "RAID" end
+  if (channel == "PARTY" or channel == "RAID") and not IsInGroup() then channel = nil end
+  if channel == "GUILD" and not IsInGuild() then channel = nil end
+  if not channel then
+    if UnitInRaid(characterNameAmbiguate) then channel = "RAID"
+    elseif UnitInParty(characterNameAmbiguate) then channel = "PARTY" end
+  end
+  Trace("request to", characterName, "channel", tostring(channel), "in group", tostring(IsInGroup()), "in raid", tostring(IsInRaid()), "in guild", tostring(IsInGuild()))
+  if channel then
+    channelRequest = {from = characterName, display = displayName, time = GetTime()}
+    local request = TableToString({m = "dR", d = displayName})
+    Comm:SendCommMessage("ForeverAurasCh", PlainName(characterName) .. " " .. request, channel)
+    return
+  end
 
   local version = nil
   if characterNameAmbiguate:find("-", 1, true) then
@@ -715,18 +905,38 @@ function RequestDisplay(characterName, displayName)
   Comm:SendCommMessage("ForeverAuras", transmitString, "WHISPER", characterName);
 end
 
-function TransmitError(errorMsg, characterName)
+function TransmitError(errorMsg, characterName, channel)
   local transmit = {
     m = "dE",
     eM = errorMsg
   };
+  if channel then
+    Comm:SendCommMessage("ForeverAurasCh", PlainName(characterName) .. " " .. TableToString(transmit), channel)
+    return
+  end
   Comm:SendCommMessage("ForeverAuras", TableToString(transmit), "WHISPER", characterName);
 end
 
-function TransmitDisplay(id, characterName, version)
+function TransmitDisplay(id, characterName, version, channel)
   local encoded = Private.DisplayToString(id);
   if(encoded ~= "") then
-    if version == 2  then
+    if channel then
+      -- ForeverAuras (1.4.3-dev.4): the aura goes out on the channel the request came
+      -- in on, addressed to the requester. Progress is sent at most once a second,
+      -- since everyone on the channel receives it.
+      local target = PlainName(characterName)
+      local total = #encoded + #target + 1
+      Trace("sending", id, "to", target, "on", channel, "bytes", total)
+      local lastProgress = GetTime()
+      Comm:SendCommMessage("ForeverAurasChP", target .. " 0 " .. total .. " " .. id, channel, nil, "ALERT")
+      Comm:SendCommMessage("ForeverAurasCh", target .. " " .. encoded, channel, nil, "BULK", function(displayName, done, totalBytes)
+        local now = GetTime()
+        if done >= totalBytes or now - lastProgress >= 1 then
+          lastProgress = now
+          Comm:SendCommMessage("ForeverAurasChP", target .. " " .. done .. " " .. totalBytes .. " " .. displayName, channel, nil, "ALERT")
+        end
+      end, id)
+    elseif version == 2  then
       -- Cross Realm communication
       local total = #encoded
       local messageOptions = {
@@ -744,7 +954,8 @@ function TransmitDisplay(id, characterName, version)
       end, id);
     end
   else
-    TransmitError("dne", characterName);
+    Trace("cannot send", id, ": no such aura")
+    TransmitError("dne", characterName, channel);
   end
 end
 
@@ -775,7 +986,7 @@ local function HandleProgressComm(prefix, message, distribution, sender)
   end
 end
 
-local function HandleComm(prefix, message, distribution, sender)
+local function HandleComm(prefix, message, distribution, sender, channel)
   if hasanysecretvalues(prefix, message, distribution, sender) then return end
   local linkValidityDuration = 60 * 5
   local safeSender = safeSenders[sender]
@@ -789,11 +1000,15 @@ local function HandleComm(prefix, message, distribution, sender)
     end
   end
   if not safeSender and not validLink then
+    Trace("message from", sender, "ignored: not asked and nothing linked")
     return
   end
 
   local received = StringToTable(message);
   if(received and type(received) == "table" and received.m) then
+    -- ForeverAuras (1.4.3-dev.4): on a shared channel an aura is only accepted from
+    -- the character this player asked.
+    if received.m == "d" and channel and not safeSender then return end
     if(received.m == "d") then
       tooltipLoading = nil;
       local data, children, version = received.d, received.c, received.v
@@ -817,7 +1032,9 @@ local function HandleComm(prefix, message, distribution, sender)
       ImportNow(data, children, nil, nil, sender)
     elseif(received.m == "dR") then
       if(Private.linked and Private.linked[received.d] and Private.linked[received.d] > GetTime() - linkValidityDuration) then
-        TransmitDisplay(received.d, sender, received.v);
+        TransmitDisplay(received.d, sender, received.v, channel);
+      else
+        Trace("request for [" .. tostring(received.d) .. "] ignored: not linked by this character in the last 5 minutes")
       end
     elseif(received.m == "dE") then
       tooltipLoading = nil;
@@ -832,6 +1049,7 @@ local function HandleComm(prefix, message, distribution, sender)
           {1, L["Requested display not authorized"], 1, 0, 0}
         });
       end
+      ShowFallbackUrl()
     end
   elseif(ItemRefTooltip.WeakAuras_Tooltip_Thumbnail and ItemRefTooltip.WeakAuras_Tooltip_Thumbnail:IsVisible()) then
     ShowTooltip({
@@ -841,6 +1059,44 @@ local function HandleComm(prefix, message, distribution, sender)
   end
 end
 
+-- ForeverAuras (1.4.3-dev.4): channel transfers. A message is "<short name> <body>";
+-- only the named player handles it. The requester trusts the answer when it comes
+-- from the character whose link was clicked, within five minutes of the click.
+local function ForThisPlayer(message, sender)
+  if hasanysecretvalues(message, sender) then
+    Trace("channel message hidden: message", Shown(message) == "<hidden>" and "hidden" or "ok", "sender", Shown(sender))
+    return
+  end
+  local target, body = message:match("^(%S+) (.*)$")
+  if not target or not IsThisPlayer(target) then return end
+  Trace("channel message from", sender, "for me, bytes", #message)
+  if channelRequest and SameCharacter(channelRequest.from, sender) and GetTime() - channelRequest.time < 300 then
+    safeSenders[sender] = true
+  end
+  return body
+end
+
+local function HandleChannelComm(prefix, message, distribution, sender)
+  if hasanysecretvalues(prefix, distribution) then
+    Trace("channel message hidden: prefix", Shown(prefix), "distribution", Shown(distribution))
+    return
+  end
+  local body = ForThisPlayer(message, sender)
+  if body then
+    local received = StringToTable(body)
+    Trace("handling on", distribution, "kind", type(received) == "table" and tostring(received.m) or tostring(received))
+    HandleComm(prefix, body, distribution, sender, distribution)
+  end
+end
+
+local function HandleChannelProgressComm(prefix, message, distribution, sender)
+  if hasanysecretvalues(prefix, message, distribution, sender) then return end
+  local body = ForThisPlayer(message, sender)
+  if body then HandleProgressComm(prefix, body, distribution, sender) end
+end
+
+Comm:RegisterComm("ForeverAurasCh", HandleChannelComm)
+Comm:RegisterComm("ForeverAurasChP", HandleChannelProgressComm)
 Comm:RegisterComm("ForeverAurasProg", HandleProgressComm)
 Comm:RegisterComm("ForeverAuras", HandleComm)
 Chomp.RegisterAddonPrefix("ForeverAuras2", HandleComm)

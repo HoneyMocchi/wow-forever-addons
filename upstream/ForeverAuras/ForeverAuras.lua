@@ -276,8 +276,11 @@ function SlashCmdList.WeakAuras(input)
   elseif msg == "phitch" then
     -- Hitch capture: per-frame breakdown of slow frames, optional threshold in ms.
     -- "/fa phitch login [ms] [seconds]" arms it for the next reload instead.
+    -- "/fa phitch quiet [ms]" keeps the slow frames and prints them when the capture stops.
     if args[1] == "login" then
       WeakAuras.ArmLoginHitchCapture(args[2], args[3])
+    elseif args[1] == "quiet" then
+      WeakAuras.ToggleHitchCapture(args[2], true)
     else
       WeakAuras.ToggleHitchCapture(args[1])
     end
@@ -338,6 +341,65 @@ function SlashCmdList.WeakAuras(input)
     local which = input:match("^%s*%S+%s+(.-)%s*$")
     if which and which ~= "" then Private.BlizzardAuraDisplay.PrintDebug(which)
     elseif Private.BlizzardAuraDisplay.PrintSummary then Private.BlizzardAuraDisplay.PrintSummary() end
+  elseif msg == "unloadmodern" or msg == "unloadlegacy" then
+    Private.UnloadKindForSession(msg == "unloadmodern")
+  elseif msg == "mem" then
+    -- ForeverAuras (1.4.6-dev.3, Dan's 700 MB interface heap that a full collection did not
+    -- free): the client's own per-addon memory figures, largest first, beside the whole heap.
+    -- "/fa mem collect" runs a full collection first, so what is listed is memory being held.
+    if args[1] == "collect" then collectgarbage() end
+    local update, usage = UpdateAddOnMemoryUsage, GetAddOnMemoryUsage
+    print(("|cff9900ffForeverAuras|r interface memory: %.0f MB in total%s"):format(collectgarbage("count") / 1024, args[1] == "collect" and " (after a full collection)" or ""))
+    if not (update and usage and C_AddOns and C_AddOns.GetNumAddOns) then
+      print("  this client does not report memory per addon")
+    else
+      update()
+      local rows, listed = {}, 0
+      for index = 1, C_AddOns.GetNumAddOns() do
+        local kb = usage(index)
+        if type(kb) == "number" and not issecretvalue(kb) and kb > 0 then
+          rows[#rows + 1] = {name = C_AddOns.GetAddOnInfo(index), kb = kb}
+          listed = listed + kb
+        end
+      end
+      table.sort(rows, function(a, b) return a.kb > b.kb end)
+      for index = 1, math.min(#rows, 12) do
+        print(("  %s: %.1f MB"):format(tostring(rows[index].name), rows[index].kb / 1024))
+      end
+      -- (1.4.6-dev.5, Astra's review, item 7) the remainder is a difference, not an owner
+      print(("  all addons together: %.0f MB; the rest of the total is not attributed to any addon (who caused it is not known from this)"):format(listed / 1024))
+    end
+  elseif msg == "hunt" then
+    -- ForeverAuras (1.4.6-dev.2): starts or stops the hitch hunt (Private.hunt).
+    Private.hunt.Toggle()
+  elseif msg == "pace" then
+    -- ForeverAuras (1.4.5-dev.2, Dan's combat-end hitch): "/fa pace <first> <per frame>" sets,
+    -- for this session only, how many displays a combat-end load scan loads in its own frame
+    -- and how many per frame afterwards, so different settings can be captured with
+    -- /fa phitch without reinstalling. "/fa pace" alone prints the current values.
+    local paced = Private.pacedLoads
+    local first, perFrame = tonumber(args[1]), tonumber(args[2])
+    if first and perFrame and first >= 0 and first <= 8 and perFrame >= 1 and perFrame <= 8 then
+      paced.first, paced.perFrame = math.floor(first), math.floor(perFrame)
+    elseif args[1] then
+      print("|cff9900ffForeverAuras|r usage: /fa pace <first 0-8> <per frame 1-8>   (the release setting is /fa pace 4 4)")
+    end
+    print(("|cff9900ffForeverAuras|r combat-end loading: %d display(s) in the combat-end frame, then %d per frame (until reload)"):format(paced.first, paced.perFrame))
+  elseif msg == "statusevents" then
+    -- ForeverAuras (1.4.4-dev.1): starts, then stops and prints, the health/flag handler capture.
+    if Private.ToggleStatusEventCapture then Private.ToggleStatusEventCapture() end
+  elseif msg == "comm" then
+    -- ForeverAuras (1.4.3-dev.1, Dan's share-in-chat request): prints whether the
+    -- client allows the addon whispers a chat-link transfer needs.
+    -- ForeverAuras (1.4.3-dev.5): "/fa comm trace" switches the step by step transfer trace.
+    if input:match("^%s*%S+%s+trace") then
+      Private.transferTrace = not Private.transferTrace
+      print("|cff9900ffForeverAuras|r share trace " .. (Private.transferTrace and "on" or "off"))
+    elseif Private.PrintChatTransferDebug then Private.PrintChatTransferDebug() end
+  elseif msg == "cd" and input:match("^%s*%S+%s+%S") then
+    -- ForeverAuras (1.4.2-dev.1): "/fa cd <spell id>" prints the client's cooldown answers
+    -- for one spell and what the addon made of them (SpellCooldown.lua).
+    if Private.PrintSpellCooldownDebug then Private.PrintSpellCooldownDebug(input:match("^%s*%S+%s+(%S+)")) end
   elseif msg == "cdm" and input:match("^%s*%S+%s+%S") then
     -- ForeverAuras: "/fa cdm <aura id>" prints a CDM trigger's state and
     -- what Blizzard's viewer frames and the unit's auras say, for bug reports.
@@ -2488,8 +2550,24 @@ function Private.ScanForLoads(toCheck, event, arg1, ...)
   -- Modern Aura Groups re-anchor once for all displays this scan loads or unloads.
   local flow = Private.BlizzardAuraDisplay
   if flow.BeginFlowLoad then flow.BeginFlowLoad() end
+  -- ForeverAuras (1.4.6-dev.9, capture only): the scan's event is the cause its displays' showing
+  -- and hiding are filed under ("/fa phitch"); nothing is written when no capture runs.
+  -- (dev.10, Astra's dev.9 review) the cause that stood before this scan (an outer scan, or the
+  -- event handler that started it) is put back when it ends, also when the batch's finishing
+  -- work raises an error: during a capture that work is called protected and the same error is
+  -- raised again; with no capture it is called exactly as before.
+  local previousCause, previousIsScan = Private.HitchLoadBegin(event or "a scan with no event")
   local ok, err = pcall(scanForLoadsImpl, toCheck, event, arg1, ...)
-  if flow.EndFlowLoad then flow.EndFlowLoad() end
+  if flow.EndFlowLoad then
+    if Private.HitchCounting() then
+      local okEnd, errEnd = pcall(flow.EndFlowLoad)
+      Private.HitchLoadEnd(previousCause, previousIsScan)
+      if not okEnd then error(errEnd, 0) end
+    else
+      flow.EndFlowLoad()
+    end
+  end
+  Private.HitchLoadEnd(previousCause, previousIsScan)
   if not ok then geterrorhandler()(err) end
 end
 
@@ -2821,6 +2899,163 @@ function Private.UnloadGroupsForSession(text)
   local names = table.concat(groups, ", ")
   if #names > 300 then names = names:sub(1, 300) .. " ..." end
   WeakAuras.prettyPrint(("Unloaded %d auras (%d matching names) until /reload: %s"):format(count, #groups, names))
+end
+
+-- ForeverAuras (1.4.6-dev.2, Dan's combat-change hitch: "is there nothing we can print to see
+-- what aura is causing it?"): "/fa hunt". The slow part of those frames is the client's own
+-- work, which no Lua timer can bill to an aura. The hunt finds it by trial instead: on each
+-- pull one top-level group is left unloaded (session only), the longest frame in the half
+-- second after combat starts and after it ends is recorded, and after the fight the group
+-- is loaded again and the next one is left out. One pull in each round has everything
+-- loaded, as the baseline. "/fa hunt" again stops, loads everything, and prints the groups
+-- ordered by how much shorter those frames were without them. All state is on Private.hunt
+-- (this file is at Lua's limit of 200 locals); nothing runs unless a hunt is on.
+Private.hunt = {}
+function Private.hunt.Exclude(id, on)
+  local data = id and db.displays[id]
+  if not data then return end
+  local toCheck = {}
+  for child in Private.TraverseLeafsOrAura(data) do
+    sessionExcluded[child.id] = on or nil
+    toCheck[child.id] = true
+  end
+  Private.ScanForLoads(toCheck)
+end
+function Private.hunt.Name(index)
+  return Private.hunt.groups[index] or "(nothing unloaded, baseline)"
+end
+function Private.hunt.Advance()
+  local hunt = Private.hunt
+  if not hunt.active then return end
+  if InCombatLockdown() then hunt.owed = true; return end
+  hunt.owed = nil
+  hunt.Exclude(hunt.groups[hunt.index], false)
+  hunt.index = hunt.index + 1
+  if hunt.index > #hunt.groups then hunt.index = 0; hunt.rounds = hunt.rounds + 1 end
+  hunt.Exclude(hunt.groups[hunt.index], true)
+  print(("|cff9900ffFA hunt|r next pull: without %s (round %d, %d of %d)"):format(hunt.Name(hunt.index), hunt.rounds + 1, hunt.index + 1, #hunt.groups + 1))
+end
+function Private.hunt.Close()
+  local hunt = Private.hunt
+  local kind, worst = hunt.window, hunt.worst
+  hunt.window, hunt.windowUntil = nil, nil
+  hunt.pull = hunt.pull or {}
+  hunt.pull[kind] = worst
+  if kind ~= "finish" then return end
+  local list = hunt.samples[hunt.index]
+  if not list then list = {}; hunt.samples[hunt.index] = list end
+  list[#list + 1] = {start = hunt.pull.start, finish = hunt.pull.finish}
+  print(("|cff9900ffFA hunt|r without %s: combat start %s ms, combat end %.0f ms"):format(hunt.Name(hunt.index),
+    hunt.pull.start and ("%.0f"):format(hunt.pull.start) or "?", hunt.pull.finish))
+  hunt.pull = nil
+  C_Timer.After(1.5, hunt.Advance)
+end
+function Private.hunt.OnUpdate()
+  local hunt = Private.hunt
+  local now = debugprofilestop()
+  local took = now - (hunt.last or now)
+  hunt.last = now
+  if not hunt.window then return end
+  if took > hunt.worst then hunt.worst = took end
+  if GetTime() > hunt.windowUntil then hunt.Close() end
+end
+function Private.hunt.OnEvent(_, event)
+  local hunt = Private.hunt
+  if hunt.window then hunt.Close() end
+  hunt.window = event == "PLAYER_REGEN_DISABLED" and "start" or "finish"
+  hunt.worst, hunt.windowUntil = 0, GetTime() + 0.5
+end
+function Private.hunt.Median(list, key)
+  local values = {}
+  for _, sample in ipairs(list) do if sample[key] then values[#values + 1] = sample[key] end end
+  if #values == 0 then return nil end
+  table.sort(values)
+  return values[math.ceil(#values / 2)]
+end
+function Private.hunt.Report()
+  local hunt = Private.hunt
+  local base = hunt.samples[0] or {}
+  local baseStart, baseFinish = hunt.Median(base, "start"), hunt.Median(base, "finish")
+  print(("|cff9900ffFA hunt|r results. Everything loaded: combat start %s ms, combat end %s ms (%d pulls)"):format(
+    baseStart and ("%.0f"):format(baseStart) or "?", baseFinish and ("%.0f"):format(baseFinish) or "?", #base))
+  local rows = {}
+  for index = 1, #hunt.groups do
+    local list = hunt.samples[index]
+    if list and #list > 0 then
+      local start, finish = hunt.Median(list, "start"), hunt.Median(list, "finish")
+      rows[#rows + 1] = {name = hunt.groups[index], start = start, finish = finish, pulls = #list, total = (start or baseStart or 0) + (finish or baseFinish or 0)}
+    end
+  end
+  table.sort(rows, function(a, b) return a.total < b.total end)
+  for _, row in ipairs(rows) do
+    print(("  without %s: start %s ms, end %s ms (%d pulls)"):format(row.name, row.start and ("%.0f"):format(row.start) or "?",
+      row.finish and ("%.0f"):format(row.finish) or "?", row.pulls))
+  end
+  print("  The groups at the top are the ones whose absence shortened those frames most. One pull each is noisy: two or three rounds are worth more.")
+end
+function Private.hunt.Toggle()
+  local hunt = Private.hunt
+  if hunt.active then
+    if InCombatLockdown() then WeakAuras.prettyPrint("Stop the hunt out of combat.") return end
+    hunt.active = false
+    hunt.frame:SetScript("OnUpdate", nil)
+    hunt.frame:UnregisterAllEvents()
+    hunt.Exclude(hunt.groups[hunt.index], false)
+    hunt.Report()
+    return
+  end
+  if InCombatLockdown() then WeakAuras.prettyPrint("Start the hunt out of combat.") return end
+  if WeakAuras.IsOptionsOpen() then WeakAuras.prettyPrint("Close the options window first.") return end
+  if sessionUnloaded or next(sessionExcluded) then WeakAuras.prettyPrint("Some auras are unloaded for this session. Type /reload first.") return end
+  hunt.groups, hunt.samples, hunt.index, hunt.rounds, hunt.window, hunt.pull, hunt.last, hunt.owed = {}, {}, 0, 0, nil, nil, nil, nil
+  for id, data in pairs(db.displays) do
+    if not data.parent then
+      for child in Private.TraverseLeafsOrAura(data) do
+        if loaded[child.id] ~= nil then hunt.groups[#hunt.groups + 1] = id; break end
+      end
+    end
+  end
+  table.sort(hunt.groups)
+  if #hunt.groups == 0 then WeakAuras.prettyPrint("No loadable groups found.") return end
+  if not hunt.frame then
+    hunt.frame = CreateFrame("Frame")
+    hunt.frame:SetScript("OnEvent", function(...) local h = Private.hunt; if h.active then h.OnEvent(...) end end)
+  end
+  hunt.frame:RegisterEvent("PLAYER_REGEN_DISABLED")
+  hunt.frame:RegisterEvent("PLAYER_REGEN_ENABLED")
+  hunt.frame:SetScript("OnUpdate", hunt.OnUpdate)
+  hunt.active = true
+  print(("|cff9900ffFA hunt|r started with %d top-level groups. Fight as normal: each pull leaves one group unloaded and is measured. A full round is %d pulls. Type /fa hunt again to stop and see the results."):format(#hunt.groups, #hunt.groups + 1))
+  print("|cff9900ffFA hunt|r first pull: everything loaded (baseline)")
+end
+
+-- ForeverAuras (1.4.6-dev.4, Dan's combat-change hitch: gone with every aura unloaded, and
+-- memory builds up the same with or without auras): "/fa unloadmodern" and "/fa unloadlegacy"
+-- unload, for this session only, every aura that has an Aura (Modern) trigger, or every aura
+-- that has none, to show which kind the hitch belongs to. /reload loads them again.
+function Private.UnloadKindForSession(modern)
+  if WeakAuras.IsOptionsOpen() then
+    WeakAuras.prettyPrint("Close the options window first.")
+    return
+  end
+  local toCheck, count = {}, 0
+  for id, data in pairs(db.displays) do
+    if not data.controlledChildren and not sessionExcluded[id] then
+      local isModern = false
+      for _, entry in ipairs(data.triggers or {}) do
+        if type(entry) == "table" and entry.trigger and entry.trigger.type == "secretAura" then isModern = true; break end
+      end
+      if isModern == modern then
+        sessionExcluded[id] = true
+        toCheck[id] = true
+        if loaded[id] then count = count + 1 end
+      end
+    end
+  end
+  Private.ScanForLoads(toCheck)
+  -- (1.4.6-dev.5, Astra's dev.4 review) said for what it is: a split by saved trigger type
+  WeakAuras.prettyPrint(("Unloaded until /reload: every display %s (%d were loaded). This is a rough split: mixed displays go whole, and backends that feed other displays count as non-modern."):format(
+    modern and "containing an Aura (Modern) trigger" or "with no Aura (Modern) trigger", count))
 end
 
 function Private.LoadDisplays(toLoad, ...)
@@ -4510,6 +4745,9 @@ function Private.ReleaseClone(id, cloneId, regionType)
   end
   local region = clones[id][cloneId];
   clones[id][cloneId] = nil;
+  -- ForeverAuras (1.4.6-dev.26, Astra's dev.24 review, P2): the wand lockout gate is retired with
+  -- the clone, before the frame goes to any pool or is held, so its next owner cannot inherit a hide.
+  if region and region.secretLockoutGate and Private.SetRegionLockoutGate then Private.SetRegionLockoutGate(region, nil) end
   -- ForeverAuras (Astra's overlay-reuse review, dev.4 follow-up): overlays
   -- custom code drew over this frame are retired before it goes back to the
   -- shared pool, so the next display given the frame does not inherit them

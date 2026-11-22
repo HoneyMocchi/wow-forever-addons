@@ -113,7 +113,7 @@ end
 function Private.InvalidateSpellCooldownCache()
   cooldownCacheFrame = nil
 end
-local cooldownCacheFields = {"cooldown", "conditionOnCooldown", "conditionDuration", "gcdOnly", "onCooldown",
+local cooldownCacheFields = {"cooldown", "wandLockout", "lockoutGate", "conditionOnCooldown", "conditionDuration", "gcdOnly", "onCooldown",
   "paused", "count", "ready", "charges", "maxCharges", "recharging", "chargeDuration", "textDuration",
   "wandAppearanceDuration", "duration"}
 local ReadSpellBase, FillSpellCooldownData
@@ -202,6 +202,36 @@ end
 function FillSpellCooldownData(result, base, spellID, track, showGCD, showLossOfControl)
   wipe(result)
   local info, charges, cooldown, zero = base.info, base.charges, base.cooldown, base.zero
+  -- ForeverAuras (1.4.6-dev.15, "Wand auto-shots trigger cooldown auras" report; corrected in dev.19 after
+  -- Astra's dev.17 review): a wand shot puts Shoot's lockout on every spell, and the GCD-free timer read
+  -- here is then that lockout, so a ready spell answered "on cooldown" for the length of each shot.
+  -- dev.15 let the timer copied before the shot decide; that copy is an appearance aid and proves nothing
+  -- about now: a cooldown started since by another spell's cast, or by anything else, was reported ready.
+  -- One rule decides, and only during the Shoot hold (WandCooldown.lua): with readable numbers, the live
+  -- timer is the lockout when its start and length are exactly Shoot's own (the comparison WeakAuras
+  -- makes on classic clients). A cooldown of the spell's own, shared or not, has another timer and is
+  -- reported as it is.
+  -- (dev.20, Astra's dev.19 review) Without readable numbers nothing is concluded. dev.19 still let the
+  -- pre-shot copy say "ready" there when no cast had followed it; repeated shots renew the hold, so a
+  -- cooldown that began with no cast of the player's was reported ready for as long as the shooting
+  -- went on (20 seconds reproduced). The copy is back to what it was made for, the countdown text and
+  -- the desaturation; it takes no part in the ready/on-cooldown answer.
+  -- Unresolved, and stated: when the client hides cooldown numbers (in combat, for many spells) the
+  -- answer is the live one, and an icon shown only on cooldown can still follow the wand.
+  local heldDuration, held = Private.GetWandCooldownDuration(spellID, cooldown)
+  local wandLockout = false
+  if info and info.isEnabled and spellID ~= 5019 and Private.IsWandHeldSpell and Private.IsWandHeldSpell(spellID) then
+    local start, length = info.startTime, info.duration
+    if not issecretvalue(start) and not issecretvalue(length) and type(start) == "number" and type(length) == "number" and length > 0 then
+      local shootBase = ReadSpellBase(5019)
+      local shoot = shootBase and shootBase.info
+      if shoot and not issecretvalue(shoot.startTime) and not issecretvalue(shoot.duration)
+         and shoot.startTime == start and shoot.duration == length then
+        wandLockout = true
+        zero = true
+      end
+    end
+  end
   local onCooldown
   if info then
     if not info.isEnabled then
@@ -224,6 +254,7 @@ function FillSpellCooldownData(result, base, spellID, track, showGCD, showLossOf
     knownOnCooldown[spellID] = onCooldown or nil
   end
   result.cooldown = cooldown
+  result.wandLockout = wandLockout
   result.conditionOnCooldown = conditionOnCooldown
   result.conditionDuration = cooldown
   result.gcdOnly = info and info.isActive and info.isEnabled and zero == true or false
@@ -239,9 +270,19 @@ function FillSpellCooldownData(result, base, spellID, track, showGCD, showLossOf
   end
 
   -- Share the copied timer with desaturation without changing logical cooldown state.
-  local held
-  result.textDuration, held = Private.GetWandCooldownDuration(spellID, cooldown)
+  result.textDuration = heldDuration
   result.wandAppearanceDuration = held and not result.paused and result.textDuration or nil
+  -- ForeverAuras (1.4.6-dev.24): the timer a display shown only on cooldown follows with its alpha
+  -- (Private.LockoutGateAlpha) while a wand hold is on and nothing above could tell a lockout from a
+  -- cooldown of the spell's own: the numbers are hidden and the client says a timer is running. It is
+  -- the live GCD-free timer, never the copy from before the shot. Not set for a paused cooldown, a
+  -- recharge or a loss of control (below); those keep what they had.
+  result.lockoutGate = nil
+  if cooldown and info and info.isEnabled and info.isActive and onCooldown ~= false and not wandLockout
+     and (issecretvalue(info.startTime) or issecretvalue(info.duration))
+     and spellID ~= 5019 and Private.IsWandHeldSpell and Private.IsWandHeldSpell(spellID) then
+    result.lockoutGate = cooldown
+  end
   local useCharges = track == "charges"
   if track ~= "cooldown" and track ~= "charges" and charges then
     local shortCooldown = info and not issecretvalue(info.duration) and info.duration <= 1.5
@@ -254,6 +295,7 @@ function FillSpellCooldownData(result, base, spellID, track, showGCD, showLossOf
     result.conditionDuration = result.chargeDuration
     result.textDuration = result.chargeDuration
     result.wandAppearanceDuration = nil -- Recharge appearance keeps its own timer.
+    result.lockoutGate = nil
     result.gcdOnly = false
     result.onCooldown = charges and charges.isActive or false
     result.conditionOnCooldown = result.onCooldown
@@ -274,6 +316,7 @@ function FillSpellCooldownData(result, base, spellID, track, showGCD, showLossOf
       result.conditionDuration = result.duration
       result.textDuration = result.duration
       result.wandAppearanceDuration = nil -- Loss of control takes precedence.
+      result.lockoutGate = nil
       result.gcdOnly = false
       result.onCooldown = lossOfControl.isActive
       result.conditionOnCooldown = result.onCooldown
@@ -356,6 +399,36 @@ function Private.GetGCDTextCurve()
     gcdTextCurveStep = step
   end
   return gcdTextCurve
+end
+
+-- ForeverAuras (1.4.6-dev.24, the wand report, restricted case; Dan: cooldown numbers are hidden in combat):
+-- the alpha for a whole display that is shown only on cooldown, while a wand hold is on and the numbers
+-- cannot be read. `wanted` for a timer whose total length is above one GCD step (a cooldown of the spell's
+-- own, started by anything), 0 for a GCD-length or wand lockout. The client evaluates the live timer's
+-- total length; the addon reads nothing and remembers nothing, so this is not a guess from an older
+-- state: it is the classification the countdown text already uses (GCDTextAlpha, below), applied to the
+-- display. One curve per step and alpha (alphas rounded to a hundredth, so the set stays small).
+local lockoutCurves, lockoutCurveStep = {}, nil
+function Private.LockoutGateAlpha(duration, wanted)
+  if not duration or type(duration) ~= "userdata" and type(duration) ~= "table" then return end
+  if not duration.EvaluateTotalDuration then return end
+  if issecretvalue(wanted) or type(wanted) ~= "number" then return end
+  if not (C_CurveUtil and C_CurveUtil.CreateCurve and Enum.LuaCurveType) then return end
+  local step = GCDStep()
+  if lockoutCurveStep ~= step then
+    lockoutCurveStep = step
+    wipe(lockoutCurves)
+  end
+  local key = math.floor(wanted * 100 + 0.5)
+  local curve = lockoutCurves[key]
+  if not curve then
+    curve = C_CurveUtil.CreateCurve()
+    curve:SetType(Enum.LuaCurveType.Step)
+    curve:AddPoint(0, 0)
+    curve:AddPoint(step, key / 100)
+    lockoutCurves[key] = curve
+  end
+  return duration:EvaluateTotalDuration(curve, 0)
 end
 
 -- Alpha for a countdown text drawn from duration: 0 while it is a GCD-length
@@ -480,3 +553,48 @@ Private.memoryRootAccessors["SpellCooldown: gcdStateSince"] = function() return 
 Private.memoryRootAccessors["SpellCooldown: knownOnCooldown"] = function() return knownOnCooldown end
 Private.memoryRootAccessors["SpellCooldown: baseCache"] = function() return baseCache end
 Private.memoryRootAccessors["SpellCooldown: customStateScratch"] = function() return customStateScratch end
+
+-- ForeverAuras (1.4.2-dev.1, Dan's Earth Shock report: the icon stays desaturated in
+-- combat after the cooldown ends): "/fa cd <spell id>" prints what the client hands the
+-- addon for that spell right now and what the addon concluded from it. Statuses are kept
+-- apart from values: a hidden field is reported as hidden, never read.
+local function Describe(value)
+  if issecretvalue(value) then return "hidden" end
+  if value == nil then return "none" end
+  return tostring(value)
+end
+function Private.PrintSpellCooldownDebug(spellID)
+  local say = function(...) print("|cff88ccffFA cd|r", ...) end
+  spellID = tonumber(spellID)
+  if not spellID then say("usage: /fa cd <spell id>") return end
+  local name = C_Spell.GetSpellName(spellID)
+  say(spellID, Describe(name), "restricted:", Describe(C_Secrets.ShouldSpellCooldownBeSecret(spellID)), "combat:", tostring(InCombatLockdown()))
+  local info = C_Spell.GetSpellCooldown(spellID)
+  if not info then
+    say("GetSpellCooldown: none")
+  else
+    say("GetSpellCooldown: isActive", Describe(info.isActive), "isEnabled", Describe(info.isEnabled), "isOnGCD", Describe(info.isOnGCD),
+      "startTime", Describe(info.startTime), "duration", Describe(info.duration))
+  end
+  local filtered = C_Spell.GetSpellCooldownDuration(spellID, true)
+  local unfiltered = C_Spell.GetSpellCooldownDuration(spellID, false)
+  say("duration without GCD: IsZero", filtered and Describe(filtered:IsZero()) or "none",
+    "with GCD: IsZero", unfiltered and Describe(unfiltered:IsZero()) or "none")
+  local usable, noPower = C_Spell.IsSpellUsable(spellID)
+  say("IsSpellUsable:", Describe(usable), "insufficient power:", Describe(noPower))
+  local since = gcdStateSince[spellID]
+  say("addon GCD flag (last SPELL_UPDATE_COOLDOWN):", Describe(gcdStates[spellID]), "since", since and string.format("%.2fs ago", GetTime() - since) or "none",
+    "remembered on cooldown:", tostring(knownOnCooldown[spellID] or false))
+  local data = Private.GetSpellCooldownData(spellID, "cooldown")
+  if data then
+    say("addon conclusion: onCooldown", Describe(data.onCooldown), "ready", Describe(data.ready), "gcdOnly", Describe(data.gcdOnly),
+      "conditionOnCooldown", Describe(data.conditionOnCooldown), "paused", Describe(data.paused))
+  else
+    say("addon conclusion: no cooldown data")
+  end
+  -- (dev.19/20) what the wand rule saw: whether a Shoot hold is on for this spell, and whether the live
+  -- timer was proven to be Shoot's lockout (possible only with readable numbers)
+  say("wand: hold", tostring(Private.IsWandHeldSpell and Private.IsWandHeldSpell(spellID) or false),
+    "live timer proven to be Shoot's lockout:", data and tostring(data.wandLockout == true) or "none")
+  if Private.PrintSpellDetailsDebug then Private.PrintSpellDetailsDebug(spellID, say) end
+end

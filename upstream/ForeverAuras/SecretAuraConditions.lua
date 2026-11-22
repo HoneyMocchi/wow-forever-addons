@@ -1023,8 +1023,10 @@ function Display.RefreshConditionAppearance(region)
   local native = region.blizzardAuraDisplay
   if not native or not native.active then return end
   -- A gate that changed while access was denied: the buttons' set-up look.
-  if region.secretAuraPresentDirty then Display.RestyleButtons(region) end
+  -- (1.4.6-dev.9/10, capture only) the repaints that were attempted, by display (counted before the work: not proof it completed)
+  if region.secretAuraPresentDirty then Private.HitchOp("owed look restyle attempted", native.data and native.data.id); Display.RestyleButtons(region) end
   if not region.secretAuraConditionValues or not region.secretAuraConditionDirty then return end
+  Private.HitchOp("owed condition repaint attempted", native.data and native.data.id)
   region.secretAuraConditionDirty = nil
   for _, instance in ipairs(native.instances) do
     for _, button in ipairs(instance.buttons) do

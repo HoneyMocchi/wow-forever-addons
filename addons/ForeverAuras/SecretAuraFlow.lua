@@ -345,7 +345,12 @@ end
 -- RefreshUnits (BlizzardAuraDisplay.lua) skips an enable, and the refresh that
 -- follows it, when nothing about the container changed. The counts feed the
 -- /fa phitch report.
+-- ForeverAuras (1.4.6-dev.2, Dan's /fa modern summary: 115 instances, 39 visible): every
+-- container made here, held weakly, so the summary can count how many the client has been
+-- told to keep working (measurement only).
+Display.trackedContainers = setmetatable({}, {__mode = "k"})
 local function TrackEnabled(container)
+  Display.trackedContainers[container] = true
   local setEnabled = container.SetEnabled
   container.SetEnabled = function(self, enabled)
     enabled = enabled and true or false
@@ -354,18 +359,52 @@ local function TrackEnabled(container)
       local okS, stack = pcall(debugstack, 2, 5, 0)
       Display.BuildReport(("%s: list disabled by %s"):format(tostring(self.faReportDisable), okS and tostring(stack):gsub("\n", " | ") or "?"))
     end
-    self.faEnabled = enabled
+    -- ForeverAuras (1.4.6-dev.1, Dan's combat-end capture: "container disable x12", six each for
+    -- two displays): measurement only. Counts the calls that ask for the state the container
+    -- was already given, to show whether those twelve are repeats. Nothing is skipped.
+    if Private.HitchCount and self.faEnabled == enabled then
+      Private.HitchCount(enabled and "container enable repeated (already on)" or "container disable repeated (already off)")
+    end
     if Private.HitchCount then
       Private.HitchCount(enabled and "container enable" or "container disable")
       -- ForeverAuras (1.3.6-dev.17, diagnostic): the owning display, capture only
       if Private.HitchCounting and Private.HitchCounting() then Private.HitchCount((enabled and "container enable: " or "container disable: ") .. tostring(self.faOwnerId)) end
     end
-    return setEnabled(self, enabled)
+    -- ForeverAuras (1.4.6-dev.5, Astra's party-memory review, item 1): faEnabled was written
+    -- before the client's SetEnabled ran, so a call the client refused (it raises an error)
+    -- left the cache saying the requested state while the container kept its old one, and
+    -- the refreshes that skip a container "already in that state" then never asked again.
+    -- The state is now unknown (nil) while the call runs and is committed only when the
+    -- call returns. A refused or half-done call leaves it unknown, with what was asked for
+    -- in faPending, so every "faEnabled ~= wanted" owner asks again; the error still reaches
+    -- the caller. nil with no faPending remains "never told", as before.
+    -- ForeverAuras (1.4.6-dev.9, Astra's combat-drop handoff, item B): capture only. What was asked
+    -- of this list, for which display and role, and whether the call came back; a call the client
+    -- refuses raises an error and is seen as "asked" without an "accepted", and as "asked again
+    -- after a refused write" the next time. These are this addon's requests, not layout passes.
+    local counting = Private.HitchCounting and Private.HitchCounting()
+    local was
+    if counting then
+      was = self.faEnabled
+      if self.faPending ~= nil then Private.HitchOp("list asked again after a refused write", self.faOwnerId, self.faRole) end
+      Private.HitchOp(enabled and "list on asked" or "list off asked", self.faOwnerId, self.faRole)
+    end
+    self.faEnabled, self.faPending = nil, enabled
+    local result = setEnabled(self, enabled)
+    self.faEnabled, self.faPending = enabled, nil
+    if counting then
+      Private.HitchOp(was == enabled and (enabled and "list on accepted, already on" or "list off accepted, already off")
+        or was == nil and (enabled and "list on accepted, state was not known" or "list off accepted, state was not known")
+        or (enabled and "list on accepted, was off" or "list off accepted, was on"), self.faOwnerId, self.faRole)
+    end
+    return result
   end
   return container
 end
 
-function Display.CreateAuraContainer(parent, data, optOut)
+-- (1.4.6-dev.9) role: which of a display's lists this is ("main", "measure", "presence",
+-- "missing"), for the capture's attribution only.
+function Display.CreateAuraContainer(parent, data, optOut, role)
   if optOut or Display.FlowGroup(data) then
     local ok, container = pcall(CreateFrame, "AuraContainer", nil, parent,
       "CustomAuraContainerTemplate, DisableUntrustedLayoutScriptsTemplate")
@@ -373,12 +412,16 @@ function Display.CreateAuraContainer(parent, data, optOut)
       -- ForeverAuras (combat-reload probe): noted at allocation (BlizzardAuraDisplay.lua, NoteAllocation).
       if Display.NoteAllocation then Display.NoteAllocation(parent, container) end
       container.faOwnerId = data and data.id   -- (1.3.6-dev.17, diagnostic) for the capture's attribution
+      container.faRole = role
+      if Private.HitchOp then Private.HitchOp("list created", container.faOwnerId, role) end
       return TrackEnabled(container), true
     end
   end
   local container = CreateFrame("AuraContainer", nil, parent, "CustomAuraContainerTemplate")
   if Display.NoteAllocation then Display.NoteAllocation(parent, container) end
   container.faOwnerId = data and data.id   -- (1.3.6-dev.17, diagnostic)
+  container.faRole = role
+  if Private.HitchOp then Private.HitchOp("list created", container.faOwnerId, role) end
   return TrackEnabled(container), false
 end
 
@@ -1491,7 +1534,7 @@ local SHADOW_GROUP = "FAShadow"
 local function MeasureContainer(existing, region, data, g, layout, maxCount, filter, candidates)
   local container = existing
   if not container then
-    container = Display.CreateAuraContainer(region, data)
+    container = Display.CreateAuraContainer(region, data, nil, "measure")
     container:SetEnabled(false)
     container:SetAuraProcessingPolicy(CustomAuraContainerAuraProcessingPolicy.None)
     -- Placed on the region first, like every aura container; chained later. (1.2.9, Astra's dev.1
@@ -2073,7 +2116,7 @@ function Display.RefreshMeasureContainer(instance, container, unitKey, unit, sho
   if container:IsShown() ~= shown then container:SetShown(shown) end
   if container.faEnabled ~= shown or (shown and force) then
     container:SetEnabled(shown)
-    if shown then container:UpdateAllAuras() end
+    if shown then Private.HitchOp("list refresh asked", container.faOwnerId, container.faRole); container:UpdateAllAuras(); Private.HitchOp("list refresh returned", container.faOwnerId, container.faRole) end
   end
 end
 -- Keeps a display's list shadow on the same unit as its aura area.
@@ -2099,7 +2142,7 @@ function Display.RefreshFlowShadow(instance, unit, shown, force)
   if container:IsShown() ~= shown then container:SetShown(shown) end
   if container.faEnabled ~= shown or (shown and force) then
     container:SetEnabled(shown)
-    if shown then container:UpdateAllAuras() end
+    if shown then Private.HitchOp("list refresh asked", container.faOwnerId, container.faRole); container:UpdateAllAuras(); Private.HitchOp("list refresh returned", container.faOwnerId, container.faRole) end
   end
   return ready
 end
@@ -2551,8 +2594,12 @@ function Display.RelinkFlowUnits(group, onlyUnits)
       if type(noted) ~= "table" then noted = {}; batch[group] = noted end
       if type(onlyUnits) == "table" then for unit in pairs(onlyUnits) do noted[unit] = true end else noted[onlyUnits] = true end
     end
+    Private.HitchCount("layout: flow relink batched")
     return
   end
+  -- (1.4.0-dev.17, Astra's live review, item B) counted for /fa phitch, per group when capturing
+  Private.HitchCount("layout: flow relink run")
+  if Private.HitchCounting() then Private.HitchCount("layout: flow relink run: " .. tostring(group.id or group:GetName())) end
   local g = GROWTH[GrowthKey(group)]
   -- The group's own Position and Size settings, relative to each frame.
   local point, frameX, frameY = FramePosition(group)
@@ -3442,6 +3489,13 @@ local function CapRowStart(group, g, flows, previous, combat, snapX, snapY, orig
     cap.joint:EnableMouse(false)
     caps[group.id] = cap
   end
+  -- ForeverAuras (1.4.6-dev.13, a battleground report: "calling 'GetParent' on bad self (Attempt
+  -- to access forbidden object ...)" from the line below, on opening and closing the options):
+  -- the client can forbid these two helper frames to addon code (they hang from the group's
+  -- frame, and so from whatever that is placed on). Nothing of a forbidden frame may be called,
+  -- so the row is left uncapped for this pass, exactly as when placing the helpers is refused
+  -- further down; the next layout pass caps it again once they can be reached.
+  if Locked(cap.left) or Locked(cap.joint) then return previous end
   if not combat then
     for _, frame in ipairs({cap.left, cap.joint}) do
       if frame:GetParent() ~= parent then frame:SetParent(parent) end

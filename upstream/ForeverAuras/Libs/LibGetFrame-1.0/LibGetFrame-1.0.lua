@@ -1,6 +1,6 @@
 -- Modified for ForeverAuras, 2026-09-18.
 local MAJOR_VERSION = "LibGetFrame-1.0"
-local MINOR_VERSION = 79
+local MINOR_VERSION = 80
 if not LibStub then
   error(MAJOR_VERSION .. " requires LibStub.")
 end
@@ -314,7 +314,21 @@ end
 local StartProfiling = doNothing
 local StopProfiling = doNothing
 
+-- ForeverAuras (1.4.6-dev.7, Astra's 01:18 capture review: the finder's share of single slow
+-- frames was not visible, only its total): measurement only. While the addon's profile runs
+-- it hands two functions (faProfileStart/faProfileStop, Profiling.lua); every run measured
+-- here is then also given to the addon's per-frame capture under "LibGetFrame: <id>".
+-- Nothing is forwarded, and no string is made, when no profile runs (the library's own
+-- no-op profiling calls still run then, as they always have around a scan step).
+local hookNames = {}
+local function HookName(id)
+  local name = hookNames[id]
+  if not name then name = "LibGetFrame: " .. id; hookNames[id] = name end
+  return name
+end
+
 local function _StartProfiling(id)
+  if lib.faProfileStart then lib.faProfileStart(HookName(id)) end
   if not profileData[id] then
     profileData[id] = {}
     profileData[id].count = 1
@@ -338,6 +352,7 @@ local function _StartProfiling(id)
 end
 
 local function _StopProfiling(id)
+  if lib.faProfileStop then lib.faProfileStop(HookName(id)) end
   profileData[id].count = profileData[id].count - 1
   if profileData[id].count == 0 then
     local elapsed = debugprofilestop() - profileData[id].start
@@ -448,6 +463,9 @@ coroutineFrame:Hide()
 
 local function doScanForUnitFrames()
   if not coroutineFrame:IsShown() then
+    -- ForeverAuras (1.4.6-dev.7): how many scans began (the "scan frames" runs are its steps)
+    StartProfiling("scan started")
+    StopProfiling("scan started")
     status = "scanning"
     co = coroutine.create(ScanFrames)
     coroutineFrame:Show()
@@ -539,8 +557,10 @@ local function ScanForUnitFrames(noDelay)
   end
 end
 
-function lib.ScanForUnitFrames()
-  ScanForUnitFrames(true)
+-- ForeverAuras (1.4.6-dev.12, Astra): explicit false shares the delayed event-scan queue;
+-- existing callers (no argument, or true) stay immediate.
+function lib.ScanForUnitFrames(noDelay)
+  ScanForUnitFrames(noDelay ~= false)
 end
 
 local function isFrameFiltered(name, ignoredFrames)
@@ -703,12 +723,19 @@ local function Init(noDelay)
         unitPetState[unit] = exists
       end
     end
+    -- ForeverAuras (1.4.6-dev.7; dev.8, Astra's review: counted here, after the pet filters above,
+    -- so an ignored pet event is not counted): which event asked for a scan, while a profile
+    -- runs. A request is not a completed scan: requests made close together share one scan.
+    if profiling then
+      StartProfiling("asked on " .. tostring(event))
+      StopProfiling("asked on " .. tostring(event))
+    end
     ScanForUnitFrames(false)
   end)
   ScanForUnitFrames(noDelay)
 end
 
-function lib.GetUnitFrame(target, opt)
+local function FindUnitFrame(target, opt)
   if type(GetFramesCacheListener) ~= "table" then
     Init(true)
   end
@@ -791,6 +818,15 @@ function lib.GetUnitFrame(target, opt)
     end
     return frames
   end
+end
+-- ForeverAuras (1.4.6-dev.7): the lookup itself is unchanged (FindUnitFrame, above); its calls,
+-- time are measured while a profile runs. With no profile the wrapper and its two no-op calls
+-- still run on every lookup: a small fixed cost, not measured as significant.
+function lib.GetUnitFrame(target, opt)
+  StartProfiling("GetUnitFrame")
+  local result = FindUnitFrame(target, opt)
+  StopProfiling("GetUnitFrame")
+  return result
 end
 saveGetUnitFrame = lib.GetUnitFrame
 lib.GetFrame = lib.GetUnitFrame -- compatibility
