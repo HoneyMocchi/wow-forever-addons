@@ -1,0 +1,54 @@
+{
+  "addonDir": "C:\\Program Files (x86)\\World of Warcraft\\_forever_\\Interface\\AddOns",
+  "savedVariablesFile": "C:\\Program Files (x86)\\World of Warcraft\\_forever_\\WTF\\Account\\YOUR_ACCOUNT\\SavedVariables\\WoWForeverGPT.lua",
+  "inboxFile": "C:\\Program Files (x86)\\World of Warcraft\\_forever_\\Interface\\AddOns\\WoWForeverGPT\\Inbox.lua",
+  "tocInterface": "16001",
+  "slots": 200,
+  "actMax": 60,
+  "presenceMax": 2000,
+  "presenceIntervalMs": 30000,
+  "maxParallel": 1,
+  "capture": {
+    "enabled": true,
+    "processName": "Wow",
+    "cellPx": 4,
+    "cellsPerRow": 200,
+    "maxRows": 48,
+    "intervalMs": 250,
+    "python": "python3",
+    "windowName": "",
+    "keepComposited": false
+  },
+  "pollMs": 750,
+  "progressWriteMs": 3000,
+  "codexTimeoutMs": 120000,
+  "defaultAgent": "gpt",
+  "claude": {
+    "timeoutMs": 300000
+  },
+  "models": {
+    "gpt": {
+      "company": "OpenAI",
+      "default": "gpt-6.2-sol",
+      "options": [
+        { "id": "gpt-6.2-sol", "label": "Sol 6.2" },
+        { "id": "gpt-6.2-astra", "label": "Astra 6.2" },
+        { "id": "gpt-6.1-sol", "label": "Sol 6.1" },
+        { "id": "gpt-6.1-terra", "label": "Terra 6.1" },
+        { "id": "gpt-6-astra", "label": "Astra 6" },
+        { "id": "gpt-6-sol", "label": "Sol 6" },
+        { "id": "gpt-6-luna", "label": "Luna 6" }
+      ]
+    },
+    "claude": {
+      "company": "Anthropic",
+      "default": "claude-sonnet-5-5",
+      "options": [
+        { "id": "claude-fable-5-2", "label": "Fable 5.2" },
+        { "id": "claude-opus-5-5", "label": "Opus 5.5" },
+        { "id": "claude-sonnet-5-5", "label": "Sonnet 5.5" },
+        { "id": "claude-haiku-5-5", "label": "Haiku 5.5" }
+      ]
+    }
+  }
+}

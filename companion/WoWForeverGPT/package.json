@@ -1,0 +1,13 @@
+{
+  "name": "wow-ai-ko",
+  "version": "0.5.0-ko.12",
+  "private": true,
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.2"
+  },
+  "scripts": {
+    "setup": "node setup.js",
+    "start": "node bridge/bridge.js"
+  }
+}

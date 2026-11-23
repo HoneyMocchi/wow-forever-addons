@@ -7666,7 +7666,7 @@
     },
     {
       "id": "WoWForeverGPT",
-      "version": "0.5.0-ko.11",
+      "version": "0.5.0-ko.12",
       "interface": "16001",
       "dependencies": "",
       "source_url": null,
@@ -7677,8 +7677,8 @@
         "Inbox.lua": "69b4173f415ebe550baa9992d3aae88f6a156375406f978d88febf26eeba6ca3",
         "MapLinks.lua": "94b620e36224674dac5c74eb77c238d95a408891d0790058d210091bff2f0fc7",
         "TextFormat.lua": "f8c357c55e229faa827e228b4c0c60538ebcb26334be4105c1c19cab7d92928d",
-        "WoWForeverGPT.lua": "843ae0b78c953eaa79706cf3a1a5ec2140119262fa187ae3df82b5ce50b8ca71",
-        "WoWForeverGPT.toc": "06bbf1a8ff180085e532457bc3a99904d022855ea3c5752a4d66e6ec08ca9912"
+        "WoWForeverGPT.lua": "7fe1473c7b0df87f9c19f31ed38bac1dd338c3076204c443064f45e6dd1b4312",
+        "WoWForeverGPT.toc": "403662b680c34522f6910443818fa37825c53701abb2431b6044a2f3e0347bf6"
       },
       "runtime_inbox_template": true
     },
