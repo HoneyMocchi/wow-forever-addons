@@ -2,7 +2,7 @@
 ## Title: 와우 AI
 ## Notes: /ai 로 와우 질문을 보내고 게임 안에서 한국어 답변을 봅니다. PC 브리지가 필요합니다.
 ## Author: chelinho139 (upstream)
-## Version: 0.5.0-ko.11
+## Version: 0.5.0-ko.12
 ## SavedVariables: WoWForeverGPTDB
 
 Codec.lua

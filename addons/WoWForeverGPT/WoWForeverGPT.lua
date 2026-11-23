@@ -183,7 +183,9 @@ end
 -- 회사(AI)별 선택 가능한 모델. 브리지가 슬롯 파일의 models로 알려 주며, 아직
 -- 연결 전이거나 이전 브리지라면 아래 기본 목록을 쓴다. 실제 허용 여부는 브리지가 다시 확인한다.
 local FALLBACK_MODELS = {
-	gpt = { company = "OpenAI", default = "gpt-6.1-sol", options = {
+	gpt = { company = "OpenAI", default = "gpt-6.2-sol", options = {
+		{ id = "gpt-6.2-sol", label = "Sol 6.2" },
+		{ id = "gpt-6.2-astra", label = "Astra 6.2" },
 		{ id = "gpt-6.1-sol", label = "Sol 6.1" },
 	} },
 	claude = { company = "Anthropic", default = "claude-sonnet-5-5", options = {
@@ -328,6 +330,14 @@ local function InitDB()
 	if not EFFORT_LABEL[s.effort] then s.effort = "low" end
 	-- 회사(AI)별로 마지막에 고른 모델 ID. 예: { gpt = "gpt-6.1-sol", claude = "claude-opus-5-5" }
 	if type(s.models) ~= "table" then s.models = {} end
+	-- 기존 6.1 선택도 이번 업데이트에서 한 번만 Sol 6.2로 전환한다.
+	-- 이후 메뉴에서 다시 고른 모델과 다른 회사의 설정은 그대로 유지한다.
+	if s.gptModelVersion ~= 1 then
+		if s.models.gpt == "gpt-6.1-sol" or s.models.gpt == "gpt-6.1-terra" then
+			s.models.gpt = "gpt-6.2-sol"
+		end
+		s.gptModelVersion = 1
+	end
 	if s.autoRefresh == nil then s.autoRefresh = true end
 	if s.signal == nil then s.signal = true end
 	-- 이전 버전은 매 로그인 때 정보를 강제로 껐다. 이번 요청에 맞춰 한 번 켠 뒤,
