@@ -1,13 +1,11 @@
--- koKR 전용 표시 문구. 다른 언어에서는 원문을 반환하며 저장 데이터와 명령어는 바꾸지 않습니다.
 local KO = setmetatable({}, { __index = function(_, key) return key end })
 if GetLocale() == "koKR" then
-    KO["Scanning for your mobs"] = "등록한 NPC 감지 중"
-    KO["Scanning is off"] = "감지 꺼짐"
-    KO["Mobs on the list"] = "등록된 NPC"
     KO[" of "] = " / "
     KO["Click for options, right-click to turn scanning on or off"] = "왼쪽 클릭: 설정 / 오른쪽 클릭: 감지 켜기·끄기"
+    KO["Mobs on the list"] = "등록된 NPC"
+    KO["Scanning for your mobs"] = "등록한 NPC 감지 중"
+    KO["Scanning is off"] = "감지 꺼짐"
 end
-
 -- MobSpot: minimap button (LibDBIcon, so minimap button collectors pick it up) and addon
 -- compartment entry. Click for options, right-click to turn scanning on or off.
 

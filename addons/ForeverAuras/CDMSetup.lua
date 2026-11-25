@@ -6,13 +6,25 @@ local _, Private = ...
 -- Frames and hooks from this file are timed by the profiler (see Private.TimedAPI).
 local CreateFrame, hooksecurefunc, TimedHookScript, C_Timer = Private.TimedAPI("CDMSetup")
 local pending, timer, needsReload, confirmed, asked
+-- ForeverAuras (1.4.7-dev.4, Astra's dev.3 review, P1): what the player approved, kept with the request:
+-- "entries" (only hidden entries restored) or "full". A request approved as entries-only stays so
+-- through a wait for combat or for the settings window, and whatever another CDM addon's setting does
+-- meanwhile. Another CDM addon being active can narrow a full approval to entries; nothing widens one.
+local scope
 local attempts = 0
 
 local function RecordPending(self, value)
   self.hasPendingChanges = value
 end
 
-local function StageLayout()
+-- entriesOnly (1.4.7-dev.4, Astra's dev.3 review, P2): the narrow setup offered while another addon
+-- manages the viewers. It restores hidden entries to their own list and moves nothing that is
+-- displayed: a buff shown as a Tracked Bar stays a bar. Only the Tracked Buffs and Tracked Bars lists
+-- are looked at, and an entry counts as hidden only when its place is one of the client's Hidden
+-- categories. Item buffs and shared buffs are left out on purpose: such an entry can sit in its own
+-- category while not displayed, so its place does not say whether it is hidden. The full setup keeps
+-- its own, older policy (every buff into Tracked Buffs).
+local function StageLayout(entriesOnly)
   -- Isolated layout objects avoid sending updates to live Blizzard frames.
   local provider = CreateFromMixins(CooldownViewerSettingsDataProviderMixin)
   local manager = CreateFromMixins(CooldownViewerLayoutManagerMixin)
@@ -30,13 +42,20 @@ local function StageLayout()
   -- Configure every catalog rank, including unlearned and currently invisible entries.
   local count = 0
   local categories = Enum.CooldownViewerCategory
-  for _, key in ipairs({"TrackedBuff", "TrackedBar", "EquipSlotTracked", "SpecAgnosticTracked"}) do
+  local hidden = {}
+  for name, value in pairs(categories) do
+    if type(name) == "string" and name:find("^Hidden") then hidden[value] = true end
+  end
+  for _, key in ipairs(entriesOnly and {"TrackedBuff", "TrackedBar"} or {"TrackedBuff", "TrackedBar", "EquipSlotTracked", "SpecAgnosticTracked"}) do
     local category = categories[key]
     if category then
       for _, id in ipairs(C_CooldownViewer.GetCooldownViewerCategorySet(category, true)) do
         local info = provider:GetCooldownInfoForID(id)
-        if info and info.category ~= categories.TrackedBuff then
-          local status = provider:SetCooldownToCategory(id, categories.TrackedBuff)
+        local target = entriesOnly and category or categories.TrackedBuff
+        local wanted
+        if entriesOnly then wanted = info and hidden[info.category] else wanted = info and info.category ~= categories.TrackedBuff end
+        if wanted then
+          local status = provider:SetCooldownToCategory(id, target)
           if status ~= Enum.CooldownLayoutStatus.Success then
             error("Could not update Tracked Buffs (layout status " .. tostring(status) .. ").")
           end
@@ -187,8 +206,24 @@ local function ApplySetup()
   if not C_EditMode or not EditModePresetLayoutManager or not CooldownViewerDataStoreSerializationMixin then
     error("This client does not expose the required CDM layout APIs.")
   end
-  local serialized, count, cooldownCount = StageLayout()
-  local editLayouts, reasons = StageVisibility()
+  local external = ExternalCDM()
+  -- (dev.4) entries-only when another CDM addon is active now, or when that is what was approved.
+  local entriesOnly = external ~= nil or (confirmed and scope == "entries") or false
+  local serialized, count, cooldownCount = StageLayout(entriesOnly)
+  -- ForeverAuras (1.4.7-dev.3, Dan's Priest: Power Word: Fortitude left under Not Displayed with
+  -- EllesmereUI's Cooldown Manager on, and no offer): another addon managing the viewers used to keep
+  -- the automatic offer quiet altogether. That rule mixed two things. The viewers' layout (the "-FA"
+  -- Edit Mode copy, Always visible, tooltips) is the other addon's business and is now left alone
+  -- whenever one is active, on the automatic and the explicit run alike. A catalog entry that is
+  -- missing from the tracked lists is not: a class-pack aura reads it from the Cooldown Manager
+  -- whichever addon draws the bars. So the entries are still staged and offered, with a prompt that
+  -- says only they are added.
+  local editLayouts, reasons
+  if not entriesOnly then editLayouts, reasons = StageVisibility() end
+  if serialized then
+    reasons = reasons or {}
+    reasons[#reasons + 1] = count .. " buffs and " .. cooldownCount .. (entriesOnly and " spell cooldowns to restore" or " spell cooldowns to add")
+  end
   local enable = not C_CVar.GetCVarBool("cooldownViewerEnabled")
   if enable then reasons = reasons or {}; reasons[#reasons + 1] = "the cooldownViewerEnabled CVar is off" end
   -- "Hide Blizzard's CDM" is ForeverAuras' own setting: a class pack turns it
@@ -198,11 +233,10 @@ local function ApplySetup()
     Private.ApplyCDMBackground()
   end
   if not serialized and not editLayouts and not enable then return true end
-  -- The automatic offer stays quiet while another addon manages the CDM; an
-  -- explicit run (/fa cdmsetup or the options button) still goes ahead.
-  local external = ExternalCDM()
-  if external and not confirmed then return true end
-  if external then print("ForeverAuras: " .. external .. " is enabled; it manages the viewers, so the setup may not change what you see.") end
+  if entriesOnly and confirmed then
+    print("ForeverAuras: " .. (external and (external .. " is enabled and manages the viewers") or "this setup was approved for hidden entries only")
+      .. "; only hidden entries are restored, your Edit Mode layout is left as it is.")
+  end
 
   -- Preserve the character's original settings for recovery.
   local character = UnitGUID("player")
@@ -212,7 +246,7 @@ local function ApplySetup()
     asked = true
     -- The reasons go to chat, so an offer that keeps coming back can be reported.
     print("ForeverAuras: CDM setup offered because: " .. table.concat(reasons or {"auras to add"}, "; "))
-    StaticPopup_Show("FOREVERAURAS_CDM_SETUP_ASK", count, cooldownCount, {character = character})
+    StaticPopup_Show(entriesOnly and "FOREVERAURAS_CDM_SETUP_ASK_ENTRIES" or "FOREVERAURAS_CDM_SETUP_ASK", count, cooldownCount, {character = character})
     return true
   end
   Private.db.cdmClassPackSetupBackups = Private.db.cdmClassPackSetupBackups or {}
@@ -235,6 +269,11 @@ local function ApplySetup()
   Private.db.cdmHideBlizzard = true
   if enable then C_CVar.SetCVar("cooldownViewerEnabled", "1") end
   Private.ApplyCDMBackground()
+  if entriesOnly then
+    print("ForeverAuras: CDM setup saved. " .. count .. " buffs and " .. cooldownCount .. " spell cooldowns restored. Reload to apply.")
+    StaticPopup_Show("FOREVERAURAS_CDM_SETUP_RELOAD")
+    return true
+  end
   print("ForeverAuras: CDM setup saved. " .. count .. " buffs and " .. cooldownCount .. " spell cooldowns added; viewers set to Always visible with tooltips off on a copy of your Edit Mode layout (\"" .. (editLayouts and editLayouts.layouts[editLayouts.activeLayout].layoutName or "current") .. "\"). Reload to apply.")
   StaticPopup_Show("FOREVERAURAS_CDM_SETUP_RELOAD")
   return true
@@ -242,13 +281,19 @@ end
 
 local RunSetup
 
+-- ForeverAuras (1.4.7-dev.9, Dan: "this text is really crazy"): the four prompts are short. The details
+-- (how many entries) are in the chat line printed with the offer and in the line printed after Apply.
+-- (1.4.7-dev.25, Dan: "the earlier adjustments we made to the set up CDM to do ANYTHING to the group
+-- auras, should be completely removed and reverted back") This file is as it was in dev.7, before the
+-- setup touched group auras, plus those four texts: no group aura staging, no separate Group Auras
+-- setup, no /fa groupsetup, no WeakAuras.SetupGroupAuras.
 StaticPopupDialogs["FOREVERAURAS_CDM_SETUP_ASK"] = {
-  text = L["A ForeverAuras class pack can set up Blizzard's Cooldown Manager for its auras (%d buffs, %d spell cooldowns). This changes your CDM settings and makes a copy of your Edit Mode layout named \"<layout>-FA\" with the viewers always visible; your own layout is left as it is. Needs a reload."],
+  text = L["A ForeverAuras aura has called Set Up CDM automatically. This will change your CDM settings. It makes a copy of your Edit Mode layout, adds -FA to its name, and uses that. Needs a reload."],
   button1 = L["Apply"],
   button2 = L["Not now"],
   button3 = L["Don't ask again"],
   OnAccept = function()
-    confirmed, pending, attempts = true, true, 0
+    confirmed, pending, attempts, scope = true, true, 0, "full"
     if not timer then timer = C_Timer.NewTimer(0, RunSetup) end
   end,
   OnAlt = function(_, info)
@@ -262,17 +307,54 @@ StaticPopupDialogs["FOREVERAURAS_CDM_SETUP_ASK"] = {
   preferredIndex = 3,
 }
 
--- The options window's Set Up CDM button: confirm, then run as /fa cdmsetup does.
-StaticPopupDialogs["FOREVERAURAS_CDM_SETUP_CONFIRM"] = {
-  text = L["Set up Blizzard's Cooldown Manager for ForeverAuras? This changes your CDM settings (backed up) and works on a copy of your Edit Mode layout named \"<layout>-FA\"; your own layout is left as it is. Needs a reload."],
+-- ForeverAuras (1.4.7-dev.3): the offer while another addon manages the viewers. Same buttons; the
+-- text says what is and is not changed.
+StaticPopupDialogs["FOREVERAURAS_CDM_SETUP_ASK_ENTRIES"] = {
+  text = L["A ForeverAuras aura has called Set Up CDM automatically. This will change your CDM settings. Another addon manages your CDM bars, so your Edit Mode layout is left as it is. Needs a reload."],
   button1 = L["Apply"],
-  button2 = CANCEL,
-  OnAccept = function() Private.RunCDMSetup() end,
+  button2 = L["Not now"],
+  button3 = L["Don't ask again"],
+  -- (dev.4) the approval is for entries only, and is remembered as that.
+  OnAccept = function()
+    confirmed, pending, attempts, scope = true, true, 0, "entries"
+    if not timer then timer = C_Timer.NewTimer(0, RunSetup) end
+  end,
+  OnAlt = StaticPopupDialogs["FOREVERAURAS_CDM_SETUP_ASK"].OnAlt,
   timeout = 0,
   whileDead = true,
   hideOnEscape = true,
   preferredIndex = 3,
 }
+
+-- The options window's Set Up CDM button: confirm, then run as /fa cdmsetup does.
+StaticPopupDialogs["FOREVERAURAS_CDM_SETUP_CONFIRM"] = {
+  text = L["Set up your CDM for ForeverAuras? This will change your CDM settings (they are backed up). It makes a copy of your Edit Mode layout, adds -FA to its name, and uses that. Needs a reload."],
+  button1 = L["Apply"],
+  button2 = CANCEL,
+  OnAccept = function() Private.RunCDMSetup("full") end,
+  timeout = 0,
+  whileDead = true,
+  hideOnEscape = true,
+  preferredIndex = 3,
+}
+
+-- ForeverAuras (1.4.7-dev.4): the options button while another addon manages the viewers. What it
+-- confirms is what is run: entries only (Private.RunCDMSetup("entries")).
+StaticPopupDialogs["FOREVERAURAS_CDM_SETUP_CONFIRM_ENTRIES"] = {
+  text = L["Set up your CDM for ForeverAuras? This will change your CDM settings (they are backed up). Another addon manages your CDM bars, so your Edit Mode layout is left as it is. Needs a reload."],
+  button1 = L["Apply"],
+  button2 = CANCEL,
+  OnAccept = function() Private.RunCDMSetup("entries") end,
+  timeout = 0,
+  whileDead = true,
+  hideOnEscape = true,
+  preferredIndex = 3,
+}
+
+-- Which confirmation the options button shows now.
+function Private.CDMSetupConfirmDialog()
+  return ExternalCDM() and "FOREVERAURAS_CDM_SETUP_CONFIRM_ENTRIES" or "FOREVERAURAS_CDM_SETUP_CONFIRM"
+end
 
 StaticPopupDialogs["FOREVERAURAS_CDM_SETUP_RELOAD"] = {
   text = L["ForeverAuras has changed CDM settings. Reload to apply them."],
@@ -319,12 +401,15 @@ function WeakAuras.SetupClassPackCDM(class)
 end
 
 -- /fa cdmsetup: run it now, also after "Don't ask again".
-function Private.RunCDMSetup()
+-- approved: "entries" or "full" from a confirmation that said which; nil (the bare slash command)
+-- takes what applies at this moment. Kept with the request (see `scope`).
+function Private.RunCDMSetup(approved)
   local character = UnitGUID("player")
   if Private.db.cdmClassPackSetupSkip and type(character) == "string" and not issecretvalue(character) then
     Private.db.cdmClassPackSetupSkip[character] = nil
   end
   if needsReload then StaticPopup_Show("FOREVERAURAS_CDM_SETUP_RELOAD") return end
+  scope = approved or (ExternalCDM() and "entries" or "full")
   confirmed, pending, attempts = true, true, 0
   if not timer then timer = C_Timer.NewTimer(0, RunSetup) end
 end

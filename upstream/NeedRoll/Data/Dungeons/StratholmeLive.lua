@@ -50,6 +50,7 @@ ns.Data:Register({
             { itemID = 13380, dropRate = 0.2 },     -- Willey's Portable Howitzer
             { itemID = 16708, dropRate = 0.1629 },  -- Shadowcraft Spaulders
             { itemID = 12839, dropRate = 0.072 },   -- Plans: Heartseeker
+            { itemID = 276404 },                    -- Masterwork Crimson Hammer
         } },
         { id = "ARCHIVIST_GALFORD", name = "Archivist Galford", loot = {
             { itemID = 226404, dropRate = 1 },      -- Tarnished Undermine Real
@@ -76,6 +77,7 @@ ns.Data:Register({
             { itemID = 14512, dropRate = 0.06 },    -- Pattern: Truefaith Vestments
             { itemID = 13520, dropRate = 0.03 },    -- Recipe: Flask of Distilled Wisdom
             { itemID = 13353, dropRate = 0.01 },    -- Book of the Dead
+            { itemID = 12662 },                     -- Demonic Rune
         } },
         { id = "JARIEN_AND_SOTHOS", name = "Jarien and Sothos", loot = {
             { itemID = 21984, dropRate = 1 },       -- Left Piece of Lord Valthalak's Amulet
@@ -99,6 +101,7 @@ ns.Data:Register({
             { itemID = 13394, dropRate = 0.3333 },  -- Skul's Cold Embrace
             { itemID = 13395, dropRate = 0.3333 },  -- Skul's Fingerbone Claws
             { itemID = 13396, dropRate = 0.3333 },  -- Skul's Ghastly Touch
+            { itemID = 276394 },                    -- Luxurious Smoking Jacket
         } },
         { id = "TRASH", name = "Trash Drops", note = "Zone-wide", loot = {
             { itemID = 16681 },                     -- Beaststalker's Bindings

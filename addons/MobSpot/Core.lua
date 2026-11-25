@@ -1,38 +1,36 @@
--- koKR 전용 표시 문구. 다른 언어에서는 원문을 반환하며 저장 데이터와 명령어는 바꾸지 않습니다.
 local KO = setmetatable({}, { __index = function(_, key) return key end })
 if GetLocale() == "koKR" then
-    KO["Mob ID "] = "NPC ID "
-    KO[") is on the list."] = "): 목록에 등록했습니다."
-    KO["mob ID "] = "NPC ID "
-    KO[" is on the list. Its name shows once the game knows it."] = ": 목록에 등록했습니다. 게임에서 이름을 확인하면 표시됩니다."
+    KO["  /ms - options"] = "  /ms - 설정"
+    KO["  /ms add <name or ID> - add a mob by name or NPC ID"] = "  /ms add <이름 또는 ID> - NPC 추가"
+    KO["  /ms list - show the list"] = "  /ms list - 등록 목록 표시"
+    KO["  /ms minimap - show or hide the minimap button"] = "  /ms minimap - 미니맵 버튼 표시/숨김"
+    KO["  /ms on | off - scan for your mobs, or stop"] = "  /ms on | off - NPC 감지 켜기/끄기"
+    KO["  /ms remove <name or ID> - take a mob off the list"] = "  /ms remove <이름 또는 ID> - NPC 삭제"
+    KO["  /ms target - add your target to the list, or take it off"] = "  /ms target - 현재 대상 등록/해제"
+    KO["  /ms test - show a test alert"] = "  /ms test - 알림 테스트"
     KO[" is already on the list."] = ": 이미 목록에 있습니다."
-    KO[" is on the list."] = ": 목록에 등록했습니다."
-    KO["target a mob first, then press the key again to add it."] = "먼저 NPC를 선택한 뒤 단축키를 다시 누르면 등록됩니다."
-    KO["MobSpot looks for mobs, not players."] = "플레이어는 등록할 수 없습니다. NPC를 선택하세요."
     KO[" is off the list."] = ": 목록에서 삭제했습니다."
+    KO[" is on the list."] = ": 목록에 등록했습니다."
+    KO[" is on the list. Its name shows once the game knows it."] = ": 목록에 등록했습니다. 게임에서 이름을 확인하면 표시됩니다."
     KO[" is on the list. You'll get an alert when it's close by."] = ": 등록했습니다. 근처에서 감지되면 알려드립니다."
-    KO["scanning for your mobs."] = "등록한 NPC 감지를 시작합니다."
-    KO["scanning is off."] = "NPC 감지를 중지합니다."
+    KO[" on the list."] = " (등록되지 않음)"
+    KO[" |cff808080(off)|r"] = " |cff808080(꺼짐)|r"
+    KO[") is on the list."] = "): 목록에 등록했습니다."
+    KO["Mob ID "] = "NPC ID "
+    KO["MobSpot looks for mobs, not players."] = "플레이어는 등록할 수 없습니다. NPC를 선택하세요."
     KO["MobSpot: Track/Untrack Target"] = "MobSpot: 대상 추적 등록/해제"
     KO["commands:"] = "명령어:"
-    KO["  /ms - options"] = "  /ms - 설정"
-    KO["  /ms on | off - scan for your mobs, or stop"] = "  /ms on | off - NPC 감지 켜기/끄기"
-    KO["  /ms target - add your target to the list, or take it off"] = "  /ms target - 현재 대상 등록/해제"
-    KO["  /ms add <name or ID> - add a mob by name or NPC ID"] = "  /ms add <이름 또는 ID> - NPC 추가"
-    KO["  /ms remove <name or ID> - take a mob off the list"] = "  /ms remove <이름 또는 ID> - NPC 삭제"
-    KO["  /ms list - show the list"] = "  /ms list - 등록 목록 표시"
-    KO["  /ms test - show a test alert"] = "  /ms test - 알림 테스트"
-    KO["  /ms minimap - show or hide the minimap button"] = "  /ms minimap - 미니맵 버튼 표시/숨김"
-    KO["the list is empty. Target a mob and type /ms target, or add one by name in /ms."] = "목록이 비어 있습니다. NPC를 선택하고 /ms target을 입력하거나 /ms 설정에서 이름으로 추가하세요."
     KO["looking for:"] = "감지할 NPC:"
-    KO[" |cff808080(off)|r"] = " |cff808080(꺼짐)|r"
-    KO["put the mob's name or ID after /ms add."] = "/ms add 뒤에 NPC 이름 또는 ID를 입력하세요."
-    KO["there's no "] = "목록에 없음: "
-    KO[" on the list."] = " (등록되지 않음)"
     KO["minimap button hidden."] = "미니맵 버튼을 숨겼습니다."
     KO["minimap button shown."] = "미니맵 버튼을 표시했습니다."
+    KO["mob ID "] = "NPC ID "
+    KO["put the mob's name or ID after /ms add."] = "/ms add 뒤에 NPC 이름 또는 ID를 입력하세요."
+    KO["scanning for your mobs."] = "등록한 NPC 감지를 시작합니다."
+    KO["scanning is off."] = "NPC 감지를 중지합니다."
+    KO["target a mob first, then press the key again to add it."] = "먼저 NPC를 선택한 뒤 단축키를 다시 누르면 등록됩니다."
+    KO["the list is empty. Target a mob and type /ms target, or add one by name in /ms."] = "목록이 비어 있습니다. NPC를 선택하고 /ms target을 입력하거나 /ms 설정에서 이름으로 추가하세요."
+    KO["there's no "] = "목록에 없음: "
 end
-
 -- MobSpot
 -- Keeps a list of mobs to look for and alerts the player when one of them is close by.
 --
@@ -41,6 +39,7 @@ end
 --   Scan.lua      finding listed mobs: nameplates and the map's markers
 --   Alert.lua     what the player sees and hears
 --   Marker.lua    a marker over a listed mob's nameplate
+--   Distance.lua  /ms distance, a test of how far the target is
 --   Options.lua   Esc > Options > AddOns > MobSpot
 --   Minimap.lua   minimap button and addon compartment entry
 
@@ -53,6 +52,11 @@ ns.PREFIX = "|cff33ff99MobSpot:|r "
 
 function ns.Print(text)
 	DEFAULT_CHAT_FRAME:AddMessage(ns.PREFIX .. text)
+end
+
+-- A line in chat only while /ms debug is on, for finding out what the game reports.
+function ns.Debug(text)
+	if ns.debug then DEFAULT_CHAT_FRAME:AddMessage("|cff808080MobSpot debug:|r " .. text) end
 end
 
 -- A value the addon can read: nil for the game's hidden ("secret") values, which can't be compared.
@@ -70,18 +74,25 @@ local DEFAULTS = {
 	mobs = {},               -- [lowercase name] = { name = "Shown name", npcID = number or nil, on = true }
 	mapMarkers = true,       -- mobs the game marks on the map and minimap
 	rares = false,           -- also every rare mob, listed or not
+	playersEnemy = false,    -- also players of the other faction
+	playersAttack = false,   -- also players the player can attack
+	playersPvp = false,      -- those two also inside battlegrounds and arenas
 	sound = "raidwarning",   -- a key of ns.SOUNDS
+	playerSound = "alarm",   -- the same, for the enemy players alert
 	radius = false,          -- the scan radius the player picked, in yards; false until they pick one
 	nameplates = false,      -- true once the player had MobSpot turn on enemy nameplates
-	alertAgain = 30,         -- seconds a mob has to be out of reach before it alerts again
+	alertEach = false,       -- every mob of the same name alerts on its own, not only the first
 	screenText = true,       -- big message at the top of the screen
+	keepMessage = false,     -- that message stays for as long as the mob is in range
+	messageSpot = false,     -- { x, y } where the player dragged that message in Edit Mode
 	chatLine = true,         -- a line in chat
 	flash = true,            -- flash the screen edges, and the game's taskbar icon
 	marker = true,           -- a marker over a listed mob's nameplate
 	markerStyle = "skull",   -- a key of ns.MARKERS
+	playerMarkerStyle = "cross", -- a key of ns.PLAYER_MARKERS, for enemy players
 	markerSize = 34,         -- the marker's size
 	markerMotion = "bob",    -- a key of ns.MOTIONS
-	minimap = { hide = false, minimapPos = 250 },
+	minimap = { hide = false, minimapPos = 120 },
 }
 
 local function copy(value)
@@ -271,11 +282,11 @@ end
 -- The keybind and /ms target: puts the current target on the list, or takes it off.
 function ns.ToggleTarget()
 	local name = ns.Plain(UnitName("target"))
-	if not UnitExists("target") or not name then
+	if ns.Plain(UnitExists("target")) ~= true or not name then
 		ns.Print(KO["target a mob first, then press the key again to add it."])
 		return
 	end
-	if UnitIsPlayer("target") then
+	if ns.Plain(UnitIsPlayer("target")) == true then
 		ns.Print(KO["MobSpot looks for mobs, not players."])
 		return
 	end
@@ -368,6 +379,7 @@ local function help()
 	print(KO["  /ms remove <name or ID> - take a mob off the list"])
 	print(KO["  /ms list - show the list"])
 	print(KO["  /ms test - show a test alert"])
+	print("  /ms distance - test how far your target is and whether its nameplate shows")
 	print(KO["  /ms minimap - show or hide the minimap button"])
 end
 
@@ -414,6 +426,11 @@ SlashCmdList.MOBSPOT = function(msg)
 		list()
 	elseif command == "test" then
 		ns.TestAlert()
+	elseif command == "distance" or command == "range" then
+		ns.TestDistance()
+	elseif command == "debug" then
+		ns.debug = not ns.debug
+		ns.Print(ns.debug and "debug lines are on until you reload or type /ms debug again." or "debug lines are off.")
 	elseif command == "minimap" then
 		ns.SetMinimapShown(ns.db.minimap.hide)
 		ns.Print(ns.db.minimap.hide and KO["minimap button hidden."] or KO["minimap button shown."])

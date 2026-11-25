@@ -163,7 +163,7 @@ end
 
 -- A small copy of a boss's map pin (the Encounters list shows one on each
 -- boss pinned on the floor the map shows): a frame with .portrait, .back
--- and the ring, size px across (SetSize resizes it).
+-- and .ring, size px across (SetSize resizes it).
 function ns.UI.MiniPin(parent, size)
     local mini = CreateFrame("Frame", nil, parent)
     mini:SetSize(size, size)
@@ -179,6 +179,7 @@ function ns.UI.MiniPin(parent, size)
     ring:SetAllPoints()
     ring:SetTexture(EJ_TEXTURES)
     ring:SetTexCoord(unpack(PIN_RING))
+    mini.ring = ring
     return mini
 end
 
@@ -223,10 +224,19 @@ local function ChainStep(quest)
     return false, quest.chainStep
 end
 
--- "Completed", "Accepted" (in the quest log, under any version's ID),
--- "Prior Step" (then ChainStep's details too) or "Incomplete".
+-- Whether quest `questID` is in the quest log with its objectives done,
+-- ready to hand in.
+function ns.UI.IsReadyForTurnIn(questID)
+    if not C_QuestLog.IsOnQuest(questID) then return false end
+    return C_QuestLog.ReadyForTurnIn(questID) == true
+end
+
+-- "Completed", "Ready" (in the quest log with its objectives done) or
+-- "Accepted" (in the log; both under any version's ID), "Prior Step" (then
+-- ChainStep's details too) or "Incomplete".
 local function FreshStatus(quest)
     if AnyVersion(quest, C_QuestLog.IsQuestFlaggedCompleted) then return "Completed" end
+    if AnyVersion(quest, ns.UI.IsReadyForTurnIn) then return "Ready" end
     if AnyVersion(quest, C_QuestLog.IsOnQuest) then return "Accepted" end
     local step, chainLength, current = ChainStep(quest)
     if step ~= nil then return "Prior Step", step, chainLength, current end
@@ -238,10 +248,10 @@ end
 -- takes dozens of quest log calls. Its color is looked up per call, so
 -- switching the window style recolors kept statuses too.
 local statusCache = {}
-local STATUS_COLOR = { Completed = "complete", Accepted = "accepted", ["Prior Step"] = "levelHard",
-                       Incomplete = "incomplete" }
-local STATUS_TEXT = { Completed = L["Completed"], Accepted = L["Accepted"], ["Prior Step"] = L["Prior Step"],
-                      Incomplete = L["Incomplete"] }
+local STATUS_COLOR = { Completed = "complete", Ready = "complete", Accepted = "accepted",
+                       ["Prior Step"] = "levelHard", Incomplete = "incomplete" }
+local STATUS_TEXT = { Completed = L["Completed"], Ready = L["Ready to turn in"], Accepted = L["Accepted"],
+                      ["Prior Step"] = L["Prior Step"], Incomplete = L["Incomplete"] }
 
 -- The quest's status and its color, then FreshStatus's chain details.
 local function Status(quest)
@@ -254,6 +264,11 @@ local function Status(quest)
 end
 ns.UI.QuestStatus = Status
 ns.UI.QuestStatusText = STATUS_TEXT -- status -> the words shown for it
+
+-- Whether `status` (from QuestStatus) means the quest is in the quest log.
+function ns.UI.IsInLogStatus(status)
+    return status == "Ready" or status == "Accepted"
+end
 
 -- Whether the scraped data says a quest listed for `instance` starts inside
 -- it, read the way the quest page's "Started by" line reads it: its giver
@@ -1224,7 +1239,11 @@ local FLOORS = {
     ["Armory"] = L["Armory"], ["Blackmaw Hold"] = L["Blackmaw Hold"],
     ["Blackrock Stadium"] = L["Blackrock Stadium"], ["Cathedral"] = L["Cathedral"],
     ["City of Dalaran"] = L["City of Dalaran"], ["Dalaran Sewers"] = L["Dalaran Sewers"],
+    ["Depths of Forbidden Magic"] = L["Depths of Forbidden Magic"],
+    ["Depths of the Burrow"] = L["Depths of the Burrow"], ["Depths of the Elders"] = L["Depths of the Elders"],
+    ["Depths of the Fallen Grove"] = L["Depths of the Fallen Grove"],
     ["Dragonspire Hall"] = L["Dragonspire Hall"], ["Excavation Site"] = L["Excavation Site"],
+    ["Festering Grotto"] = L["Festering Grotto"],
     ["Graveyard"] = L["Graveyard"], ["Hall of Binding"] = L["Hall of Binding"],
     ["Hall of Thanes"] = L["Hall of Thanes"], ["Library"] = L["Library"],
     ["Ruins of Lordaeron"] = L["Ruins of Lordaeron"],

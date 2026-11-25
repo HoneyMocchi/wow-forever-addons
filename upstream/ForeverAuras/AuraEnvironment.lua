@@ -301,6 +301,19 @@ local blockedFunctions = {
   GetEditBoxMetatable = true,
   GetFontStringMetatable = true,
   GetFrameMetatable = true,
+  -- ForeverAuras (1.4.7-dev.10, reported by Jazminite on Discord): three functions custom code in a
+  -- pasted aura string could still reach, each of which throws something of the player's away for good.
+  DeleteMacro = true,   -- deletes one of the player's macros
+  AbandonSkill = true,  -- unlearns a profession, with its progress
+  PetAbandon = true,    -- releases a hunter's current pet
+  -- The same kind of thing, found while looking at those three: no aura has a use for them.
+  PetRename = true,        -- a pet can be renamed once; this spends it
+  -- SetAbandonQuest is not blocked: it prepares the pending quest-abandonment target but does not
+  -- perform the abandonment, and stays available for compatibility. AbandonQuest is blocked, here
+  -- and under C_QuestLog.
+  AbandonQuest = true,     -- abandons the selected quest, with its progress
+  DeleteInboxItem = true,  -- deletes a mail from the inbox
+  ReturnInboxItem = true,  -- sends a mail back
 }
 
 local blockedTables = {
@@ -610,6 +623,32 @@ local function MakeReadOnly(input, options)
   })
 end
 
+local blockedNamespaces = {
+  C_PetInfo = {PetAbandon = true, PetRename = true},
+  C_QuestLog = {AbandonQuest = true}, -- not SetAbandonQuest: see blockedFunctions
+}
+
+local sanitizedNamespaces = {}
+local function GetSanitizedNamespace(name)
+  local input = _G[name]
+  if type(input) ~= "table" then return input end
+  local entry = sanitizedNamespaces[name]
+  if not entry or entry.input ~= input then
+    entry = {
+      input = input,
+      proxy = MakeReadOnly(input, {
+        blockedFunctions = blockedNamespaces[name],
+        blockedTables = {},
+        override = {},
+        blocked = function(key) blocked(name .. "." .. key) end,
+        setBlocked = function() blocked(name) end,
+      }),
+    }
+    sanitizedNamespaces[name] = entry
+  end
+  return entry.proxy
+end
+
 --- Wraps a table, so that accessing any key in it creates a deprecated warning
 ---@param input table
 ---@param name string
@@ -770,6 +809,8 @@ local exec_env_custom = setmetatable(CopyTable(mixins),
       return {}
     elseif overridden[k] then
       return overridden[k]
+    elseif blockedNamespaces[k] then
+      return GetSanitizedNamespace(k)
     elseif _G[k] then
       return _G[k]
     elseif k:find(".", 1, true) then
@@ -837,6 +878,8 @@ local exec_env_builtin = setmetatable(CopyTable(mixins),
       return {}
     elseif overridden[k] then
       return overridden[k]
+    elseif blockedNamespaces[k] then
+      return GetSanitizedNamespace(k)
     else
       return _G[k]
     end

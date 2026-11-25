@@ -693,6 +693,7 @@ local function ApplyIconSource(region, missing, data, source)
   local cooldown = native.cooldown
   local state = source and region.states and region.states[source]
   if not (type(state) == "table" and state.show) then
+    native.faInverseSource = nil -- (dev.8) no source drawn: an Inverse condition is the aura rule again
     if missing.following then
       missing.following = nil
       native.icon:SetTexture(Display.SingleIcon(data))
@@ -716,13 +717,30 @@ local function ApplyIconSource(region, missing, data, source)
     end
   end
   if not ok then
+    native.faInverseSource = nil -- (dev.8) no timer drawn from the source
     cooldown:Clear(); cooldown:Hide()
     CountdownElement(native, data, false)
     return
   end
   cooldown:SetDrawSwipe(data.cooldown ~= false and data.cooldownSwipe ~= false)
   cooldown:SetDrawEdge(data.cooldown ~= false and data.cooldownEdge == true)
-  cooldown:SetReverse(data.inverse == true)
+  -- ForeverAuras (1.4.7-dev.5): Inverse as on every other icon: off is the usual aura swipe (the client's
+  -- reverse flag set), on turns it over. Saved icons were converted (Modernize.lua, 93).
+  -- (1.4.7-dev.7, Astra's review, Inverse 3) this icon draws another trigger's state, which can be an
+  -- inverted progress or a Cooldown Manager spell cooldown: the Icon display's own rule decides, with
+  -- that state, so both draw the same way for the same Inverse setting.
+  -- (1.4.7-dev.8, Astra's dev.7 review) Two more things for that to hold through conditions:
+  -- the Inverse setting in force is an active condition's value when there is one (false included),
+  -- else the saved one, so a timer update does not undo a condition that is still on; and the state
+  -- being drawn is kept on the sample (faInverseSource, the state table itself, no timer value) so
+  -- that a condition set or reset afterwards (SecretAuraConditions.lua, ApplyProperty) turns the
+  -- swipe for this source and not as for a live aura. It is dropped above when no source or no timer
+  -- is drawn, and where the sample goes back to its own look (ApplyMissing).
+  local inverse = data.inverse == true
+  local override = region.secretAuraConditionValues and region.secretAuraConditionValues.inverse
+  if override ~= nil then inverse = override == true end
+  native.faInverseSource = state
+  cooldown:SetReverse(Private.IconEffectiveReverse(inverse, state.inverse, state))
   local countdown = CountdownElement(native, data, true)
   if countdown then
     cooldown:SetHideCountdownNumbers(false)
@@ -1120,6 +1138,10 @@ local function EnsureMissing(single, region, data, trigger, instance)
   end
   EnsurePresence(missing, region, data, filter, candidates, perUnit)
   missing.container:SetFrameLevel(region:GetFrameLevel() + 1)
+  -- (1.4.7-dev.11, Astra's dev.8 review, P2) the sample's own look: no followed source. Dropped before
+  -- the styling below, which applies an active Inverse condition and would otherwise turn the swipe
+  -- for the source the sample followed before.
+  if missing.native then missing.native.faInverseSource = nil end
   StyleMissing(missing, region, data)
   missing.active = true
   -- A plain list timer runs the look's countdown; otherwise it has none.
@@ -1613,7 +1635,11 @@ local function EnsureRemaining(single, instance, region, data, trigger, op, x)
     if data.cooldown ~= false then
       cooldown:SetDrawSwipe(data.cooldownSwipe ~= false)
       cooldown:SetDrawEdge(data.cooldownEdge == true)
-      cooldown:SetReverse(data.inverse == true)
+      -- (1.4.7-dev.5, reworded in dev.7) Blizzard fills this swipe from the aura, a source that is not
+      -- inverted. For such a source the shared rule (Private.IconEffectiveReverse, RegionTypes/Icon.lua)
+      -- is exactly "reverse unless Inverse is on", written out here because this slot code is also
+      -- run on its own by the source-level harnesses; inverse7_test.lua checks the two are equal.
+      cooldown:SetReverse(data.inverse ~= true)
       cooldown:SetSwipeColor(unpack(data.blizzardAuraDisplay and data.blizzardAuraDisplay.swipeColor or {0, 0, 0, 0.8}))
       cooldown:Show()
     else
@@ -3501,7 +3527,27 @@ function Display.RefreshSingle(instance, unit, shown, force)
     local strata, level = instance.drawStrata, instance.drawLevel
     if not strata then strata = instance.container:GetFrameStrata() end
     if not level then level = instance.container:GetFrameLevel() end
-    if not issecretvalue(strata) and not issecretvalue(level) then RaiseMissing(missing, strata, level + 1) end
+    if not issecretvalue(strata) and not issecretvalue(level) then
+      -- ForeverAuras (1.4.7, Dan: Aura(s) Missing drawn behind the unit frame while Aura(s) Found is
+      -- fine): the Missing look's clip is raised by as many extra levels as the sample's icon
+      -- holder sits above the sample button, so the look sits higher above the unit frame than
+      -- container + 1. Confirmed by Dan in game on Ellesmere party frames (Frame Strata Inherited);
+      -- other unit frames not checked. Why the lower place was covered is not established.
+      -- The two levels are read from the look's own frames, guarded. (Astra's dev.32 review) When
+      -- they cannot be read this time, the lift last read for this look is used again, so a
+      -- placement already made is not moved back down; with none read yet it is container + 1.
+      -- RaiseMissing does the writes as before and its errors are not swallowed.
+      local target = level + 1
+      local native = missing.native
+      local holder = native and native.elementFrames and native.elementFrames.sharedBase
+      local sample = native and native.button
+      if holder and sample then
+        local okLift, lift = pcall(function() return holder:GetFrameLevel() - sample:GetFrameLevel() end)
+        if okLift and not issecretvalue(lift) and type(lift) == "number" and lift > 0 and lift <= 20 then missing.clipLift = lift end
+      end
+      if missing.clipLift then target = target + missing.clipLift end
+      RaiseMissing(missing, strata, target)
+    end
   end
   -- No unit (no target, focus or pet): nothing is missing. The display itself
   -- stays shown, since its frames may be protected in combat; only the Missing
@@ -3528,7 +3574,11 @@ function Display.PrintDebug(id)
     return tostring(value)
   end
   local function Read(ok, value) if not ok then return "unreadable" end return Fmt(value) end
-  local function Say(...) print("|cff88ccffFA modern|r " .. table.concat({...}, " ")) end
+  -- (1.4.7-dev.28, Dan: "so many prints it gets cut off") An instance with no unit (a Smart Group
+  -- display keeps one per possible member, forty in all) prints nothing; they are counted in one
+  -- line at the end. A Missing look's presence children are one line, not one each.
+  local muted, idle = false, 0
+  local function Say(...) if muted then return end print("|cff88ccffFA modern|r " .. table.concat({...}, " ")) end
   local function Present(value)
     if issecretvalue(value) then return "<secret>" end
     return Fmt(value ~= nil)
@@ -3580,9 +3630,21 @@ function Display.PrintDebug(id)
   Say("ids used", table.concat(Display.GetSpellIDs(trigger, true), ","), "icon", Read(pcall(Display.SingleIcon, data)))
   local okNative, native = Field(region, "blizzardAuraDisplay")
   if not okNative or issecretvalue(native) then Say("native display unreadable"); return end
-  if not native then Say("no native display"); return end
+  if not native then
+    Say("no native display")
+    -- For an inspected region, report who currently owns its unfinished build.
+    if region and Display.DescribeMissingBuild then
+      local request, drain = Display.DescribeMissingBuild(region, data)
+      Say("build request", request)
+      Say("build drain", drain)
+      if Display.DescribeBuildDispatch then Say("build dispatch", Display.DescribeBuildDispatch()) end
+    end
+    return
+  end
   Say("native active", Fmt(native.active), "instances", Fmt(native.instances and #native.instances))
   for index, instance in ipairs(native.instances or {}) do
+    muted = not issecretvalue(instance.boundUnit) and instance.boundUnit == nil
+    if muted then idle = idle + 1 end
     local single = instance.single
     local missing = single and single.missing
     local c = instance.container
@@ -3594,6 +3656,115 @@ function Display.PrintDebug(id)
     elseif okP then parentName = "<secret>" end
     Say(" container unit", Fmt(instance.boundUnit), "enabled", Read(Field(c, "faEnabled")), "parent", parentName, "visible", R(c, "IsVisible"), "alpha", R(c, "GetAlpha"), "left", R(c, "GetLeft"), "top", R(c, "GetTop"), "list disabled", Fmt(single and single.listDisabled), "alpha pending", Fmt(alphaPending[instance]), "instance visible", Fmt(instance.visible), "anchored", Fmt(instance.anchored))
     if single and single.stage then Say(" missing stage visible", R(single.stage, "IsVisible"), "alpha", R(single.stage, "GetAlpha")) end
+    -- ForeverAuras (1.4.7-dev.27, Astra's dev.26 review, item 3; Dan: Aura(s) Missing drawn behind the
+    -- unit frame): the layers. For the unit frame the display sits on and for each frame of this
+    -- instance: its strata, its frame level, and what its parent is. Then the layer the binding
+    -- pass last worked out (draw), the one it last wrote (applied) and the level the Missing look
+    -- was last lifted to (raised). Read once, when the command is typed; a value the client hides
+    -- or refuses is printed as <secret> or unreadable, never guessed.
+    do
+      local known = {}
+      local function Know(frame, label) if not issecretvalue(frame) and frame ~= nil then known[frame] = label end end
+      local unitFrame
+      local unit = instance.boundUnit
+      if type(unit) == "string" and not issecretvalue(unit) then
+        local okU, found = pcall(WeakAuras.GetUnitFrame, unit)
+        if okU and not issecretvalue(found) then unitFrame = found end
+      end
+      local slot = missing and missing.slot
+      local sample = missing and missing.native and missing.native.button
+      local sampleCooldown = missing and missing.native and missing.native.cooldown
+      Know(region, "region"); Know(unitFrame, "unit frame"); Know(instance.anchoredTo, "anchor"); Know(c, "container")
+      Know(single and single.stage, "missing stage"); Know(missing and missing.clip, "missing clip"); Know(missing and missing.container, "presence container")
+      Know(slot, "missing slot"); Know(sample, "missing sample"); Know(UIParent, "UIParent"); Know(WeakAuras.HiddenFrames, "hidden frames")
+      Know(unitFrame, "unit frame")
+      local function Layer(label, frame)
+        if not issecretvalue(frame) and frame == nil then return end
+        local okP, up = Get(frame, "GetParent")
+        local parentText = "unreadable"
+        if okP and issecretvalue(up) then parentText = "<secret>"
+        elseif okP and up == nil then parentText = "none"
+        elseif okP then parentText = known[up] or ("other (" .. R(up, "GetName") .. ")") end
+        Say("  layer", label, "strata", R(frame, "GetFrameStrata"), "level", R(frame, "GetFrameLevel"), "parent", parentText, "visible", R(frame, "IsVisible"))
+      end
+      Layer("unit frame (" .. Fmt(unit) .. ", " .. R(unitFrame, "GetName") .. ")", unitFrame)
+      -- Sample child layers without interpreting unreadable visibility or comparing different strata.
+      if unitFrame then
+        local count, unreadable, capped = 0, 0, false
+        local strata = {}
+        local function Walk(frame, depth)
+          if count >= 300 or depth > 6 then capped = true; return end
+          local kids = Objects(frame, "GetChildren")
+          if not kids then unreadable = unreadable + 1; return end
+          for n = 2, kids.n do
+            if count >= 300 then capped = true; break end
+            local child = kids[n]
+            if issecretvalue(child) then
+              count, unreadable = count + 1, unreadable + 1
+            elseif child ~= nil and child ~= c then
+              count = count + 1
+              local okV, visible = Get(child, "IsVisible")
+              if not okV or issecretvalue(visible) or type(visible) ~= "boolean" then
+                unreadable = unreadable + 1
+              elseif visible then
+                local okS, stratum = Get(child, "GetFrameStrata")
+                local okL, level = Get(child, "GetFrameLevel")
+                if okS and okL and not issecretvalue(stratum) and not issecretvalue(level) and type(stratum) == "string" and type(level) == "number" then
+                  local bucket = strata[stratum] or {count = 0}
+                  strata[stratum] = bucket
+                  bucket.count = bucket.count + 1
+                  if not bucket.highest or level > bucket.highest then bucket.highest, bucket.name = level, R(child, "GetName") end
+                else unreadable = unreadable + 1 end
+              end
+              Walk(child, depth + 1)
+            end
+          end
+        end
+        Walk(unitFrame, 1)
+        Say("  layer unit frame contents", "frames sampled", count, "unreadable observations", unreadable, "limit reached", Fmt(capped))
+        local keys = {}
+        for stratum in pairs(strata) do keys[#keys + 1] = stratum end
+        table.sort(keys)
+        for _, stratum in ipairs(keys) do
+          local bucket = strata[stratum]
+          Say("  layer unit frame contents", "strata", stratum, "visible frames", bucket.count, "highest level", Fmt(bucket.highest), "(" .. bucket.name .. ")")
+        end
+      end
+      if instance.anchoredTo ~= unitFrame then Layer("anchor", instance.anchoredTo) end
+      Layer("region", region)
+      Layer("container", c)
+      Layer("missing stage", single and single.stage)
+      Layer("missing slot", slot)
+      Layer("missing clip", missing and missing.clip)
+      Layer("presence container", missing and missing.container)
+      Layer("missing sample", sample)
+      Layer("missing sample cooldown", sampleCooldown)
+      -- Compare the texture owners in both drawing paths, not just their outer buttons.
+      local function IconLayers(label, texture)
+        if issecretvalue(texture) then Say("  layer", label, "texture <secret>"); return end
+        if texture == nil then return end
+        local okH, holder = Get(texture, "GetParent")
+        if not okH then Say("  layer", label .. " holder", "unreadable")
+        elseif issecretvalue(holder) then Say("  layer", label .. " holder", "<secret>")
+        elseif holder == nil then Say("  layer", label .. " holder", "none")
+        else
+          Know(holder, label .. " holder")
+          Layer(label .. " holder", holder)
+        end
+        local okD, drawLayer, sublevel = Get(texture, "GetDrawLayer")
+        Say("  layer", label .. " texture", "shown", R(texture, "IsShown"), "visible", R(texture, "IsVisible"), "alpha", R(texture, "GetAlpha"),
+          "draw layer", Read(okD, drawLayer), "sublevel", Read(okD, sublevel))
+      end
+      IconLayers("missing icon", missing and missing.native and missing.native.icon)
+      for n, button in ipairs(instance.buttons or {}) do
+        if n > 3 then break end
+        Layer("list button " .. n, button.button)
+        IconLayers("list icon " .. n, button.icon)
+      end
+      if #(instance.buttons or {}) > 3 then Say("  layer list icons", "first 3 records only of", #instance.buttons, "not selected by visibility") end
+      Say("  layer cache", "draw", Fmt(instance.drawStrata), Fmt(instance.drawLevel), "applied", Fmt(instance.appliedStrata), Fmt(instance.appliedLevel),
+        "raised", Fmt(missing and missing.raisedLevel), "anchored", Fmt(instance.anchored), "display strata setting", Fmt(data.frameStrata))
+    end
     if missing then
       local presence, clip = missing.container, missing.clip
       Say(" missing active", Fmt(missing.active), "erased", Fmt(missing.erased), "failed", Fmt(single.missingFailed))
@@ -3605,13 +3776,13 @@ function Display.PrintDebug(id)
       Say(" sample", R(sample, "GetWidth"), "left", R(sample, "GetLeft"), "top", R(sample, "GetTop"), "alpha", R(sample, "GetAlpha"), "texture", R(icon, "GetTexture"))
       local children = Objects(presence, "GetChildren")
       if children then
-        for n = 2, children.n do
-          local child = children[n]
-          Say("  presence child", n - 1, R(child, "GetWidth"), "x", R(child, "GetHeight"), "shown", R(child, "IsShown"))
-        end
+        local first = children[2]
+        Say("  presence children", children.n - 1, "first", R(first, "GetWidth"), "x", R(first, "GetHeight"), "shown", R(first, "IsShown"))
       else Say("  presence children unreadable") end
     end
   end
+  muted = false
+  if idle > 0 then Say(idle, "instances have no unit and are not listed") end
   Say("region", R(region, "GetWidth"), "x", R(region, "GetHeight"), "left", R(region, "GetLeft"), "top", R(region, "GetTop"), "scale", R(region, "GetEffectiveScale"))
   local labels = {}
   local function Label(object, label)
@@ -3626,6 +3797,7 @@ function Display.PrintDebug(id)
     for index, element in pairs(owner.sharedElements or {}) do Label(element.text, prefix .. " element " .. tostring(index)) end
   end
   for index, instance in ipairs(native.instances or {}) do
+    muted = not issecretvalue(instance.boundUnit) and instance.boundUnit == nil
     for n, button in ipairs(instance.buttons or {}) do
       LabelNative(button, "list button " .. index .. "." .. n)
       local okS, shown = Get(button.button, "IsShown")
@@ -3667,6 +3839,7 @@ function Display.PrintDebug(id)
     end
     if single and single.missing then LabelNative(single.missing.native, "missing sample") end
   end
+  muted = false
   local okSamples, samples = Field(region, "secretAuraSamples")
   for index, sample in ipairs(okSamples and not issecretvalue(samples) and samples or {}) do LabelNative(sample, "preview sample " .. index) end
   local okParts, parts = Field(region, "subRegions")

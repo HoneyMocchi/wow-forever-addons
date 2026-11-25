@@ -27,7 +27,16 @@
 -- Faction lists work the same way, with zone naming where the faction's
 -- quartermaster is; quest rewards there have no cost. An item bought with
 -- another item (a reputation's tokens) has costItem = <that item's ID>,
--- costCount = <how many> in place of cost.
+-- costCount = <how many> in place of cost, and one bought with a currency
+-- (Honor, Merchant's Favor) costCurrency = <the game's currency ID>,
+-- costCurrencyCount = <how much>; Premier gear takes both (honor and a
+-- battleground's marks). PvP items made for some classes name them,
+-- classes = "ROGUE DRUID" (the game's class tokens, in its class order),
+-- which the loot pane folds the list's items by. A faction reward that
+-- isn't a recipe but belongs with one profession's recipes (an "Enchanting
+-- Certification") has forProfession = "Enchanting", its
+-- Enum.ItemRecipeSubclass key: the Factions tab, which gives each
+-- profession its own loot section, lists it in that one.
 --
 -- Collections (mounts, pets, tabards, item sets, world events) come from
 -- AtlasLootClassic's Collections module; their zone is a kind ("Item sets",
@@ -113,7 +122,8 @@ ns.Data = { instances = {}, byCategory = {}, quests = {}, npcs = {}, questSpots 
             optionalLeadIns = {}, breadcrumbs = {}, classQuests = {}, classSpells = {},
             classQuestFolds = {}, classRecipes = {}, reagentVendors = { vendors = {}, items = {} },
             knownVendorRecipes = {}, knownVendorSets = {}, vendorPairs = {},
-            vendorItems = { vendors = {}, items = {}, commonStock = {} }, foodBuffs = {}, portals = {} }
+            vendorItems = { vendors = {}, items = {}, commonStock = {} }, foodBuffs = {}, portals = {},
+            wingParts = {} }
 
 ns.Data.CATEGORIES = { "DUNGEON", "RAID", "PVP", "FACTION", "COLLECTION", "PROFESSION" }
 
@@ -1627,11 +1637,17 @@ local function IsForSide(quest, side)
     return quest.side == nil or quest.side == side
 end
 
-local function BuildDungeonsOfQuest(data, side)
-    local index, places = {}, {}
+-- Every dungeon and raid, in tab order: the places NeedRoll lists quests for.
+local function QuestPlaces(data)
+    local places = {}
     for _, category in ipairs({ "DUNGEON", "RAID" }) do
         for _, instance in ipairs(data:List(category)) do places[#places + 1] = instance end
     end
+    return places
+end
+
+local function BuildDungeonsOfQuest(data, side)
+    local index, places = {}, QuestPlaces(data)
     -- Each instance's own quests first, so a quest lists the instance it is
     -- a quest of ahead of the ones whose chains it only leads into.
     for _, instance in ipairs(places) do
@@ -1662,11 +1678,88 @@ function ns.Data:DungeonsOfQuest(questID, side)
     return dungeonsOfQuest[side][questID] or {}
 end
 
+-- Two indexes over the dungeon and raid quests, built the first time either
+-- is asked (the lists never change once loaded): `rewarding`, item ID ->
+-- the quests rewarding it (rewards, or one of choice), and `byLootRow`,
+-- each dungeon and raid loot row -> the quests asking for its item (their
+-- loot). Every side's quests, each once per item: two wings listing one
+-- quest (Blackrock Spire's) give it once.
+local questsByItem
+
+-- `quest` onto `itemID`'s quests in `byItem`, unless a quest with its ID is there.
+local function AddItemQuest(byItem, itemID, quest)
+    local quests = byItem[itemID] or {}
+    byItem[itemID] = quests
+    for _, listed in ipairs(quests) do
+        if listed.id == quest.id then return end
+    end
+    quests[#quests + 1] = quest
+end
+
+local function BuildQuestsByItem(data)
+    local asking, rewarding, byLootRow = {}, {}, {}
+    local places = QuestPlaces(data)
+    for _, instance in ipairs(places) do
+        for _, quest in ipairs(data:Quests(instance.id)) do
+            for _, wanted in ipairs(quest.loot or {}) do AddItemQuest(asking, wanted.item, quest) end
+            for _, itemID in ipairs(quest.rewards or {}) do AddItemQuest(rewarding, itemID, quest) end
+            for _, itemID in ipairs(quest.choice or {}) do AddItemQuest(rewarding, itemID, quest) end
+        end
+    end
+    -- A row whose item no quest asks for stays out (nil).
+    for _, instance in ipairs(places) do
+        for _, encounter in ipairs(instance.encounters) do
+            for _, entry in ipairs(encounter.loot) do byLootRow[entry] = entry.itemID and asking[entry.itemID] end
+        end
+    end
+    return { rewarding = rewarding, byLootRow = byLootRow }
+end
+
+-- The dungeon and raid quests that ask for the item of loot row `entry`
+-- (Rend's Chromatic Carapace: the two Chromatic quests), every side's; nil
+-- for a row of any other list, or an item no quest asks for.
+function ns.Data:QuestsAskingFor(entry)
+    questsByItem = questsByItem or BuildQuestsByItem(self)
+    return questsByItem.byLootRow[entry]
+end
+
+-- Item ID -> the dungeon and raid quests rewarding it, every side's.
+function ns.Data:QuestRewards()
+    questsByItem = questsByItem or BuildQuestsByItem(self)
+    return questsByItem.rewarding
+end
+
 -- Whether an encounter is a boss (rares included): not the Overview page,
 -- trash or a shared loot pool.
 function ns.Data:IsBoss(encounter)
     return not NOT_BOSSES[encounter.id]
 end
+
+--[==[@debug@
+-- Rare spawns matter only to the run pages (local checkouts only) yet, so a release leaves this
+-- out.
+local RARE_RANKS = { rare = true, rareelite = true }
+
+-- Whether an encounter's note ("Rare", in the player's language once Core/Names.lua has put it
+-- there; its parts joined by dots) marks a rare spawn.
+local function IsRareNote(note)
+    if not note then return false end
+    for _, part in ipairs(ns.Names.SplitParts(note)) do
+        if part == L["Rare"] or part == "Rare" then return true end
+    end
+    return false
+end
+
+-- Whether `encounter` of `instance` is a rare spawn, which a group can't count on meeting: its
+-- page says "Rare" (the scraper's note, which the dungeons new in Forever carry too), or its boss
+-- is ranked rare. Either alone isn't enough: Tsu'zee and Ragglesnout are ranked elite, and the
+-- new dungeons' rares (Blackmaw Hold's Mopes) have no rank at all.
+function ns.Data:IsRareSpawn(instance, encounter)
+    if IsRareNote(encounter.note) then return true end
+    local boss = (self:Bosses(instance, encounter) or {})[1]
+    return boss ~= nil and RARE_RANKS[boss[4]] == true
+end
+--@end-debug@]==]
 
 -- How many bosses an instance has.
 function ns.Data:BossCount(instance)
@@ -1686,6 +1779,12 @@ end
 
 function ns.Data:Get(id)
     return self.instances[id]
+end
+
+-- The dungeon `id` names, as its own data file has it: for a part of an instance shown as one
+-- (MergeWings: "STRAT_UNDEAD") only that part's encounters, where ns.Data:Get gives the whole.
+function ns.Data:Wing(id)
+    return self.wingParts[id] or self.instances[id]
 end
 
 function ns.Data:List(category)
@@ -1717,7 +1816,9 @@ end
 -- Stratholme's Live and Undead halves. The data files keep each part as its
 -- own instance; once every file has loaded the parts are joined into one
 -- instance in their place (the first part's spot in the list), and the
--- parts' IDs keep finding it. Its encounters carry `wing` = the part's name.
+-- parts' IDs keep finding it. Its encounters carry `wing` = the part's name,
+-- `wingIDs` lists the parts' IDs in order, and ns.Data:Wing still finds each
+-- part on its own (the run pages count one side's bosses: Core/Runs.lua).
 local MERGED = {
     { id = "STRATHOLME", name = "Stratholme", parts = { { "STRAT_LIVE", "Live" }, { "STRAT_UNDEAD", "Undead" } } },
 }
@@ -1732,12 +1833,14 @@ function ns.Data:MergeWings()
         if #parts == #def.parts then
             local first = parts[1].inst
             local merged = { id = def.id, name = def.name, category = first.category, zone = first.zone,
-                             encounters = {}, wings = {} }
+                             encounters = {}, wings = {}, wingIDs = {} }
             local lore, quests, seen = {}, {}, {}
             local low, high
             for _, part in ipairs(parts) do
                 local instance = part.inst
                 table.insert(merged.wings, part.wing)
+                table.insert(merged.wingIDs, instance.id)
+                self.wingParts[instance.id] = instance
                 for _, encounter in ipairs(instance.encounters) do
                     if not encounter.overview then
                         encounter.wing = part.wing

@@ -1568,7 +1568,8 @@ local function PositionOptions(id, data, _, hideWidthHeight, disableSelfPoint, g
       type = "toggle",
       width = WeakAuras.doubleWidth,
       name = L["Allow External Display Changes"],
-      desc = L["Lets another aura or an addon scale this display or set its sizes with ForeverAuras.SetDisplayScale(id, factor) and ForeverAuras.SetDisplayOverrides(id, values). The changes are never saved: the editor always shows the authored values."],
+      -- (1.4.7-dev.26, Dan: "this text could be more simplified and human friendly")
+      desc = L["Lets other auras or addons resize this display. Their changes are temporary and are never saved."],
       order = 81.5,
     },
     anchorFrameSpace = {
@@ -2134,10 +2135,11 @@ local function AddCommonTriggerOptions(options, data, triggernum, doubleWidth)
     values = trigger_types,
     sorting = OptionsPrivate.Private.SortOrderForValues(trigger_types),
     get = function()
-      return trigger.type
+      return OptionsPrivate.Private.CDMGroupAuras.IsTrigger(trigger) and "cdm" or trigger.type
     end,
     set = function(info, v)
       local wasSecret = trigger.type == "secretAura"
+      if trigger.cdmGroupAuras then trigger.cdmGroupAuras, trigger.secretSpellList, trigger.cdmGroupSpell, trigger.cdmGroupSpells, trigger.cdmGroupDebuff = nil, nil, nil, nil, nil; trigger.debuffType = "HELPFUL" end
       if (trigger.type == "aura2" or trigger.type == "secretAura") and (v == "aura2" or v == "secretAura") then
         trigger.auraTracking = v == "secretAura" and "native" or "readable"
         OptionsPrivate.AuraEditor.Resolve(data, triggernum)

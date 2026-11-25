@@ -1,10 +1,12 @@
 -- Search across every registered instance: dungeon and raid names, their
 -- bosses, their quests (and raid attunement and item chain steps), the
 -- player's side's Library books (Data/LibraryBooks.lua), and item names:
--- the items of the lists, and the items only a few vendors sell
+-- the items of the lists, the items only a few vendors sell
 -- (Data/VendorItems.lua), each of those with the vendors of the player's
--- side under "Sold by". Item names (books' too) come from the client's item
--- cache, so Warm() asks for them once and keeps each one as it arrives.
+-- side under "Sold by", and the dungeon and raid quests' reward items, each
+-- with its quests of the player's side. Item names (books' too) come from
+-- the client's item cache, so Warm() asks for them once and keeps each one
+-- as it arrives.
 -- Search reads only that list, so a name the client later drops from its
 -- cache stays searchable. The Library tab's own search box
 -- (UI/LibraryBooks.lua) matches text the same way (ns.Search.SearchForm,
@@ -68,6 +70,12 @@ local function ListIfOn(category)
     return ns.Modules:IsOn(category) and ns.Data:List(category) or {}
 end
 
+-- Item ID -> the dungeon and raid quests rewarding it while the Quests tab
+-- is on; none while it is off.
+local function QuestRewardsIfOn()
+    return ns.Modules:IsOn("QUESTS") and ns.Data:QuestRewards() or {}
+end
+
 -- Every loot entry of the tabs that are on, in tab order, each instance's
 -- encounters in their own order, so an item's first source is the first
 -- boss to drop it. `fn` gets the entry, its encounter, its instance and
@@ -100,20 +108,18 @@ local warmedAll = false  -- the window opened and asked for every name left
 
 local function ListWarmItemIDs()
     local itemIDs, listed = {}, {}
-    EachSource(function(entry)
-        local itemID = entry.itemID
-        if itemID and not listed[itemID] then
-            listed[itemID] = true
-            table.insert(itemIDs, itemID)
-        end
-    end)
-    for itemID in pairs(ns.Data.vendorItems.items) do
-        if not listed[itemID] then table.insert(itemIDs, itemID) end
+    local function AddOnce(itemID)
+        if listed[itemID] then return end
+        listed[itemID] = true
+        table.insert(itemIDs, itemID)
     end
+    EachSource(function(entry)
+        if entry.itemID then AddOnce(entry.itemID) end
+    end)
+    for itemID in pairs(ns.Data.vendorItems.items) do AddOnce(itemID) end
+    for itemID in pairs(QuestRewardsIfOn()) do AddOnce(itemID) end
     if ns.Modules:IsOn("LIBRARY_BOOKS") then
-        for _, book in ipairs(ns.Data.libraryBooks.books) do
-            if not listed[book.item] then table.insert(itemIDs, book.item) end
-        end
+        for _, book in ipairs(ns.Data.libraryBooks.books) do AddOnce(book.item) end
     end
     return itemIDs
 end
@@ -234,26 +240,29 @@ end
 
 -- Every listed item and its sources: { entry (the loot row), enc (its
 -- encounter), inst (its instance), order, rank, name }. Results keep these
--- keys. Then the items only vendors sell that no list has, with no sources.
+-- keys. Then the items only vendors sell or quests reward that no list has,
+-- with no sources. An item a quest rewards has its quests as `quests`.
 local function ItemIndex()
     if itemIndex then return itemIndex end
     itemIndex = {}
     local byItemID = {}
-    EachSource(function(entry, encounter, instance, order)
-        local itemID = entry.itemID
-        if not itemID or entry.recipe then return end
+    -- The index's item for `itemID`, added with no sources the first time.
+    local function IndexedItem(itemID)
         local item = byItemID[itemID]
-        if not item then
-            item = { itemID = itemID, sources = {} }
-            byItemID[itemID] = item
-            table.insert(itemIndex, item)
-        end
-        table.insert(item.sources, { entry = entry, enc = encounter, inst = instance, order = order,
-            rank = SourceRank(instance, encounter), name = ns.Data:DropperName(instance, encounter, entry) })
-    end)
-    for itemID in pairs(ns.Data.vendorItems.items) do
-        if not byItemID[itemID] then table.insert(itemIndex, { itemID = itemID, sources = {} }) end
+        if item then return item end
+        item = { itemID = itemID, sources = {} }
+        byItemID[itemID] = item
+        table.insert(itemIndex, item)
+        return item
     end
+    EachSource(function(entry, encounter, instance, order)
+        if not entry.itemID or entry.recipe then return end
+        table.insert(IndexedItem(entry.itemID).sources, { entry = entry, enc = encounter, inst = instance,
+            order = order, rank = SourceRank(instance, encounter),
+            name = ns.Data:DropperName(instance, encounter, entry) })
+    end)
+    for itemID in pairs(ns.Data.vendorItems.items) do IndexedItem(itemID) end
+    for itemID, quests in pairs(QuestRewardsIfOn()) do IndexedItem(itemID).quests = quests end
     return itemIndex
 end
 
@@ -262,15 +271,21 @@ local function ByRankThenOrder(a, b)
     return a.order < b.order
 end
 
+-- The vendors or quests of `list` for side `side`, or for both sides; nil
+-- when none is.
+local function OnlyForSide(list, side)
+    local forSide = {}
+    for _, vendorOrQuest in ipairs(list or {}) do
+        if not vendorOrQuest.side or vendorOrQuest.side == side then table.insert(forSide, vendorOrQuest) end
+    end
+    return #forSide > 0 and forSide or nil
+end
+
 -- The vendors of side `side`, or of both sides, that Data/VendorItems.lua
 -- says sell `itemID` (as recipe pages show only the player's side's
 -- vendors); nil when none does.
 local function SellersForSide(itemID, side)
-    local sellers = {}
-    for _, vendor in ipairs(ns.Data:VendorItemSellers(itemID)) do
-        if not vendor.side or vendor.side == side then table.insert(sellers, vendor) end
-    end
-    return #sellers > 0 and sellers or nil
+    return OnlyForSide(ns.Data:VendorItemSellers(itemID), side)
 end
 
 -- A listed item's result row: its sources the player's side can use, best
@@ -293,6 +308,8 @@ local function ListedItemResult(item, side)
         cost = first.entry.cost,
         costItem = first.entry.costItem,
         costCount = first.entry.costCount,
+        costCurrency = first.entry.costCurrency,
+        costCurrencyCount = first.entry.costCurrencyCount,
         source = SourceLine(sources),
         sources = sources,
         inst = first.inst, -- where a click goes
@@ -302,15 +319,18 @@ local function ListedItemResult(item, side)
 end
 
 -- An item's result row (a listed item's, see ListedItemResult), with the
--- vendors of the player's side that sell it as `buyFrom`: the loot grid
--- shows them under "Sold by", each pinning its spot on the map. Nil for an
--- item no list has that no vendor of the player's side sells.
+-- vendors of the player's side that sell it as `buyFrom` and the quests of
+-- that side rewarding it as `quests`: the loot grid shows them under the
+-- row, each vendor and quest giver pinning its spot on the map and each
+-- quest opening its page. Nil for an item no list has that no vendor sells
+-- and no quest rewards for the player's side.
 local function ItemResult(item, side)
     local buyFrom = SellersForSide(item.itemID, side)
-    if #item.sources == 0 and not buyFrom then return nil end
+    local quests = OnlyForSide(item.quests, side)
+    if #item.sources == 0 and not buyFrom and not quests then return nil end
     local result = #item.sources > 0 and ListedItemResult(item, side)
         or { itemID = item.itemID, name = itemNames[item.itemID] }
-    result.buyFrom = buyFrom
+    result.buyFrom, result.quests = buyFrom, quests
     return result
 end
 
@@ -469,10 +489,10 @@ end
 
 -- Returns the results for `query` (lowercase): matching dungeons and raids,
 -- then bosses, then quests, then Library books, then items (one row per
--- item, naming up to three of the bosses that drop it, and the vendors that
--- sell it), each group under a label; how many there are; and a key naming
--- exactly that list, so a caller can tell when a redraw would show the same
--- thing.
+-- item, naming up to three of the bosses that drop it, the vendors that
+-- sell it and the quests rewarding it), each group under a label; how many
+-- there are; and a key naming exactly that list, so a caller can tell when
+-- a redraw would show the same thing.
 function ns.Search:Find(query)
     local results, resultKeys, count = {}, { query }, 0
     local queryKey = SearchForm(query)

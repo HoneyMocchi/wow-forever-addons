@@ -12,18 +12,20 @@ Type `/ms` (or `/mobspot`) for the options, or find them under Esc > Options > A
 
 **Scan rares automatically**, under the list, alerts you for any rare mob close by, on your list or not, with "(rare)" after its name. They don't go on the list.
 
+**Scan enemy-faction players** and **Scan players you can attack**, under it, alert you for players: any player of the other faction, or any player you can attack right now. All of them share one **Enemy players** line that says how many are close by, with a sound of its own (**Sound for players**) and a nameplate marker of its own (**Marker for players**: any of the markers, or none). Players don't alert in battlegrounds and arenas unless you turn on **Scan players in battlegrounds and arenas too**.
+
 Each mob on the list has a tick box to stop looking for it for a while without losing it, and an X to take it off. The list is shared by all your characters.
 
 ## How far it looks
 
-- **Nameplates:** a listed mob is spotted as soon as its nameplate shows, so the scan radius is the game's nameplate distance. The slider on the options page sets it, from 30 to 100 yards (the game may keep it lower than you pick), and it changes how far away every nameplate shows. Enemy nameplates have to be on, also out of combat: the options page says when they aren't and has a button to turn them on. The radius you pick and the nameplates MobSpot turns on stay that way, also when another addon resets them each time you log in. Your target, mouseover and focus count too.
+- **Nameplates:** a listed mob is spotted as soon as its nameplate shows, so the scan radius is the game's nameplate distance. The slider on the options page sets it, from 30 to 40 yards (the game shows no nameplate further away than 40), and it changes how far away every nameplate shows. Enemy nameplates have to be on, also out of combat: the options page says when they aren't and has a button to turn them on. The radius you pick and the nameplates MobSpot turns on stay that way, also when another addon resets them each time you log in. Your target, mouseover and focus count too.
 - **Map markers:** rare mobs the game marks on the map or minimap are spotted within your scan radius, and the alert says how far away they are.
 
-While a mob stays close by it alerts only once. It alerts again after it has been out of reach for a while: 30 seconds unless you pick another time on the options page (5 seconds to 5 minutes).
+While a mob stays close by it alerts only once. It alerts again when it has left and come back. With **Alert for each mob of the same name** on, every mob of that name gets its own alert, and the message shows how many are in range, kept up to date while it's on screen.
 
 ## The alert
 
-- The mob's name and how close it is, at the top of the screen.
+- The mob's name and how close it is, at the top of the screen, for up to 3 different mobs at once. With **Keep the message on screen** on, it stays for as long as the mob is in range, and 1 minute more when you look away from the mob. To move the message, open the game's Edit Mode and drag the **MobSpot alert** box; right-click the box to put it back.
 - A sound: one of a dozen game alert sounds (raid warning, ready check, alarm clock, boss emote, map ping and more), any sound your other addons share, or none. It plays even with sound effects turned down. If the addon a shared sound comes from isn't loaded, you hear the raid warning instead.
 - A line in chat.
 - A flash of the screen edges, and the game's taskbar icon blinks when the game is in the background.
@@ -35,19 +37,25 @@ Each one can be turned off. **Test alert** (or `/ms test`) shows how it looks.
 
 | Command | What it does |
 |---|---|
-| `/ms` | options |
+| `/ms` | options (`/ms options` or `/ms config` too) |
 | `/ms on`, `/ms off` | scan for your mobs, or stop |
 | `/ms target` | add your target to the list, or take it off |
 | `/ms add <name or ID>` | add a mob by name or NPC ID |
 | `/ms remove <name or ID>` | take a mob off the list |
 | `/ms list` | show the list |
 | `/ms test` | show a test alert |
+| `/ms distance` | test how far your target is and whether its nameplate shows |
+| `/ms range <yards>` | set the scan radius (30 to 40 yards) |
 | `/ms minimap` | show or hide the minimap button |
+| `/whatsnew` | open the What's New window |
 
-The minimap button opens the options; right-click it to turn scanning on or off.
+The minimap button opens the options; right-click it to turn scanning on or off. Minimap button collectors pick it up, and it's in the addon menu on the minimap too.
 
 ## Limits
 
 - Only mobs. Herbs, ore and other things you gather can't be seen by addons.
 - A mob is spotted no further out than nameplates show, or than a map marker is shown. The game doesn't let addons look further.
 - In some instances the game hides mob names from addons, so nothing there is spotted.
+
+## Made with AI
+This addon was made with AI.

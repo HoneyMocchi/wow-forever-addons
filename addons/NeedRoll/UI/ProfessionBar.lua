@@ -13,9 +13,11 @@ local Theme = ns.Theme
 local L = ns.L
 
 local BADGE = {
-    ICON = 30,              -- the ring round the icon; the icon fills its middle
-    ICON_INSET = 1,         -- the icon in from the ring's edge, each side
-    TOP = 6,                -- the ring, down from the bar's top
+    ICON = 36,              -- the ring round the icon
+    -- The icon inside the ring's visible inner edge: the ring art's band takes the outer part of
+    -- its frame, so the icon is 28 of its 36 (the list headers' 23 of 30, UI/Lists.lua).
+    ICON_SIZE = 28,
+    TOP = 14,               -- the ring, down from the bar's top: clear of the tab strip above
     NAME_GAP = 2,           -- between the ring and the name
     UNDERLINE_GAP = 3,      -- between the skill line and the open profession's underline
     UNDERLINE_HEIGHT = 2,
@@ -79,8 +81,7 @@ local function CreateBadge(bar)
     badge.disc:SetPoint("TOP", 0, -BADGE.TOP)
     badge.icon = badge.disc:CreateTexture(nil, "ARTWORK", nil, 0)
     badge.icon:SetPoint("CENTER")
-    local iconSize = BADGE.ICON - BADGE.ICON_INSET * 2
-    badge.icon:SetSize(iconSize, iconSize)
+    badge.icon:SetSize(BADGE.ICON_SIZE, BADGE.ICON_SIZE)
     Theme:CropIcon(badge.icon)
     Theme:MaskRound(badge.disc, badge.icon)
     badge.ring = badge.disc:CreateTexture(nil, "ARTWORK", nil, 2)

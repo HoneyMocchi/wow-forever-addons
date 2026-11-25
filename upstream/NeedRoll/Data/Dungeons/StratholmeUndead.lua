@@ -21,6 +21,7 @@ ns.Data:Register({
             { itemID = 13376, dropRate = 0.1667 },  -- Royal Tribunal Cloak
             { itemID = 18722, dropRate = 0.1486 },  -- Death Grips
             { itemID = 12735 },                     -- Frayed Abomination Stitching
+            { itemID = 23198 },                     -- Idol of Brutality
             { itemID = 12382 },                     -- Key to the City
         } },
         { id = "NERUBENKAN", name = "Nerub'enkan", loot = {
@@ -51,10 +52,12 @@ ns.Data:Register({
             { itemID = 18730, dropRate = 0.2 },     -- Shadowy Laced Handwraps
             { itemID = 13538, dropRate = 0.2 },     -- Windshrieker Pauldrons
             { itemID = 16704, dropRate = 0.1761 },  -- Dreadmist Sandals
+            { itemID = 276434 },                    -- Black Guard Skullcap
             { itemID = 273124 },                    -- Blueprint: Loom
             { itemID = 273131 },                    -- Bottled Screams
             { itemID = 249524 },                    -- Formula: Enchant Bracer - Superior Agility
             { itemID = 276456 },                    -- Plague Defiled Buckler
+            { itemID = 276455 },                    -- Swordsmith Mitts
         } },
         { id = "MALEKI_THE_PALLID", name = "Maleki the Pallid", loot = {
             { itemID = 12843, dropRate = 1 },       -- Corruptor's Scourgestone

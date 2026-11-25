@@ -46,7 +46,7 @@ ns.Data:Register({
         } },
         { id = "EXALTED", name = "Exalted", loot = {
             { itemID = 19325, cost = 755555 },      -- Don Julio's Band
-            { itemID = 21563, cost = 755555 },      -- Don Rodrigo's Band
+            { itemID = 21563, cost = 755555, classes = "PRIEST MAGE WARLOCK" },-- Don Rodrigo's Band
             { itemID = 19312, cost = 500000 },      -- Lei of the Lifegiver
             { itemID = 19030, cost = 8000000 },     -- Stormpike Battle Charger
             { itemID = 19321, cost = 795297 },      -- The Immovable Object

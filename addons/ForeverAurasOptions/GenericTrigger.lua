@@ -450,6 +450,7 @@ local function GetGenericTriggerOptions(data, triggernum)
 
   local subtypes = OptionsPrivate.Private.category_event_prototype[trigger.type]
 
+  if triggerType == "cdm" then subtypes = CopyTable(subtypes); subtypes["Blizzard CDM Group Auras"] = L["Group Auras"] end
   local needsTypeSelection = subtypes and next(subtypes, next(subtypes))
 
   local options = {}
@@ -461,12 +462,19 @@ local function GetGenericTriggerOptions(data, triggernum)
       order = 7.1,
       width = WeakAuras.normalWidth,
       values = subtypes,
-      sorting = triggerType == "cdm" and {"Blizzard Cooldown Manager", "Blizzard CDM Buff", "Blizzard CDM Item"}
+      sorting = triggerType == "cdm" and {"Blizzard Cooldown Manager", "Blizzard CDM Buff", "Blizzard CDM Item", "Blizzard CDM Group Auras"}
         or OptionsPrivate.Private.SortOrderForValues(subtypes),
       get = function(info)
         return trigger.event
       end,
       set = function(info, v)
+        if v == "Blizzard CDM Group Auras" then
+          OptionsPrivate.Private.CDMGroupAuras.Configure(data, triggernum)
+          WeakAuras.Add(data)
+          OptionsPrivate.Private.UpdateFakeStatesFor(data.id)
+          OptionsPrivate.QueueOptionsRefresh(data.id)
+          return
+        end
         trigger.event = v
         if trigger.type == "cdm" then trigger.cdmSource = v == "Blizzard CDM Buff" and "buff" or "cooldown" end
         WeakAuras.Add(data)

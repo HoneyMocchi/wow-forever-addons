@@ -1,0 +1,1503 @@
+diff --git a/Locales/koKR.lua b/Locales/koKR.lua
+--- a/Locales/koKR.lua
++++ b/Locales/koKR.lua
+@@ -577,3 +577,475 @@ L["|cffffd100Drag|r to draw   |cffffd100Right-drag|r to pan   |cffffd100Ctrl-Z|r
+ L["|cffffd100Right-click|r or |cffffd100Esc|r to go back to the world map"] = "|cffffd100오른쪽 클릭|r 또는 |cffffd100ESC|r: 세계 지도로 돌아가기"
+ L["|cffffd100Step 1 of 2:|r draw where it's wrong (if it's a spot), then Next"] = "|cffffd1001/2단계:|r 잘못된 곳이 특정 지점이라면 그곳을 그린 다음 '다음'을 누르십시오"
+ L["|cffffd100Step 1 of 2:|r draw where it's wrong (right-drag pans)"] = "|cffffd1001/2단계:|r 잘못된 곳을 그리십시오 (오른쪽 드래그: 지도 이동)"
++
++-- 한국어 보완: 0.8.8의 누락된 던전 안내·지도 강조 기록 메시지를 번역한다.
++-- 원문의 %d와 내부 저장 키/명령어는 유지한다. 다른 언어 및 지도 동작은 변경하지 않는다.
++L["%d highlights recorded: saved (OpenMapDB: worldmap, highlights) once you /reload or log out."] = "지역 강조 표시 %d개를 기록했습니다. /reload 또는 로그아웃 시 저장됩니다(OpenMapDB: worldmap, highlights)."
++L["Areas you haven't explored yet: shown as they are, or hidden like Blizzard's own map (blank parchment until you get there)."] = "아직 탐험하지 않은 지역을 원래 모습으로 표시하거나, 기본 지도처럼 방문하기 전까지 빈 양피지로 숨깁니다."
++L["Nothing to record here: this client's map has no world of its own."] = "이 클라이언트 지도에는 독립된 세계 지도가 없어 기록할 내용이 없습니다."
++L["Recording the zones' highlights: a few seconds."] = "지역 강조 표시를 기록하는 중입니다. 몇 초 정도 걸립니다."
++L["There's no map of this dungeon to show here."] = "이곳에 표시할 이 던전의 지도가 없습니다."
++L["This dungeon's loot is in the game's Adventure Guide."] = "이 던전의 전리품은 게임의 모험 안내서에서 확인할 수 있습니다."
++
++-- 지도 갱신 최적화의 누적 횟수를 기존 진단 출력에서만 보여준다.
++L["View updates: %d; full scale updates: %d; pan-only updates: %d."] = "화면 갱신 %d회 · 전체 배율 갱신 %d회 · 이동만 갱신 %d회"
++L["Performance first"] = "성능 우선"
++L["Limit detail updates to 30 Hz, remove blur and paper grain, and pause minimap detail while moving. Original detail returns when movement stops; turn this off for the original effects."] = "부가 레이어를 초당 최대 30회 갱신하고 블러·종이 질감을 끕니다. 이동 중 고해상도 세부 묘사는 잠시 쉬고, 멈추면 다시 표시합니다. 원래 효과를 사용하려면 이 옵션을 끄세요."
++
++L["Tile queries: %d entries examined / %d without index."] = "타일 조회: %d개 검사 / 인덱스 미사용 시 %d개."
++
++L["Tile cache: %d hits, %d misses, %d retained, %d evictions."] = "타일 캐시: %d회 재사용, %d회 새 요청, %d개 보관, %d개 퇴출."
++
++-- 한국어 콘텐츠 보완: 메뉴 번역과 별개로 보스/공격대/층 이름은 생성 데이터의 영어를
++-- 그대로 출력하던 부분을 보완한다. 영문 내부 키·NPC ID·지도 좌표는 변경하지 않는다.
++-- 기존 DungeonJournal 한국어 보완 사전과 NeedRoll 1.7.0의 koKR/NPC 이름을 참고했다.
++-- NeedRoll의 NPC 이름 자료 출처는 AzerothCore/MaNGOS Zero 번역 DB(GPL)이다.
++-- 신규 콘텐츠/층의 일부 이름은 문맥 번역이며, 게임의 공식 층 이름이 있으면 우선한다.
++L["Agathelos the Raging"] = "흉포한 아가테로스"
++L["Aggem Thorncurse"] = "저주의가시 아겜"
++L["Ahn'Qiraj Temple"] = "안퀴라즈 사원"
++L["Aku'mai"] = "아쿠마이"
++L["Alcaz Prison"] = "알카즈 감옥"
++L["Alzzin the Wildshaper"] = "칼날바람 알진"
++L["Ambassador Flamelash"] = "사자 화염채찍"
++L["Amnennar the Coldbringer"] = "혹한의 암네나르"
++L["Ancient Stone Keeper"] = "고대 바위 문지기"
++L["Antu'sul"] = "안투술"
++L["Arcane Anomaly"] = "비전 변형체"
++L["Arcanist Doan"] = "신비술사 도안"
++L["Archaedas"] = "아카에다스"
++L["Archivist Galford"] = "기록관 갈포드"
++L["Archmage Arugal"] = "대마법사 아루갈"
++L["Armory"] = "무기고"
++L["Atal'ai Defenders"] = "아탈라이 수호병"
++L["Atal'alarion"] = "아탈알라리온"
++L["Atrexis the Grave Knight"] = "무덤 기사 아트렉시스"
++L["Avatar of Hakkar"] = "학카르의 화신"
++L["Ayamiss the Hunter"] = "사냥꾼 아야미스"
++L["Bael'Gar"] = "밸가르"
++L["Balnazzar"] = "발나자르"
++L["Baron Aquanis"] = "군주 아쿠아니스"
++L["Baron Geddon"] = "남작 게돈"
++L["Baron Rivendare"] = "남작 리븐데어"
++L["Baron Silverlaine"] = "남작 실버레인"
++L["Baroness Anastari"] = "남작부인 아나스타리"
++L["Battleguard Sartura"] = "전투감시병 살투라"
++L["Bazil Thredd"] = "바질 스레드"
++L["Bazzalan"] = "바잘란"
++L["Bjork"] = "비요크"
++L["Black Guard Swordsmith"] = "검은호위대 검제작자"
++L["Blackfathom Deeps"] = "검은심연 나락"
++L["Blackmaw Behemoth"] = "검은아귀 거수"
++L["Blackmaw Hold"] = "검은아귀 요새"
++L["Blackrock Depths"] = "검은바위 나락"
++L["Blackwing Lair"] = "검은날개 둥지"
++L["Blazeroar"] = "불꽃포효"
++L["Bloodlord Mandokir"] = "혈군주 만도키르"
++L["Bloodmage Thalnos"] = "혈법사 탈노스"
++L["Bolt"] = "번개"
++L["Bonesnout the Unbroken"] = "불굴의 뼈주둥이"
++L["Broodlord Lashlayer"] = "용기대장 래쉬레이어"
++L["Buru the Gorger"] = "먹보 부루"
++L["C'thun"] = "쑨"
++L["Cannon Master Willey"] = "포병대장 윌리"
++L["Capital Gardens"] = "굽이나무 지구"
++L["Captain Dreadrise"] = "선장 드레드라이즈"
++L["Captain Greenskin"] = "선장 그린스킨"
++L["Captain Kromcrush"] = "대장 크롬크러쉬"
++L["Cathedral"] = "대성당"
++L["Caverns of Maraudon"] = "마라우돈 동굴"
++L["Celebras the Cursed"] = "저주받은 셀레브라스"
++L["Chamber of Battle"] = "전투의 방"
++L["Chamber of Summoning"] = "소환의 방"
++L["Charlga Razorflank"] = "서슬깃 차를가"
++L["Chief Ukorz Sandscalp"] = "족장 우코르즈 샌드스칼프"
++L["Cho'Rush the Observer"] = "정찰병 초루쉬"
++L["Chromaggus"] = "크로마구스"
++L["Cinder"] = "잉걸불"
++L["City of Dalaran"] = "달라란 도시"
++L["Commander Springvale"] = "사령관 스프링베일"
++L["Cookie"] = "쿠키"
++L["Court of the Highborne"] = "명가의 정원"
++L["Crimson Hammersmith"] = "진홍십자군 대장장이"
++L["Crimson Laboratories"] = "진홍빛 연구소"
++L["Crowd Pummeler 9-60"] = "고철 압축기 9-60"
++L["Crusader's Square"] = "십자군 광장"
++L["Darkmaster Gandling"] = "암흑스승 간들링"
++L["Deadmines"] = "죽음의 폐광"
++L["Death Speaker Jargba"] = "죽음의예언자 잘그바"
++L["Deathless Guardians"] = "불멸의 수호자"
++L["Detention Block"] = "감금 구역"
++L["Dextren Ward"] = "덱스트렌 워드"
++L["Dining Hall"] = "연회장"
++L["Dire Maul - East"] = "혈투의 전장 - 동쪽"
++L["Dire Maul - North"] = "혈투의 전장 - 북쪽"
++L["Dire Maul - West"] = "혈투의 전장 - 서쪽"
++L["Direhorn Matriarch"] = "공포뿔 우두머리"
++L["Doctor Theolen Krastinov"] = "학자 테올렌 크라스티노브"
++L["Dragonmaw Garrison"] = "용아귀 주둔지"
++L["Dreamscythe"] = "드림사이드"
++L["Dreamscythe and Weaver"] = "드림사이드와 위버"
++L["Durgen Dirgehammer"] = "두르겐 덜지해머"
++L["Eastern Kingdoms"] = "동부 왕국"
++L["Ebonroc"] = "에본로크"
++L["Edge of Madness"] = "광란의 경계"
++L["Edwin VanCleef"] = "에드윈 밴클리프"
++L["Elder Shaman Bloodmane"] = "장로 주술사 피갈기"
++L["Electrocutioner 6000"] = "기계화 문지기 6000"
++L["Emperor Dagran Thaurissan"] = "제왕 다그란 타우릿산"
++L["Excavation Site: Wetlands"] = "발굴현장: 저습지"
++L["Ezra Grimm"] = "에즈라 그림"
++L["Faldrim Anvilmar"] = "팔드림 앤빌마"
++L["Fankriss the Unyielding"] = "불굴의 판크리스"
++L["Fel Ancient"] = "지옥 고대정령"
++L["Fenrus the Devourer"] = "파멸의 펜루스"
++L["Festering Rotslime"] = "부패한 고름"
++L["Fineous Darkvire"] = "파이너스 다크바이어"
++L["Firemaw"] = "화염아귀"
++L["Flamegor"] = "플레임고르"
++L["Gahz'ranka"] = "가즈란카"
++L["Gahz'rilla"] = "가즈릴라"
++L["Galgann Firehammer"] = "갈간 파이어해머"
++L["Garr"] = "가르"
++L["Gehennas"] = "게헨나스"
++L["Geilhast"] = "게일하스트"
++L["Gelihast"] = "겔리하스트"
++L["General Angerforge"] = "사령관 앵거포지"
++L["General Drakkisath"] = "사령관 드라키사스"
++L["General Rajaxx"] = "장군 라작스"
++L["Ghamoo-ra"] = "가무라"
++L["Gilnid"] = "길니드"
++L["Gizrul the Slavener"] = "흉포한 기즈룰"
++L["Glutton"] = "게걸먹보"
++L["Gnomeregan"] = "놈리건"
++L["Golem Lord Argelmach"] = "골렘 군주 아젤마크"
++L["Golemagg the Incinerator"] = "초열의 골레마그"
++L["Gordok Commons"] = "고르독 광장"
++L["Graveyard"] = "묘지"
++L["Grimlok"] = "그림로크"
++L["Grubbis"] = "그루비스"
++L["Guard Fengus"] = "경비병 펜구스"
++L["Guard Mol'dar"] = "경비병 몰다르"
++L["Guard Slip'kik"] = "경비병 슬립킥"
++L["Hakkar"] = "학카르"
++L["Hall of Blackhand"] = "블랙핸드의 전당"
++L["Hall of the Keepers"] = "수호자의 전당"
++L["Halls of Strife"] = "투쟁의 전당"
++L["Halycon"] = "할리콘"
++L["Halycon's Lair"] = "할리콘의 둥지"
++L["Hamhock"] = "햄혹"
++L["Handler Ashka"] = "핸들러 아슈카"
++L["Hazzas"] = "하자스"
++L["Headmaster's Study"] = "교장실"
++L["Hearthsinger Forresten"] = "하스싱어 포레스턴"
++L["Herod"] = "헤로드"
++L["High Inquisitor Fairbanks"] = "종교재판관 페어뱅크스"
++L["High Inquisitor Whitemane"] = "종교재판관 화이트메인"
++L["High Interrogator Gerstahn"] = "대심문관 게르스탄"
++L["High Priest Thekal"] = "대사제 데칼"
++L["High Priest Venoxis"] = "대사제 베녹시스"
++L["High Priestess Arlokk"] = "대여사제 알로크"
++L["High Priestess Jeklik"] = "대여사제 제클릭"
++L["High Priestess Mar'li"] = "대여사제 말리"
++L["Highland Horror"] = "고원 공포괴물"
++L["Highlord Omokk"] = "대군주 오모크"
++L["Hordemar City"] = "호드마르 도시"
++L["Houndmaster Grebmar"] = "사냥개조련사 그렙마르"
++L["Houndmaster Loksey"] = "사냥개조련사 록시"
++L["Hurley Blackbreath"] = "헐레이 블랙브레스"
++L["Hydromancer Velratha"] = "유체술사 벨라타"
++L["Hydrospawn"] = "히드로스폰"
++L["Illyanna Ravenoak"] = "일샨나 레이븐오크"
++L["Immol'thar"] = "이몰타르"
++L["Impaan the Imprisoner"] = "투옥자 임판"
++L["Infurnus"] = "인푸르누스"
++L["Instructor Malicia"] = "조교 말리시아"
++L["Interrogator Vishas"] = "심문관 비샤스"
++L["Ironaya"] = "아이로나야"
++L["Ironclad Cove"] = "철갑 동굴"
++L["Jammal'an and Ogom"] = "잠말란과 오그옴"
++L["Jammal'an the Prophet"] = "예언자 잠말란"
++L["Jandice Barov"] = "잔다이스 바로브"
++L["Jergosh the Invoker"] = "기원사 제로쉬"
++L["Jin'do the Hexxer"] = "주술사 진도"
++L["Kalimdor"] = "칼림도어"
++L["Kam Deepfury"] = "캄 딥퓨리"
++L["Katerina the Cleaner"] = "청소부 카테리나"
++L["Khaz'Goroth's Seat"] = "카즈고로스의 왕좌"
++L["King Gordok"] = "왕 고르독"
++L["King Op"] = "왕 옵"
++L["Kirtonos"] = "키르토노스"
++L["Kormok"] = "코르모크"
++L["Kresh"] = "크레쉬"
++L["Krol'dok Stronghold"] = "크롤독 요새"
++L["Kurinnaxx"] = "쿠린낙스"
++L["Lady Anacondra"] = "여군주 아나콘드라"
++L["Lady Illucia Barov"] = "여군주 일루시아 바로브"
++L["Lady Sarevess"] = "여왕 사레베스"
++L["Landslide"] = "산사태"
++L["Launch Bay"] = "발사장"
++L["Lethtendris"] = "레스텐드리스"
++L["Library"] = "도서관"
++L["Lord Alexei Barov"] = "군주 알렉세이 바로브"
++L["Lord Cobrahn"] = "군주 코브란"
++L["Lord Godfrey's Chamber"] = "고드프리 경의 방"
++L["Lord Hel'nurath"] = "군주 헬누라스"
++L["Lord Incendius"] = "불의군주 인센디우스"
++L["Lord Pythas"] = "군주 피타스"
++L["Lord Roccor"] = "불의군주 록코르"
++L["Lord Serpentis"] = "군주 서펜티스"
++L["Lord Valthalak"] = "군주 발타라크"
++L["Lord Vyletongue"] = "군주 바일텅"
++L["Lordaeron Captain"] = "로데론 대장"
++L["Lorekeeper Polkelt"] = "현자 폴켈트"
++L["Lorgus Jett"] = "로구스 제트"
++L["Lower Blackrock Spire"] = "검은바위 첨탑 하층"
++L["Lower Observatory"] = "하부 전망대"
++L["Lucifron"] = "루시프론"
++L["Lyn the Ignored"] = "무시당한 린"
++L["Magister Kalendris"] = "마법학자 칼렌드리스"
++L["Magistrate Barthilas"] = "집정관 발실라스"
++L["Magmadar"] = "마그마다르"
++L["Magmus"] = "마그무스"
++L["Majordomo Executus"] = "청지기 이그젝큐투스"
++L["Maleki the Pallid"] = "냉혈한 말레키"
++L["Malor the Zealous"] = "광신자 말로"
++L["Mana Devourer"] = "마나 포식자"
++L["Mana Elemental"] = "마나 정령"
++L["Mana Wraith"] = "마나 망령"
++L["Maraudon"] = "마라우돈"
++L["Marduk Blackpool"] = "마르두크 블랙풀"
++L["Mechanical Menagerie"] = "기계 동물원"
++L["Mekgineer Thermaplugg"] = "기계박사 텔마플러그"
++L["Min'loth the Serpent"] = "뱀 민로스"
++L["Miner Johnson"] = "광부 존슨"
++L["Moam"] = "모암"
++L["Molten Core"] = "화산 심장부"
++L["Moonshrine Sanctum"] = "달의 제단 성소"
++L["Mordresh Fire Eye"] = "불꽃눈 모드레쉬"
++L["Morphaz"] = "몰파즈"
++L["Morphaz and Hazzas"] = "몰파즈와 하자스"
++L["Mother Smolderweb"] = "여왕 불그물거미"
++L["Mr. Smite"] = "미스터 스마이트"
++L["Mutanus the Devourer"] = "걸신들린 무타누스"
++L["Nanaya"] = "나나야"
++L["Nar'gurk"] = "나르구르크"
++L["Nefarian"] = "네파리안"
++L["Nefarian's Lair"] = "네파리안의 둥지"
++L["Nekrum Gutchewer"] = "네크룸 거트츄어"
++L["Nerub'enkan"] = "네룹엔칸"
++L["Noxxion"] = "녹시온"
++L["Obsidian Sentinel"] = "흑요석 파수꾼"
++L["Odo the Blindwatcher"] = "눈먼감시자 오도"
++L["Oggleflint"] = "오글플린트"
++L["Old Serra'kis"] = "늙은 세라키스"
++L["Onyxia"] = "오닉시아"
++L["Onyxia's Lair"] = "오닉시아의 둥지"
++L["Ossirian the Unscarred"] = "무적의 오시리안"
++L["Ouro"] = "아우로"
++L["Overlord Ramtusk"] = "대군주 램터스크"
++L["Overlord Wyrmthalak"] = "대군주 웜타라크"
++L["Overseer Mugg"] = "감독관 머그"
++L["Overseer Wrex"] = "감독관 렉스"
++L["Phalanx"] = "팔란스"
++L["Plaguemaw the Rotting"] = "썩어가는 역병아귀"
++L["Plugger Spazzring"] = "플러거 스파즈링"
++L["Plunder"] = "약탈"
++L["Postmaster Malown"] = "우체국장 말로운"
++L["Primeval Elemental"] = "태고의 정령"
++L["Prince Tortheldrin"] = "왕자 토르텔드린"
++L["Princess Huhuran"] = "공주 후후란"
++L["Princess Moira Bronzebeard"] = "공주 모이라 브론즈비어드"
++L["Princess Theradras"] = "공주 테라드라스"
++L["Prison of Immol'Thar"] = "이몰타르의 감옥"
++L["Pusillin"] = "푸실린"
++L["Pyroguard Emberseer"] = "불의수호자 엠버시어"
++L["Pyromancer Loregrain"] = "화염술사 로어그레인"
++L["Quartermaster Zigris"] = "병참장교 지그리스"
++L["Ragefire Chasm"] = "성난불길 협곡"
++L["Ragglesnout"] = "너덜주둥이"
++L["Ragnaros"] = "라그나로스"
++L["Ramstein the Gorger"] = "먹보 람스타인"
++L["Ras Frostwhisperer"] = "라스 프로스트위스퍼"
++L["Rath'mael"] = "라스마엘"
++L["Rattlegore"] = "들창어금니"
++L["Ravasaur Hunters"] = "라바사우루스 사냥꾼"
++L["Razorclaw the Butcher"] = "도살자 칼날발톱"
++L["Razorfen Downs"] = "가시덩굴 구릉"
++L["Razorfen Kraul"] = "가시덩굴 우리"
++L["Razorgore the Untamed"] = "폭군 서슬송곳니"
++L["Razorlash"] = "칼날채찍"
++L["Relic Guardian"] = "유물 수호자"
++L["Rethilgore"] = "레실고어"
++L["Revelosh"] = "레벨로쉬"
++L["Rhahk'Zor"] = "라크조르"
++L["Ribbly Screwspigot"] = "리블리 스크류스피곳"
++L["Ring of Law"] = "법의 심판장"
++L["Roogug"] = "루구그"
++L["Rotgrip"] = "썩은아귀"
++L["Ruins of Ahn'Qiraj"] = "안퀴라즈 폐허"
++L["Ruins of Lordaeron"] = "로데론의 폐허"
++L["Saltspine"] = "소금가시"
++L["Scarlet Monastery - Armory"] = "붉은십자군 수도원 - 무기고"
++L["Scarlet Monastery - Cathedral"] = "붉은십자군 수도원 - 대성당"
++L["Scarlet Monastery - Graveyard"] = "붉은십자군 수도원 - 묘지"
++L["Scarlet Monastery - Library"] = "붉은십자군 수도원 - 도서관"
++L["Scholomance"] = "스칼로맨스"
++L["Shade of Eranikus"] = "에라니쿠스의 사령"
++L["Shade of the Archmage"] = "대마법사의 망령"
++L["Shadetooth"] = "그늘이빨"
++L["Shadow Hunter Vosh'gajin"] = "어둠사냥꾼 보쉬가진"
++L["Shadowfang Keep"] = "그림자송곳니 성채"
++L["Shadowforge City"] = "어둠괴철로 도시"
++L["Shadowpriest Sezz'ziz"] = "어둠의사제 세즈지즈"
++L["Shaper's Terrace"] = "창조주의 테라스"
++L["Shazzrah"] = "샤즈라"
++L["Silithid Royalty"] = "실리시드 왕실"
++L["Skitterweb Tunnels"] = "그물거미굴"
++L["Skul"] = "스컬"
++L["Skum"] = "스컴"
++L["Slavecrusher Grox"] = "노예분쇄자 그록스"
++L["Sneed"] = "스니드"
++L["Snowtalon"] = "눈발톱"
++L["Stomper Kreeg"] = "천둥발 크리그"
++L["Stonespine"] = "뾰족바위"
++L["Stormwind Stockade"] = "스톰윈드 지하감옥"
++L["Stratholme"] = "스트라솔름"
++L["Sulfuron Harbinger"] = "설퍼론 사자"
++L["Sunken Temple"] = "가라앉은 사원"
++L["Taragaman the Hungerer"] = "욕망의 타라가만"
++L["Targorr the Dread"] = "흉악범 타고르"
++L["Tazz'Alor"] = "타즈알로르"
++L["Tendris Warpwood"] = "굽이나무 텐드리스"
++L["The Abandoned"] = "버림받은 자"
++L["The Beast"] = "괴수"
++L["The Butcher"] = "도륙검"
++L["The Courtyard"] = "안뜰"
++L["The Deadmines"] = "죽음의 폐광"
++L["The Dormitory"] = "기숙사"
++L["The Drowned City"] = "가라앉은 도시"
++L["The Forbidding Sea"] = "성난폭풍 해안"
++L["The Forgotten Pool"] = "잊혀진 웅덩이"
++L["The Gauntlet"] = "시련의 거리"
++L["The Great Sea"] = "대해"
++L["The Hall of Gears"] = "톱니바퀴 전당"
++L["The Hall of Thanes"] = "영주의 전당"
++L["The Hive Undergrounds"] = "지하 벌집"
++L["The Lost Dwarves"] = "길 잃은 드워프"
++L["The Molten Core"] = "화산 심장부"
++L["The Pool of Ask'Ar"] = "아스카르의 웅덩이"
++L["The Prophet Skeram"] = "예언자 스케람"
++L["The Questioner"] = "심문자"
++L["The Ravenian"] = "라베니안"
++L["The Reliquary"] = "유물 보관실"
++L["The Seven"] = "일곱 드워프"
++L["The Shrine of Eldretharr"] = "엘드레스의 제단"
++L["The Temple Gates"] = "사원 관문"
++L["The Unforgiven"] = "용서받지 못한 자"
++L["The Upper Study"] = "상층 서재"
++L["The Vacant Den"] = "텅 빈 굴"
++L["The Vault"] = "금고"
++L["The Veiled Sea"] = "장막의 바다"
++L["The Wall Walk"] = "성벽 통로"
++L["Theka the Martyr"] = "순교자 데카"
++L["Thunderhoof"] = "천둥발굽"
++L["Tidemistress Ca'zass"] = "파도여왕 카자스"
++L["Timmy the Cruel"] = "잔혹한 티미"
++L["Tinkerer Gizlock"] = "땜장이 기즐록"
++L["Tinkers' Court"] = "땜장이 왕실"
++L["Titanosaur"] = "티타노사우루스"
++L["Tsu'zee"] = "츄지"
++L["Tuten'kash"] = "투텐카쉬"
++L["Twilight Commander Zarmok"] = "황혼의 사령관 자르목"
++L["Twilight Lord Kelris"] = "황혼의 군주 켈리스"
++L["Twin Emperors"] = "쌍둥이 황제"
++L["Uldaman"] = "울다만"
++L["Unbound Spirit"] = "속박 풀린 영혼"
++L["Unstable Sentinel"] = "불안정한 파수병"
++L["Upper Blackrock Spire"] = "검은바위 첨탑 상층"
++L["Upper Observatory"] = "상부 전망대"
++L["Urok Doomhowl"] = "우로크 둠하울"
++L["Vaelastrasz the Corrupt"] = "타락한 밸라스트라즈"
++L["Var'Taka"] = "바르타카"
++L["Varrox Bleakhoof"] = "바록스 황량굽"
++L["Vault of C'Thun"] = "쑨의 금고"
++L["Vectus"] = "벡투스"
++L["Venomridge"] = "독마루"
++L["Verdan the Everliving"] = "영생의 베르단"
++L["Viktor the Vile"] = "비열한 빅토르"
++L["Viscidus"] = "비시두스"
++L["Viscous Fallout"] = "방사성 폐기물"
++L["Vitrix"] = "비트릭스"
++L["Wailing Caverns"] = "통곡의 동굴"
++L["War Master Voone"] = "대장군 부네"
++L["Warchief Rend Blackhand"] = "대족장 렌드 블랙핸드"
++L["Warder Stilgiss"] = "문지기 스틸기스"
++L["Warpwood Quarter"] = "굽이나무 지구"
++L["Weaver"] = "위버"
++L["Witch Doctor Zum'rah"] = "의술사 줌라"
++L["Witherfang"] = "시든송곳니"
++L["Withermaw"] = "시든아귀"
++L["Wolf Master Nandos"] = "늑대왕 난도스"
++L["Zaetar's Grave"] = "재타르의 무덤"
++L["Zevrim Thornhoof"] = "제브림 쏜후프"
++L["Zul'Alai"] = "줄알라이"
++L["Zul'Farrak"] = "줄파락"
++L["Zul'Gurub"] = "줄구룹"
++
++-- 층 이름은 실행 시점의 클라이언트 번역을 먼저 확인한다.
++local floorTokens = {
++ ["Capital Gardens"] = "DUNGEON_FLOOR_DIREMAUL2",
++ ["Caverns of Maraudon"] = "DUNGEON_FLOOR_MARAUDON1",
++ ["Chamber of Battle"] = "DUNGEON_FLOOR_BLACKROCKSPIRE6",
++ ["Chamber of Summoning"] = "DUNGEON_FLOOR_SCHOLOMANCE2",
++ ["Court of the Highborne"] = "DUNGEON_FLOOR_DIREMAUL3",
++ ["Crimson Laboratories"] = "DUNGEON_FLOOR_BLACKWINGLAIR3",
++ ["Crusader's Square"] = "DUNGEON_FLOOR_STRATHOLME1",
++ ["Detention Block"] = "DUNGEON_FLOOR_BLACKROCKDEPTHS1",
++ ["Dining Hall"] = "DUNGEON_FLOOR_SHADOWFANGKEEP2",
++ ["Dragonmaw Garrison"] = "DUNGEON_FLOOR_BLACKWINGLAIR1",
++ ["Gordok Commons"] = "DUNGEON_FLOOR_DIREMAUL1",
++ ["Hall of Blackhand"] = "DUNGEON_FLOOR_BLACKROCKSPIRE4",
++ ["Hall of the Keepers"] = "DUNGEON_FLOOR_ULDAMAN1",
++ ["Halls of Strife"] = "DUNGEON_FLOOR_BLACKWINGLAIR2",
++ ["Halycon's Lair"] = "DUNGEON_FLOOR_BLACKROCKSPIRE5",
++ ["Headmaster's Study"] = "DUNGEON_FLOOR_SCHOLOMANCE4",
++ ["Hordemar City"] = "DUNGEON_FLOOR_BLACKROCKSPIRE3",
++ ["Ironclad Cove"] = "DUNGEON_FLOOR_THEDEADMINES2",
++ ["Khaz'Goroth's Seat"] = "DUNGEON_FLOOR_ULDAMAN2",
++ ["Launch Bay"] = "DUNGEON_FLOOR_GNOMEREGAN3",
++ ["Lord Godfrey's Chamber"] = "DUNGEON_FLOOR_SHADOWFANGKEEP6",
++ ["Lower Observatory"] = "DUNGEON_FLOOR_SHADOWFANGKEEP4",
++ ["Moonshrine Sanctum"] = "DUNGEON_FLOOR_BLACKFATHOMDEEPS2",
++ ["Nefarian's Lair"] = "DUNGEON_FLOOR_BLACKWINGLAIR4",
++ ["Prison of Immol'Thar"] = "DUNGEON_FLOOR_DIREMAUL4",
++ ["Shadowforge City"] = "DUNGEON_FLOOR_BLACKROCKDEPTHS2",
++ ["Skitterweb Tunnels"] = "DUNGEON_FLOOR_BLACKROCKSPIRE2",
++ ["Tazz'Alor"] = "DUNGEON_FLOOR_BLACKROCKSPIRE1",
++ ["The Courtyard"] = "DUNGEON_FLOOR_SHADOWFANGKEEP1",
++ ["The Deadmines"] = "DUNGEON_FLOOR_THEDEADMINES1",
++ ["The Dormitory"] = "DUNGEON_FLOOR_GNOMEREGAN2",
++ ["The Forgotten Pool"] = "DUNGEON_FLOOR_BLACKFATHOMDEEPS3",
++ ["The Gauntlet"] = "DUNGEON_FLOOR_STRATHOLME2",
++ ["The Hall of Gears"] = "DUNGEON_FLOOR_GNOMEREGAN1",
++ ["The Hive Undergrounds"] = "DUNGEON_FLOOR_AHNQIRAJ1",
++ ["The Pool of Ask'Ar"] = "DUNGEON_FLOOR_BLACKFATHOMDEEPS1",
++ ["The Reliquary"] = "DUNGEON_FLOOR_SCHOLOMANCE1",
++ ["The Shrine of Eldretharr"] = "DUNGEON_FLOOR_DIREMAUL6",
++ ["The Temple Gates"] = "DUNGEON_FLOOR_AHNQIRAJ2",
++ ["The Upper Study"] = "DUNGEON_FLOOR_SCHOLOMANCE3",
++ ["The Vacant Den"] = "DUNGEON_FLOOR_SHADOWFANGKEEP3",
++ ["The Wall Walk"] = "DUNGEON_FLOOR_SHADOWFANGKEEP7",
++ ["Tinkers' Court"] = "DUNGEON_FLOOR_GNOMEREGAN4",
++ ["Upper Observatory"] = "DUNGEON_FLOOR_SHADOWFANGKEEP5",
++ ["Vault of C'Thun"] = "DUNGEON_FLOOR_AHNQIRAJ3",
++ ["Warpwood Quarter"] = "DUNGEON_FLOOR_DIREMAUL5",
++ ["Zaetar's Grave"] = "DUNGEON_FLOOR_MARAUDON2",
++}
++function ns.LocalizedFloor(name)
++ if not name then return nil end
++ local key = floorTokens[name]
++ local official = key and _G[key]
++ if type(official) == "string" and official ~= "" and official ~= name then return official end
++ return L[name]
++end
+diff --git a/Map/Close.lua b/Map/Close.lua
+--- a/Map/Close.lua
++++ b/Map/Close.lua
+@@ -129,6 +129,44 @@ local tiles, pool = {}, {}      -- cont * 4096 + index -> { texture }
+ local TileKey = function(cont, tx, ty) return cont * 4096 + tx * 64 + ty end   -- (a number: no string a tile a frame)
+ local wantedTiles, wantedGap = {}, {}   -- (reused each update)
+ 
++-- 화면 밖 타일은 숨기고 앵커를 끊되 최근 사용한 파일/색상은 보존한다. 되돌아가면
++-- 같은 텍스처를 다시 연결하므로 SetTexture와 색상/마스크 초기화를 반복하지 않는다.
++-- 무제한 보관 대신 native 96개, LOD 24개로 제한한다. 초과분은 기존 풀로 돌려보낸다.
++-- 이중 연결 LRU는 입출고/퇴출 모두 O(1)이며 노드는 텍스처와 함께 재사용한다.
++-- budget/deferred: 한 번의 화면 갱신에서 새로 만드는 타일 수를 제한한다(S.SetView가 설정).
++-- 넘친 타일은 다음 갱신으로 미루므로 이동 중에도 레이어를 끄지 않고 조금씩 채울 수 있다.
++local TileReuse = { native = { limit = 96, size = 0, nodes = {} }, lod = { limit = 24, size = 0, nodes = {} }, hits = 0, misses = 0, evictions = 0,
++	budget = math.huge, deferred = false, deferrals = 0 }
++S.tileReuseStats = TileReuse
++local function CacheUnlink(cache, node)
++	if node.prev then node.prev.next = node.next else cache.first = node.next end
++	if node.next then node.next.prev = node.prev else cache.last = node.prev end
++	cache.nodes[node.key] = nil
++	cache.size = cache.size - 1
++	node.prev, node.next = nil, nil
++end
++local function CacheTake(cache, key)
++	local node = cache.nodes[key]
++	if not node then TileReuse.misses = TileReuse.misses + 1; return end
++	CacheUnlink(cache, node)
++	TileReuse.hits = TileReuse.hits + 1
++	return node.value
++end
++local function CachePut(cache, key, value)
++	local node = value.omCacheNode or {}
++	value.omCacheNode = node
++	node.key, node.value, node.prev, node.next = key, value, cache.last, nil
++	if cache.last then cache.last.next = node else cache.first = node end
++	cache.last, cache.nodes[key], cache.size = node, node, cache.size + 1
++	if cache.size > cache.limit then
++		local oldest = cache.first
++		CacheUnlink(cache, oldest)
++		TileReuse.evictions = TileReuse.evictions + 1
++		return oldest.value
++	end
++end
++
++
+ -- a tile, through its continent's land (S.LandMask): the minimap's sea is left out
+ local function Tile(layer, fid, cont)
+ 	local t = tremove(pool)
+@@ -142,6 +180,7 @@ local function Tile(layer, fid, cont)
+ 		if mask then t[1]:AddMaskTexture(mask) end
+ 		t.mask = mask
+ 	end
++	t.omViewAlpha = nil -- 풀 재사용: 첫 투명도는 반드시 실제 텍스처에 쓴다.
+ 	t[1]:SetTexture(fid, nil, nil, "LINEAR")
+ 	t.omA = nil                 -- (its alpha set again: UpdateMinimap skips an unchanged one)
+ 	return t
+@@ -149,9 +188,10 @@ end
+ 
+ local function DropTile(key)
+ 	local t = tiles[key]
+-	for _, tex in ipairs(t) do tex:Hide(); S.UnplaceWorld(tex) end
++	for _, tex in ipairs(t) do tex:Hide(); tex:ClearAllPoints(); S.UnplaceWorld(tex) end
+ 	tiles[key] = nil
+-	pool[#pool + 1] = t
++	local evicted = CachePut(TileReuse.native, key, t)
++	if evicted then pool[#pool + 1] = evicted end
+ end
+ 
+ -- The smaller copies of the minimap (ns.MapMinimapLOD, tools/map-preview/minimaplod.py): its detail
+@@ -177,6 +217,7 @@ end
+ 
+ local function LODPiece(layer, cont, sub)
+ 	local t = tremove(lodPool) or layer:CreateTexture(nil, "ARTWORK")
++	t.omViewAlpha = nil -- LOD 풀 재사용 시 캐시 무효화
+ 	t:SetDrawLayer("ARTWORK", sub)
+ 	t:SetDesaturation(MINI_DESAT)
+ 	t.omA = nil                 -- (see Tile)
+@@ -202,8 +243,11 @@ local function ShowLOD(layer, cont, level, per, keys, tx0, tx1, ty0, ty1, alpha)
+ 					local u0, v0 = S.FromYards(cont, (32 - row * per) * TILE, (32 - col * per) * TILE)
+ 					local u1, v1 = S.FromYards(cont, (32 - (row + 1) * per) * TILE, (32 - (col + 1) * per) * TILE)
+ 					if u0 and u1 then           -- (none for a piece off the stitched world: Outland's, on 530)
+-						t = LODPiece(layer, cont, -level)
+-						t:SetTexture(LOD .. cont .. "_" .. per .. "_" .. col .. "_" .. row, nil, nil, "LINEAR")
++						t = CacheTake(TileReuse.lod, key)
++						if not t then
++							t = LODPiece(layer, cont, -level)
++							t:SetTexture(LOD .. cont .. "_" .. per .. "_" .. col .. "_" .. row, nil, nil, "LINEAR")
++						end
+ 						lodPieces[key] = t
+ 						S.PlaceWorld(t, math.min(u0, u1), math.min(v0, v1), math.max(u0, u1), math.max(v0, v1))
+ 						t:Show()
+@@ -255,16 +299,32 @@ local function UpdateMinimap(layer, conts, u, v, hu, hv, mix)
+ 						end
+ 						if fid then
+ 							local key = TileKey(cont, tx, ty)
+-							wanted[key] = true
+ 							local t = tiles[key]
+ 							if not t then
+-								t = Tile(layer, fid, cont)
+-								tiles[key] = t
+-								t[1]:SetVertexColor(TileTone((u0 + u1) / 2, (v0 + v1) / 2))
+-								for _, tex in ipairs(t) do
+-									S.PlaceWorld(tex, math.min(u0, u1), math.min(v0, v1), math.max(u0, u1), math.max(v0, v1))
+-									tex:Show()
++								t = CacheTake(TileReuse.native, key)
++								if not t then
++									-- 새 타일(파일 지정·마스크·색조 계산)은 갱신당 정해진 수만 만든다.
++									-- 남은 것은 표시만 미루고, S.SetView가 다음 갱신을 예약한다.
++									if TileReuse.budget > 0 then
++										TileReuse.budget = TileReuse.budget - 1
++										t = Tile(layer, fid, cont)
++										t[1]:SetVertexColor(TileTone((u0 + u1) / 2, (v0 + v1) / 2))
++									else
++										TileReuse.deferred = true
++									end
+ 								end
++								if t then
++									tiles[key] = t
++									for _, tex in ipairs(t) do
++										S.PlaceWorld(tex, math.min(u0, u1), math.min(v0, v1), math.max(u0, u1), math.max(v0, v1))
++										tex:Show()
++									end
++								end
++							end
++							if t then
++								wanted[key] = true
++								-- 이동만 한 경우 강도가 같으므로 불필요한 렌더 상태 쓰기를 생략한다.
++								if t.omViewAlpha ~= a3 then t[1]:SetAlpha(a3); t.omViewAlpha = a3 end
+ 							end
+ 							if t.omA ~= a3 then t.omA = a3 t[1]:SetAlpha(a3) end
+ 						end
+@@ -278,9 +338,10 @@ local function UpdateMinimap(layer, conts, u, v, hu, hv, mix)
+ 	end
+ 	for key, t in pairs(lodPieces) do
+ 		if not wantedLOD[key] then
+-			t:Hide(); S.UnplaceWorld(t)
++			t:Hide(); t:ClearAllPoints(); S.UnplaceWorld(t)
+ 			lodPieces[key] = nil
+-			lodPool[#lodPool + 1] = t
++			local evicted = CachePut(TileReuse.lod, key, t)
++			if evicted then lodPool[#lodPool + 1] = evicted end
+ 		end
+ 	end
+ end
+@@ -359,13 +420,14 @@ local function UpdateGapMinimap(conts, u, v, hu, hv, alpha)
+ 									tex:AddMaskTexture(landMask)
+ 									tex.cont = cont
+ 								end
++								tex.omViewAlpha = nil -- 간극 타일 풀 재사용 시 초기화
+ 								tex:SetTexture(fid, nil, nil, "LINEAR")
+ 								tex:SetVertexColor(Tint(GapTone(cu, cv)))
+ 								S.PlaceWorld(tex, math.min(u0, u1), math.min(v0, v1), math.max(u0, u1), math.max(v0, v1))
+ 								tex:Show()
+ 								gapTiles[key] = tex
+ 							end
+-							tex:SetAlpha(alpha)
++							if tex.omViewAlpha ~= alpha then tex:SetAlpha(alpha); tex.omViewAlpha = alpha end
+ 						end
+ 					end
+ 				end
+@@ -797,8 +859,23 @@ BlurRest.frame:SetScript("OnUpdate", function(self)
+ end)
+ 
+ S.closeView = {}
++-- 성능 모드: 예전에는 이동이 시작되면 미니맵·지하 레이어를 통째로 숨기고 멈춘 뒤 한꺼번에
++-- 되살렸다. 이동 시작과 정지 때마다 전 지역의 음영을 다시 계산했고, 멈춘 순간 새 타일이 한
++-- 프레임에 몰려 끊겼으며, 세부 묘사가 사라졌다 나타나는 것도 눈에 보였다. 이제는 레이어를
++-- 계속 표시하고 새 타일만 갱신당 TILE_BUDGET개씩 만든다. 남은 타일이 있으면 이 프레임이
++-- 다음 갱신을 예약한다(화면 갱신은 WorldMap.lua에서 최대 30Hz로 합쳐진다).
++local PerfRest = { frame = CreateFrame("Frame"), TILE_BUDGET = 8 }
++PerfRest.frame:Hide()
++PerfRest.frame:SetScript("OnUpdate", function(self)
++	self:Hide()
++	if mod.RefreshView then mod.RefreshView() end
++end)
++
+ function S.SetView(u, v, hu, hv, zoom, steps)
+ 	steps = steps or zoom
++	local fast = mod.db.performanceMode ~= false
++	TileReuse.budget = fast and PerfRest.TILE_BUDGET or math.huge
++	TileReuse.deferred = false
+ 	local L = S.closeLayers
+ 	if not L then return end
+ 	if not ns.Safe.Finite(u, v, hu, hv, zoom) then return end   -- (not a view: #261's NaN)
+@@ -809,7 +886,7 @@ function S.SetView(u, v, hu, hv, zoom, steps)
+ 	local cont = Try("continent", ContinentAt, u, v)
+ 	Try("sea", S.SetSea, u, v, hu, hv)
+ 	Try("culling", S.Cull, u - hu, v - hv, u + hu, v + hv)
+-	local soft = mod.db.soften and Smooth(zoom, SOFT_FADE) or 0
++	local soft = not fast and mod.db.soften and Smooth(zoom, SOFT_FADE) or 0
+ 	cv.soft = soft
+ 	local now = GetTime()
+ 	local moving = (mod.Zooming and mod.Zooming()) or now - BlurRest.at < BlurRest.gap
+@@ -846,12 +923,17 @@ function S.SetView(u, v, hu, hv, zoom, steps)
+ 	if S.MinimapShown then S.MinimapShown(mix > 0.004) end   -- (unexplored land hidden over it: Stitch.lua)
+ 	local conts = Try("continents", ContinentsInView, u, v, hu, hv) or {}
+ 	Try("minimap", UpdateMinimap, L.minimap, conts, u, v, hu, hv, mix)
++	-- 예산을 넘겨 미룬 타일이 있으면 다음 갱신에서 이어서 채운다.
++	if TileReuse.deferred then
++		TileReuse.deferrals = TileReuse.deferrals + 1
++		PerfRest.frame:Show()
++	end
+ 	Try("underground cities' minimap", UpdateCityMinimap, u, v, hu, hv, inside)
+ 	cv.gapTiles = Try("minimap in the gaps", UpdateGapMinimap, conts, u, v, hu, hv,
+-		mod.db.minimap and mod.db.gapMinimap and GAP_MIX * Smooth(steps, GAP_FADE) or 0)
++		not fast and mod.db.minimap and mod.db.gapMinimap and GAP_MIX * Smooth(steps, GAP_FADE) or 0)
+ 	local under = Try("underground", UpdateUnderground, L.under, cont, u, v, hu, hv, steps) or 0
+ 	-- the out-of-focus world above a cave gets heavier grain
+-	Try("grain", UpdateGrain, L.grain, u, v, hu, hv, math.max(soft, math.min(1.4, under * 1.4)))
++	Try("grain", UpdateGrain, L.grain, u, v, hu, hv, fast and 0 or math.max(soft, math.min(1.4, under * 1.4)))
+ 	-- the hooks' names made once, not a new string each a frame
+ 	S.viewHookNames = S.viewHookNames or {}
+ 	local names = S.viewHookNames
+diff --git a/Map/Dungeons.lua b/Map/Dungeons.lua
+--- a/Map/Dungeons.lua
++++ b/Map/Dungeons.lua
+@@ -432,7 +432,7 @@ local function BuildView()
+ 	view.wing:SetTextColor(0.8, 0.7, 0.5)
+ 	function view.FloorName(i)
+ 		local f = view.floors[i]
+-		return f.name or (#view.floors > 1 and L["Floor %d"]:format(i)) or S.InstanceName(view.inst)
++		return (f.name and (ns.LocalizedFloor and ns.LocalizedFloor(f.name) or L[f.name])) or (#view.floors > 1 and L["Floor %d"]:format(i)) or S.InstanceName(view.inst)
+ 	end
+ 	-- every floor by name, to go straight to one
+ 	view.floorButton:SetScript("OnClick", function(self)
+@@ -1748,7 +1748,7 @@ RefreshCard = function()
+ 		local bosses = (Places().bosses or {})[insts[1][1]]
+ 		if bosses and #bosses > 0 then
+ 			lines[#lines + 1] = "|cffe6c27a" .. L["Bosses"] .. "|r"
+-			for i, name in ipairs(bosses) do lines[#lines + 1] = ("|cff998866%d.|r %s"):format(i, name) end
++			for i, name in ipairs(bosses) do lines[#lines + 1] = ("|cff998866%d.|r %s"):format(i, L[name]) end
+ 		end
+ 	end
+ 	if open and mod.db.dungeonQuests and QuestSource() == "questie" then
+@@ -1843,10 +1843,10 @@ FillSide = function()
+ 	if tab == "bosses" then
+ 		local bosses = (Places().bosses or {})[inst[1]] or {}
+ 		for i, name in ipairs(bosses) do
+-			items[#items + 1] = { kind = "row", ("|cff998866%d.|r  %s"):format(i, name), click = NeedRoll() and function() OpenNeedRoll(name, IsShiftKeyDown() and "map" or nil) end,
++			items[#items + 1] = { kind = "row", ("|cff998866%d.|r  %s"):format(i, L[name]), click = NeedRoll() and function() OpenNeedRoll(name, IsShiftKeyDown() and "map" or nil) end,
+ 				tip = function(owner)
+ 					GameTooltip:SetOwner(owner, "ANCHOR_LEFT")
+-					GameTooltip:AddLine(name, 1, 0.82, 0)
++					GameTooltip:AddLine(L[name], 1, 0.82, 0)
+ 					GameTooltip:AddLine(NeedRoll() and L["Click to see loot in NeedRoll"] or L["See the Loot tab for loot"], 0.6, 0.6, 0.6)
+ 					if _G.NeedRoll_ShowMap then GameTooltip:AddLine(L["Shift-click: where it is, on NeedRoll's map"], 0.6, 0.6, 0.6) end
+ 					GameTooltip:Show()
+@@ -2075,7 +2075,7 @@ end
+ 
+ local function PinTip(pin)
+ 	GameTooltip:SetOwner(pin, "ANCHOR_RIGHT")
+-	GameTooltip:AddLine(("%d. %s"):format(pin.index, pin.name), 1, 0.82, 0)
++	GameTooltip:AddLine(("%d. %s"):format(pin.index, L[pin.name]), 1, 0.82, 0)
+ 	if pin.mine then GameTooltip:AddLine(L["Placed by you (/openmap bosses)"], 0.6, 0.6, 0.6) end
+ 	if NeedRoll() then GameTooltip:AddLine(L["Click to see loot in NeedRoll"], 0.6, 0.6, 0.6) end
+ 	GameTooltip:Show()
+@@ -2173,7 +2173,7 @@ local function PlacerShow()
+ 	if name then
+ 		local p = BossAt(view.inst, name)
+ 		local where = p and (" |cff998866" .. L["(placed: click to move it)"] .. "|r") or ""
+-		PlacerBar().text:SetText(("|cffffd100%d / %d|r  %s%s  |cff998866%s|r"):format(pl.at, #pl.names, name, where,
++		PlacerBar().text:SetText(("|cffffd100%d / %d|r  %s%s  |cff998866%s|r"):format(pl.at, #pl.names, L[name], where,
+ 			L["click where it is; right-click skips"]))
+ 	else
+ 		PlacerBar().text:SetText("|cffffd100" .. L["Every boss gone through: Done, or Undo"] .. "|r")
+diff --git a/Map/Extras.lua b/Map/Extras.lua
+--- a/Map/Extras.lua
++++ b/Map/Extras.lua
+@@ -411,11 +411,38 @@ local NEAR = 0.5                        -- how far round the map underneath (its
+ local VIEW_NEAR = 1.5                   -- ... and wherever the view is, out to this many times its half-size (zoomed
+                                         --  out over a zone, its neighbours' quests too, not only the next zone's)
+ 
++-- 아이콘 일괄 배치(RefreshAllData) 한 번 동안 바뀌지 않는 값을 한 번만 구해 둡니다. Questie는 모든 지역의
++-- 아이콘 수천 개를 한꺼번에 다시 배치하므로, 아이콘마다 시야를 다시 계산하고 지도 정보를 새 표로 받아 오면
++-- 그 비용이 수천 배가 됩니다. (at: 배치가 시작된 프레임의 GetTime. 오류로 끝나도 다음 프레임부터는 쓰지 않습니다)
++local pass = { on = false }
++pass.mapInfo = {}                       -- mapID -> C_Map.GetMapInfo(mapID) (정적 데이터, 없으면 false)
++local function MapInfo(mapID)
++	local info = pass.mapInfo[mapID]
++	if info == nil then
++		info = C_Map.GetMapInfo(mapID) or false
++		pass.mapInfo[mapID] = info
++	end
++	return info or nil
++end
++
+ -- a world point (normalized) in the view, or near it
+ local function InView(wu, wv)
+-	if not mod.PinView then return false end
+-	local u, v, hu, hv = mod.PinView()
+-	if not u then return false end
++	local u, v, hu, hv
++	if pass.on and pass.at == GetTime() then
++		if pass.u == nil then
++			pass.u = false
++			if mod.PinView then
++				local a, b, c, d = mod.PinView()
++				if a then pass.u, pass.v, pass.hu, pass.hv = a, b, c, d end
++			end
++		end
++		if not pass.u then return false end
++		u, v, hu, hv = pass.u, pass.v, pass.hu, pass.hv
++	else
++		if not mod.PinView then return false end
++		u, v, hu, hv = mod.PinView()
++		if not u then return false end
++	end
+ 	return math.abs(wu - u) <= hu * VIEW_NEAR and math.abs(wv - v) <= hv * VIEW_NEAR
+ end
+ 
+@@ -668,7 +695,10 @@ local function SetUpPins(name, pins)
+ 		provider.RefreshAllData = function(self, ...)
+ 			local before = self:GetMap() and self:GetMap():GetMapID()
+ 			if before ~= count.mapID then count.placed, count.ours, count.moved, count.mapID = 0, 0, 0, before end
++			local outer = pass.on and pass.at == GetTime()   -- (다른 복사본의 배치 안에서 불린 경우: 바깥 것을 그대로 씁니다)
++			if not outer then pass.on, pass.at, pass.u = true, GetTime(), nil end
+ 			local a, b, c = mod.TimeAfter(spec.questie and "Questie's icons placed" or "map pins placed", Refresh, self, ...)
++			if not outer then pass.on = false end
+ 			if spec.questie then LiftQuestie() end   -- (the ones it kept from before: not handled again)
+ 			return a, b, c
+ 		end
+@@ -813,6 +843,12 @@ fader:SetScript("OnUpdate", function(_, elapsed)
+ 	-- its last place left over a big map, so the map hardly ever faded: #69)
+ 	local over = map:IsMouseOver() and not (IsMouselooking and IsMouselooking())
+ 	local want = (moving and not (over or mod.PadCursor())) and 1 - (mod.db.moveFade or 0) or 1
++	-- 지도를 연 첫 프레임에는 목표 불투명도로 바로 맞춘다. 이동 중에 열면 예전에는 여는 순간의
++	-- 무거운 프레임들 위에서 0.5초가량 매 프레임 지도 전체의 불투명도를 다시 썼다.
++	if fader.omSnap then
++		fader.omSnap = nil
++		faded = want
++	end
+ 	if math.abs(faded - want) < 0.005 then
+ 		faded = want
+ 	else
+@@ -823,8 +859,20 @@ end)
+ -- Blizzard's own movement fader (PlayerMovementFrameFader) sets the map's alpha every frame while you move,
+ -- toward full (the game's fade is held off while ours runs): it faded for a moment, then came back. Ours is
+ -- put straight back over it
++-- 우리 값으로 되돌리기만 하면 이동하는 내내 블리자드 페이더와 번갈아 쓰게 된다: 프레임마다 지도
++-- 전체(텍스처 수천 개)의 불투명도가 두 번씩 바뀐다. 블리자드의 지도 페이드는 OpenMap이 꺼 둔
++-- 상태(mapFade "0")라 완전 불투명으로만 밀어 올리므로, 우리 페이더가 도는 동안에는 블리자드 쪽
++-- 등록을 풀어 다시 쓰지 않게 한다. 블리자드는 지도를 열 때마다 다시 등록하므로 여는 때마다 한 번
++-- 걸러진다. 해당 API가 없는 클라이언트에서는 예전처럼 값만 되돌린다.
+ local function KeepFade(self, a)
+ 	if ours or not fader:IsShown() or math.abs((a or 1) - faded) <= 0.001 then return end
++	local blizzard = _G.PlayerMovementFrameFader
++	if blizzard and blizzard.RemoveFrame and not fader.omRemoving then
++		fader.omRemoving = true     -- (RemoveFrame이 불투명도를 한 번 더 쓰면 이 함수로 다시 들어온다)
++		pcall(blizzard.RemoveFrame, self)
++		fader.omRemoving = nil
++		fader.omFights = (fader.omFights or 0) + 1   -- (진단용: 걸러낸 횟수)
++	end
+ 	SetFade(faded)
+ end
+ 
+@@ -1245,7 +1293,7 @@ end
+ 
+ function mod:SetupExtras(worldMap)
+ 	map, sc = worldMap, worldMap.ScrollContainer
+-	map:HookScript("OnShow", function() fader:SetShown((mod.db.moveFade or 0) > 0) ApplyFpsCap() end)
++	map:HookScript("OnShow", function() fader.omSnap = true fader:SetShown((mod.db.moveFade or 0) > 0) ApplyFpsCap() end)
+ 	map:HookScript("OnHide", function() fader:Hide() faded = 1 SetFade(1) ApplyFpsCap() end)
+ 	-- (and round you again: the view it closed on can be another place's, and the opening is centred on
+ 	-- you. Around.mapID cleared: a closing in the middle of the let-go left that set part held)
+diff --git a/Map/Panel.lua b/Map/Panel.lua
+--- a/Map/Panel.lua
++++ b/Map/Panel.lua
+@@ -284,7 +284,12 @@ local function Rows()
+ 	-- the look
+ 	-- (darkened or hidden; neither ticked: shown as they are. Darkened takes the colour-matched zones' land
+ 	-- masks, which retail's data has none of: hidden only, there)
+-	rows[#rows + 1] = { L["Unexplored areas"], tab = "look" }
++	-- /openmap은 AceConfig 대신 이 목록을 표시하므로, WorldMap.Options의 옵션을
++	-- 여기도 연결해야 실제 메뉴에 나타난다. 모양 탭 첫 항목에 두어 쉽게 찾게 하고,
++	-- 기존 optRow를 사용해 저장·Refresh·즐겨찾기 동작을 다른 체크 항목과 통일한다.
++	rows[#rows + 1] = { L["Performance first"], tab = "look" }
++	rows[#rows + 1] = optRow(L["Performance first"], "performanceMode", Icon("INV_Misc_PocketWatch_01"))
++	rows[#rows + 1] = { L["Unexplored areas"] }
+ 	for _, mode in ipairs({ { "dim", L["Darken unexplored areas"], "Spell_Shadow_Twilight" }, { "hide", L["Hide unexplored areas"], "Ability_Vanish" } }) do
+ 		if mode[1] ~= "dim" or ns.MapGrade then   -- (darkening needs its zones' land masks: not retail's)
+ 			rows[#rows + 1] = row(mode[2], "unexplored." .. mode[1], Icon(mode[3]), function() return mod.Unexplored() == mode[1] end,
+diff --git a/Map/Stitch.lua b/Map/Stitch.lua
+--- a/Map/Stitch.lua
++++ b/Map/Stitch.lua
+@@ -1176,6 +1176,9 @@ S.AWAY_MAP = AWAY_MAP              -- (Dungeons.lua: the map opened while you st
+ -- (the group finder's name for part of a dungeon, "Dire Maul - East") keeps its own name in English,
+ -- and in another language is the dungeon's name with the wing's after it
+ function S.InstanceName(inst)
++	-- 표시 이름만 번역한다. inst[2]의 영문 키는 던전/윙 검색과 다른 애드온 API에 사용된다.
++	local translated = ns.L[inst[2]]
++	if translated ~= inst[2] then return translated end
+ 	local name = GetRealZoneText and inst[1] > 0 and ns.Safe.Call(GetRealZoneText, inst[1])   -- (0: not in the tables)
+ 	if not name or name == "" then return inst[2] end
+ 	if inst.wing == nil then
+@@ -1787,6 +1790,7 @@ end
+ -- after the bench: the next S.Cull shows or hides every zone's textures and every culled region
+ -- afresh, as they should be
+ function S.ResetShown()
++	Live.spatial = nil -- 전체 표시 상태 초기화 후 첫 순회는 생략 없이 수행
+ 	if not root then return end
+ 	wipe(inView)
+ 	wipe(Live.placed)
+@@ -1840,7 +1844,7 @@ local function NameOf(label)
+ 	elseif n.area then
+ 		text = C_Map.GetAreaInfo(n.area)
+ 	end
+-	return (text and text ~= "") and text or n.text
++	return ns.L[(text and text ~= "") and text or n.text]
+ end
+ 
+ -- the name's words onto the art's lines: one each, as the art sets them, or (another
+@@ -2271,8 +2275,13 @@ end
+ 
+ -- places `region` over the world rectangle u0..u1, v0..v1 (normalized), following Layout
+ function S.PlaceWorld(region, u0, v0, u1, v1)
+-	local rec = dynamic[region] or { region }
+-	rec[2], rec[3], rec[4], rec[5] = u0 * W, v0 * H, (u1 - u0) * W, (v1 - v0) * H
++	local rec = dynamic[region]
++	local x, y, w, h = u0 * W, v0 * H, (u1-u0) * W, (v1-v0) * H
++	-- 좌표만 같다고 생략하면 숨김/복원 과정에서 앵커가 사라진 경우를 놓친다.
++	-- 실제 앵커가 남아 있을 때만 레이아웃 변경을 건너뛴다.
++	if rec and rec[2] == x and rec[3] == y and rec[4] == w and rec[5] == h and region:GetPoint() then return end
++	rec = rec or { region }
++	rec[2], rec[3], rec[4], rec[5] = x, y, w, h
+ 	dynamic[region] = rec
+ 	PlaceRecord(rec)
+ end
+@@ -2291,16 +2300,21 @@ function S.ToYards(cont, u, v)
+ 		if not r or r[6] == 0 or r[8] == 0 then return end
+ 		return (v - r[7]) / r[8], (u - r[5]) / r[6]
+ 	end
+-	local x0, y0 = S.FromYards(cont, 0, 0)
+-	local x1, y1 = S.FromYards(cont, 1000, 0)
+-	local x2, y2 = S.FromYards(cont, 0, 1000)
+-	if not x0 or not x1 or not x2 then return end
+-	-- the projection is linear: solve u, v = origin + wx * a + wy * b
+-	local ax, ay, bx, by = (x1 - x0) / 1000, (y1 - y0) / 1000, (x2 - x0) / 1000, (y2 - y0) / 1000
+-	local det = ax * by - bx * ay
+-	if det == 0 then return end
+-	local du, dv = u - x0, v - y0
+-	return (du * by - bx * dv) / det, (ax * dv - du * ay) / det
++	S.yardProjection = S.yardProjection or {}
++	local p = S.yardProjection[cont]
++	if not p then
++		local x0, y0 = S.FromYards(cont, 0, 0)
++		local x1, y1 = S.FromYards(cont, 1000, 0)
++		local x2, y2 = S.FromYards(cont, 0, 1000)
++		if not x0 or not x1 or not x2 then return end -- 실패는 캐싱하지 않아 다음 호출에서 재시도
++		local ax, ay, bx, by = (x1-x0)/1000, (y1-y0)/1000, (x2-x0)/1000, (y2-y0)/1000
++		local det = ax*by-bx*ay
++		if det == 0 then return end
++		p = { x0, y0, by/det, -bx/det, -ay/det, ax/det }
++		S.yardProjection[cont] = p
++	end
++	local du, dv = u-p[1], v-p[2]
++	return du*p[3]+dv*p[4], du*p[5]+dv*p[6]
+ end
+ 
+ S.CaveMasks = ns.Media.tex .. "MapCave\\"
+@@ -2380,7 +2394,9 @@ end
+ -- set over its frames at the most: 60, not 300 (a frame setting 300 files was a 35 ms hitch on
+ -- a 240 Hz machine, each file set being a load and an upload, in testing: two seconds for the
+ -- detail to come in, and a pan into new ground arriving over a few more frames)
+-local LOAD_PER_FRAME = { 40, frames = 6, most = 60, steps = 8 }   -- (one local: the file is at Lua's limit of 200)
++-- (stillMost/stillMs: 지도가 멈춰 있을 때의 예산. 움직이지 않는 화면에서는 프레임 시간이 조금 늘어도
++-- 끊김으로 느껴지지 않으므로 더 많이 불러와 세부 묘사가 빨리 채워지게 한다)
++local LOAD_PER_FRAME = { 40, frames = 6, most = 60, steps = 8, fastMost = 12, fastMs = 1.5, stillMost = 36, stillMs = 4, urgent = {} }   -- (one local: the file is at Lua's limit of 200)
+ local LOAD_FADE = 0.3           -- seconds
+ local loadQueue, loadAt = {}, 1
+ local fading, fadingN = {}, 0   -- texture -> when it got its file
+@@ -2391,11 +2407,35 @@ loader:SetScript("OnUpdate", function(self)
+ 	if Baked.busy and Baked.use and not Baked.holding then ApplyDetail() end
+ 	local n, now = 0, GetTime()
+ 	local L_ = LOAD_PER_FRAME
+-	local most = math.min(L_.most, math.max(L_[1], math.ceil((#loadQueue - loadAt + 1) / L_.frames)))
+-	while loadAt <= #loadQueue and n < most do
+-		local tex = loadQueue[loadAt]
+-		loadAt = loadAt + 1
+-		if tex.omFile then
++	local most = math.min(L_.most, math.max(L_[1], math.ceil((#loadQueue - loadAt + 1 + #L_.urgent) / L_.frames)))
++	-- 첫 열기/확대 시 대량 업로드가 한 프레임에 몰리지 않도록, 성능 모드에서는
++	-- 최대 12장 또는 1.5ms까지만 새 파일을 요청한다. 기존 baked 지도는 계속 남아
++	-- 세부 타일이 준비될 때까지 빈 화면을 막는다. 한 파일 자체의 지연은 취소할 수 없다.
++	-- 이동·확대 중(최근 0.12초 안에 화면이 바뀜)에는 12장/1.5ms, 멈춰 있으면 36장/4ms까지 쓴다.
++	L_.budgetMs = L_.fastMs
++	if S.performanceMode then
++		local still = now - (names.movedAt or 0) > 0.12
++		most = math.min(most, still and L_.stillMost or L_.fastMost)
++		if still then L_.budgetMs = L_.stillMs end
++	end
++	L_.started = S.performanceMode and debugprofilestop and debugprofilestop() or nil
++	-- 새 화면의 요청은 뒤에서 먼저 꺼내며 이전 화면의 불필요한 요청은 파일을
++	-- 업로드하지 않는다. 취소 요청만 수천 개 쌓여도 한 프레임의 CPU 순회는 256개로 제한한다.
++	local scanned = 0
++	while (loadAt <= #loadQueue or #L_.urgent > 0) and n < most and scanned < 256 do
++		if n > 0 and L_.started and debugprofilestop() - L_.started >= L_.budgetMs then break end
++		local tex
++		if #L_.urgent > 0 then
++			tex = L_.urgent[#L_.urgent]
++			L_.urgent[#L_.urgent] = nil
++		else
++			tex = loadQueue[loadAt]
++			loadAt = loadAt + 1
++		end
++		scanned = scanned + 1
++		if tex.omFile and tex.omLoadWanted == false then
++			tex.omQueued = nil -- 다시 화면에 들어오면 최신 요청으로 재등록 가능
++		elseif tex.omFile then
+ 			tex:SetTexture(tex.omFile, nil, nil, "TRILINEAR")
+ 			tex.omFile = nil
+ 			tex:SetAlpha(0)
+@@ -2422,7 +2462,7 @@ loader:SetScript("OnUpdate", function(self)
+ 			end
+ 		end
+ 	end
+-	if loadAt == 1 and #loadQueue == 0 and fadingN == 0 then
++	if loadAt == 1 and #loadQueue == 0 and #L_.urgent == 0 and fadingN == 0 then
+ 		self:Hide()
+ 		Baked.busy = false
+ 		if Baked.holding then                   -- (all in: the baked tiles can go)
+@@ -2437,7 +2477,12 @@ end)
+ function S.QueueLoad(tex)
+ 	if not tex.omFile or tex.omQueued then return end
+ 	tex.omQueued = true
+-	loadQueue[#loadQueue + 1] = tex
++	if S.performanceMode then
++		local urgent = LOAD_PER_FRAME.urgent
++		urgent[#urgent+1] = tex
++	else
++		loadQueue[#loadQueue+1] = tex
++	end
+ 	loader:Show()
+ 	Baked.busy = true
+ end
+@@ -3166,6 +3211,82 @@ end
+ -- of a zone on screen is drawn (and has its files loaded), not all of every zone touching the view
+ -- A hidden one lets go of its anchor (and a zone's live-layer masks do while none of its live art can
+ -- show), so a pan or zoom doesn't lay out thousands of textures nobody sees: see Live, above
++-- 지역별 타일을 1/128 월드 크기의 셀에 한 번 인덱싱한다. 작은 화면 영역에서는
++-- 전체 지역의 모든 복제 타일 대신 교차 셀만 조사한다. 큰 화면/작은 목록은 기존 순회가
++-- 더 저렴하므로 자동으로 원래 경로를 사용한다. 인덱스는 좌표와 참조만 보관한다.
++-- Stitch.lua의 최상위 local 한계를 늘리지 않도록 기존 Live 테이블에 구현을 둔다.
++function Live.ZoneCandidates(mapID, box, here)
++	local list = zoneTex[mapID] or NONE
++	Live.spatial = Live.spatial or {}
++	local cache = Live.spatial[mapID]
++	if cache and (cache.list ~= list or cache.count ~= #list) then
++		Live.spatial[mapID], cache = nil, nil -- 새 아트/항목 추가 시 전체 목록부터 재확인
++	end
++	local x0, y0, x1, y1
++	if box and here then
++		x0, y0 = math.floor(box[1] * 128), math.floor(box[2] * 128)
++		x1, y1 = math.floor(box[3] * 128), math.floor(box[4] * 128)
++	end
++	if not S.performanceMode or not x0 or #list < 48 or (x1-x0+1)*(y1-y0+1) > 256 then
++		if cache then cache.pending = list end
++		return list
++	end
++	if not cache then
++		cache = { list = list, count = #list, grid = {}, loose = {}, previous = list, out = {}, seen = {}, serial = 0 }
++		Live.spatial[mapID] = cache
++		for _, e in ipairs(list) do
++			if not e.u0 or not e.u1 or not e.v0 or not e.v1 then
++				cache.loose[#cache.loose+1] = e
++			else
++				local ax, ay = math.floor(e.u0*128), math.floor(e.v0*128)
++				local bx, by = math.floor(e.u1*128), math.floor(e.v1*128)
++				-- 넓은 특수 영역은 수많은 셀에 복제하지 않고 항상 후보에 포함한다.
++				if (bx-ax+1)*(by-ay+1) > 256 then
++					cache.loose[#cache.loose+1] = e
++				else
++					for x=ax,bx do
++						local column = cache.grid[x] or {}; cache.grid[x] = column
++						for y=ay,by do
++							local cell = column[y] or {}; column[y] = cell; cell[#cell+1] = e
++						end
++					end
++				end
++			end
++		end
++	end
++	-- 같은 셀 범위에서는 조회 결과도 재사용한다. 실제 사각형 판정은 ShowZone이 하므로
++	-- 셀 경계를 넘어오지 않은 작은 이동에도 가장자리 타일은 정확하게 표시된다.
++	if cache.x0 ~= x0 or cache.y0 ~= y0 or cache.x1 ~= x1 or cache.y1 ~= y1 then
++		local query, unique = {}, {}
++		for _, e in ipairs(cache.loose) do query[#query+1] = e; unique[e] = true end
++		for x=x0,x1 do
++			local column = cache.grid[x]
++			if column then for y=y0,y1 do
++				for _, e in ipairs(column[y] or NONE) do
++					if not unique[e] then query[#query+1] = e; unique[e] = true end
++				end
++			end end
++		end
++		cache.query, cache.x0, cache.y0, cache.x1, cache.y1 = query, x0, y0, x1, y1
++	end
++	cache.serial = cache.serial + 1
++	local out, seen, serial = cache.out, cache.seen, cache.serial
++	wipe(out)
++	-- 이전 후보도 한 번 처리해야 화면 밖으로 나간 타일의 앵커/표시가 해제된다.
++	-- 성공할 때만 previous를 확정하므로 갱신 중 오류가 나도 다음 호출에서 재시도한다.
++	for _, group in ipairs({ cache.previous, cache.query }) do
++		for _, e in ipairs(group) do
++			if seen[e] ~= serial then out[#out+1] = e; seen[e] = serial end
++		end
++	end
++	cache.pending = cache.query
++	return out
++end
++function Live.CommitZone(mapID)
++	local cache = Live.spatial and Live.spatial[mapID]
++	if cache then cache.previous = cache.pending end
++end
++
+ ShowZone = function(mapID)
+ 	local here = inView[mapID] ~= false
+ 	local inside = inView[mapID] == true          -- (in view and drawn: its files are wanted)
+@@ -3173,7 +3294,11 @@ ShowZone = function(mapID)
+ 	local box = cullBox
+ 	local z = Live.zones and Live.zones[mapID]       -- (a zone come in by its continent, ApplyDetail: not yet, not drawn)
+ 	local zoneOn = not z or z.on
+-	for _, e in ipairs(zoneTex[mapID] or NONE) do
++	local candidates = Live.ZoneCandidates(mapID, box, here)
++	S.spatialStats = S.spatialStats or { examined = 0, baseline = 0 }
++	S.spatialStats.examined = S.spatialStats.examined + #candidates
++	S.spatialStats.baseline = S.spatialStats.baseline + #(zoneTex[mapID] or NONE)
++	for _, e in ipairs(candidates) do
+ 		local tex = e[1]
+ 		local near = here and (not box or not e.u0 or (e.u1 > box[1] and e.u0 < box[3] and e.v1 > box[2] and e.v0 < box[4]))
+ 		local drawn = (not e.layer or detailLive) and zoneOn   -- (the live layers: only while they show; the cities: always)
+@@ -3184,12 +3309,8 @@ ShowZone = function(mapID)
+ 			-- over the darkened ones (Shade.Pieces), covering four fifths, so from Soften's zoom to the minimap's
+ 			-- the darkening all but went, and came back each time the map moved and the blur rested)
+ 			and not (e.blur and un and Shade.on)
+-		if near and drawn and inside and (detailLive or Live.seen) and tex.omFile and not tex.omQueued then
+-			tex.omQueued = true
+-			loadQueue[#loadQueue + 1] = tex
+-			loader:Show()
+-			Baked.busy = true
+-		end
++		tex.omLoadWanted = (near and drawn and inside and (detailLive or Live.seen)) and true or false
++		if tex.omLoadWanted and tex.omFile and not tex.omQueued then S.QueueLoad(tex) end
+ 		local show = near and drawn and not (un and hide) and (not e.twin or strength > 0)
+ 		if e.shown ~= show then
+ 			e.shown = show
+@@ -3211,6 +3332,7 @@ ShowZone = function(mapID)
+ 	end
+ 	Shade.Show(mapID)
+ 	Shade.Hide.Show(mapID)
++	Live.CommitZone(mapID)
+ end
+ 
+ -- for the debug overlay (Debug.lua): how much of the zone art has its files loaded, of all of
+@@ -3225,7 +3347,7 @@ function S.ArtStats()
+ 	end
+ 	local live = 0
+ 	for _ in pairs(dynamic) do live = live + 1 end
+-	return loaded, total, live, #loadQueue - loadAt + 1
++	return loaded, total, live, #loadQueue - loadAt + 1 + #LOAD_PER_FRAME.urgent
+ end
+ 
+ -- the files an opening on a zone reads first, at the most `most`: the zone's own art, then the baked
+diff --git a/Map/WorldMap.lua b/Map/WorldMap.lua
+--- a/Map/WorldMap.lua
++++ b/Map/WorldMap.lua
+@@ -21,6 +21,7 @@ local WORLD = S.WORLD
+ local mod = ns:NewModule("worldmap", {
+ 	defaults = {
+ 		enabled = true,
++		performanceMode = true, -- 성능 우선: 기존 세부 옵션 값은 보존하고 렌더링 경로만 간소화한다.
+ 		autoSwitch = true,      -- the map underneath follows what you're looking at
+ 		hoverHighlight = false, -- Blizzard's glow on the zone under the cursor (on the stitched map)
+ 		icons = true,           -- dungeon and raid entrances
+@@ -52,6 +53,7 @@ local mod = ns:NewModule("worldmap", {
+ 
+ -- (dungeons, boats and zeppelins were one switch, `icons`: an old save's choice carried to each)
+ function mod.Migrate(db)
++	if db.performanceMode == nil then db.performanceMode = true end -- 최초 적용 때만 활성화, 이후 사용자의 선택 유지
+ 	if db.boats == nil and db.icons ~= nil then db.boats, db.zeppelins = db.icons, db.icons end
+ 	-- (friends and guild were one switch too, `friends`, and its menu row's id: the friends row keeps
+ 	-- that id, and a save's single choice carries to the guild's switch too)
+@@ -231,10 +233,32 @@ local function SetView(scale, x, y)
+ 		return
+ 	end
+ 	local wantScale, wantX, wantY = scale, x, y
+-	sc.currentScale, sc.targetScale, sc.zoomTarget = scale, scale, scale
+-	sc.Child:SetScale(scale)
+ 	local refused = false
+-	sc:CalculateScrollExtents()
++	-- 드래그/고정 배율 이동은 배율 변경이 아니다. 예전에는 매 프레임 모든
++	-- 데이터 제공자(Questie 포함)의 핀 재계산과 OpenMap 레이어 페이드를 실행했다.
++	-- 실제 배율, 호스트 지도, 뷰포트/캔버스 크기가 바뀐 경우에만 전체 알림을 보낸다.
++	-- 캔버스의 실제 배율도 비교하므로 다른 코드가 먼저 바꾼 경우에도 누락하지 않는다.
++	local metrics = sc.omViewMetrics
++	if not metrics then metrics = {}; sc.omViewMetrics = metrics end
++	local width, height = sc:GetWidth(), sc:GetHeight()
++	local childWidth, childHeight = sc.Child:GetWidth(), sc.Child:GetHeight()
++	local mapID = map:GetMapID()
++	local changed = metrics.scale ~= scale or sc.Child:GetScale() ~= scale
++		or metrics.mapID ~= mapID or metrics.width ~= width or metrics.height ~= height
++		or metrics.childWidth ~= childWidth or metrics.childHeight ~= childHeight
++	sc.currentScale, sc.targetScale, sc.zoomTarget = scale, scale, scale
++	if sc.Child:GetScale() ~= scale then sc.Child:SetScale(scale) end
++	if changed then
++		sc:CalculateScrollExtents()
++		metrics.scale, metrics.mapID = scale, mapID
++		metrics.width, metrics.height = width, height
++		metrics.childWidth, metrics.childHeight = childWidth, childHeight
++	end
++	-- 기존 /openmap status에서 확인할 누적 횟수다. 매 프레임 새 테이블은 만들지 않는다.
++	mod.viewWork = mod.viewWork or { calls = 0, scale = 0, pan = 0 }
++	mod.viewWork.calls = mod.viewWork.calls + 1
++	if changed then mod.viewWork.scale = mod.viewWork.scale + 1
++	else mod.viewWork.pan = mod.viewWork.pan + 1 end
+ 	x = Clamp(x, sc.scrollXExtentsMin, sc.scrollXExtentsMax)
+ 	y = Clamp(y, sc.scrollYExtentsMin, sc.scrollYExtentsMax)
+ 	sc.targetScrollX, sc.targetScrollY, sc.currentScrollX, sc.currentScrollY = x, y, x, y
+@@ -243,9 +267,11 @@ local function SetView(scale, x, y)
+ 	waitingView = refused and { mapID = map:GetMapID(), scale = wantScale, x = wantX, y = wantY } or nil
+ 	local start = openStart and debugprofilestop and debugprofilestop()
+ 	local g, t0 = Before(), Clock()
+-	viewSetting = true
+-	map:OnCanvasScaleChanged()
+-	viewSetting, scaleWaiting = false, false
++	if changed or scaleWaiting then
++		viewSetting = true
++		map:OnCanvasScaleChanged()
++		viewSetting, scaleWaiting = false, false
++	end
+ 	After("pins (all addons)", g)
+ 	Clocked("every addon's pins rescaled", t0)
+ 	if start then Part("icons rescaled (all addons)", debugprofilestop() - start) end
+@@ -267,6 +293,9 @@ local function SetView(scale, x, y)
+ 	Clocked("quest areas", t0)
+ 	sc:MarkAreaTriggersDirty()
+ 	sc:MarkViewRectDirty()
++	-- 배율 알림을 생략한 이동도 근접 지도·컬링 갱신은 예약한다. RefreshView는
++	-- 기존 viewFrame에 합쳐지므로 한 프레임의 여러 이동이 중복 렌더링되지 않는다.
++	if mod.RefreshView then mod.RefreshView() end
+ end
+ 
+ -- the view centred on a world point (normalized) at `zoom`, at once
+@@ -819,18 +848,125 @@ end
+ -- frame then, ours or not (/openmap status). A stall after the opening frame shows here, not above
+ local AFTER_OPEN = 3
+ local after = { parts = {}, close = {}, gap = 0, gapAt = 0 }
++
++-- [임시 계측 5차] 지도를 연 뒤 AFTER_OPEN초 동안 매 프레임 블리자드 애드온 프로파일러
++-- (C_AddOnProfiler, LastTime)로 애드온별 프레임 시간을 읽습니다. 가장 긴 프레임의 직전·그 프레임·직후
++-- 시점의 애드온별 시간과 애드온별 최댓값을 mod.db.addonLog에 남깁니다(최근 10번). 원인을 찾은 뒤 지웁니다.
++local prof = { names = {}, cur = {}, prev = {}, peak = {} }
++prof.BLIZZARD = { "Blizzard_WorldMap", "Blizzard_MapCanvas", "Blizzard_SharedMapDataProviders" }
++function prof.Metric(name)
++	local ok, ms = pcall(C_AddOnProfiler.GetAddOnMetric, name, prof.metric)
++	return ok and type(ms) == "number" and ms or nil
++end
++function prof.Start()
++	prof.on = false
++	local metric = Enum and Enum.AddOnProfilerMetric
++	if not (C_AddOnProfiler and C_AddOnProfiler.GetAddOnMetric and metric and metric.LastTime) then return end
++	prof.metric = metric.LastTime
++	local GetNum = C_AddOns and C_AddOns.GetNumAddOns or GetNumAddOns
++	local GetInfo = C_AddOns and C_AddOns.GetAddOnInfo or GetAddOnInfo
++	local IsLoaded = C_AddOns and C_AddOns.IsAddOnLoaded or IsAddOnLoaded
++	wipe(prof.names)
++	for i = 1, GetNum() do
++		local name = GetInfo(i)
++		if name and IsLoaded(name) and prof.Metric(name) then prof.names[#prof.names + 1] = name end
++	end
++	for _, name in ipairs(prof.BLIZZARD) do
++		if IsLoaded(name) and prof.Metric(name) then prof.names[#prof.names + 1] = name end
++	end
++	wipe(prof.cur) wipe(prof.prev) wipe(prof.peak)
++	prof.gapPrev, prof.gapNow, prof.gapNext, prof.wantNext = nil, nil, nil, false
++	prof.on = true
++end
++-- 한 시점의 표본에서 1ms 이상인 것만 큰 순서로 10개, "이름 ms" 글로 바꿉니다
++function prof.Top(s)
++	local list = {}
++	for name, ms in pairs(s) do if ms >= 1 then list[#list + 1] = { name, ms } end end
++	table.sort(list, function(a, b) return a[2] > b[2] end)
++	for i = #list, 11, -1 do list[i] = nil end
++	for i, e in ipairs(list) do list[i] = ("%s %.1f"):format(e[1], e[2]) end
++	return list
++end
++function prof.Put(s, name, ms, t)
++	s[name] = ms
++	local p = prof.peak[name]
++	if not p or ms > p[1] then prof.peak[name] = { ms, t } end
++end
++-- 매 프레임: 표본을 읽고, 이번이 가장 긴 프레임이면 직전·지금 표본을, 그다음 프레임에는 그 표본을 남깁니다
++function prof.Frame(longer)
++	local cur, t = prof.prev, debugprofilestop() - after.start
++	prof.prev, prof.cur = prof.cur, cur
++	wipe(cur)
++	for _, name in ipairs(prof.names) do
++		local ms = prof.Metric(name)
++		if ms and ms > 0 then prof.Put(cur, name, ms, t) end
++	end
++	if C_AddOnProfiler.GetOverallMetric then
++		local ok, ms = pcall(C_AddOnProfiler.GetOverallMetric, prof.metric)
++		if ok and type(ms) == "number" then prof.Put(cur, "(all addons)", ms, t) end
++	end
++	if C_AddOnProfiler.GetApplicationMetric then
++		local ok, ms = pcall(C_AddOnProfiler.GetApplicationMetric, prof.metric)
++		if ok and type(ms) == "number" then prof.Put(cur, "(client)", ms, t) end
++	end
++	if longer then
++		prof.gapPrev, prof.gapNow, prof.gapNext, prof.wantNext = prof.Top(prof.prev), prof.Top(cur), nil, true
++	elseif prof.wantNext then
++		prof.gapNext, prof.wantNext = prof.Top(cur), false
++	end
++end
++function prof.Save()
++	prof.on = false
++	local db = mod.db
++	if not db then return end
++	db.openLog = nil                       -- (4차 계측이 남긴 옛 기록)
++	local function R(x) return x and math.floor(x * 10 + 0.5) / 10 end
++	local peaks = {}
++	for name, p in pairs(prof.peak) do if p[1] >= 1 then peaks[#peaks + 1] = { name, p[1], p[2] } end end
++	table.sort(peaks, function(a, b) return a[2] > b[2] end)
++	for i = #peaks, 13, -1 do peaks[i] = nil end
++	for i, e in ipairs(peaks) do peaks[i] = ("%s %.1f ms at %.2f s"):format(e[1], e[2], e[3] / 1000) end
++	local parts = {}
++	for name, ms in pairs(after.parts) do parts[name] = R(ms) end
++	db.addonLog = db.addonLog or {}
++	table.insert(db.addonLog, 1, {
++		t = date("%H:%M:%S"),
++		mapID = WorldMapFrame and WorldMapFrame.GetMapID and WorldMapFrame:GetMapID() or nil,
++		openMs = openTimes[1] and R(openTimes[1][1]),
++		longestFrameMs = R(after.gap),
++		longestFrameAt = R(after.gapAt / 1000),
++		profilerOn = C_AddOnProfiler.IsEnabled and C_AddOnProfiler.IsEnabled() or nil,
++		addons = #prof.names,
++		atLongestPrev = prof.gapPrev,
++		atLongest = prof.gapNow,
++		atLongestNext = prof.gapNext,
++		peaks = peaks,
++		openMapLater = parts,
++		-- (6차: 건너뛰기가 걸린 대상과, 지금까지 건너뛴 횟수 — 탐험 지역 그림 / 지역 지도 타일)
++		artSkip = mod.artSkip and ("%s %d/%d"):format(mod.artSkip.installed or "none", mod.artSkip.explore, mod.artSkip.detail) or nil,
++	})
++	db.addonLog[11] = nil
++end
++
+ local afterFrame = CreateFrame("Frame")
+ afterFrame:Hide()
+ afterFrame:SetScript("OnUpdate", function(self)
+ 	local now = debugprofilestop()
+-	if after.last and now - after.last > after.gap then after.gap, after.gapAt = now - after.last, after.last - after.start end
++	local longer = after.last and now - after.last > after.gap
++	if longer then after.gap, after.gapAt = now - after.last, after.last - after.start end
+ 	after.last = now
+-	if now - after.start > AFTER_OPEN * 1000 then self:Hide() end
++	if prof.on and not pcall(prof.Frame, longer) then prof.on = false end   -- (오류가 나면 이번 열기는 그만 잽니다)
++	if now - after.start > AFTER_OPEN * 1000 then
++		self:Hide()
++		if prof.on then pcall(prof.Save) end
++	end
+ end)
+ local function AfterOpening()
+ 	if not debugprofilestop then return end
++	if prof.on then pcall(prof.Save) end   -- (3초 안에 다시 열면: 앞의 것을 먼저 남깁니다)
+ 	after.start, after.last, after.gap, after.gapAt = debugprofilestop(), nil, 0, 0
+ 	wipe(after.parts)
++	pcall(prof.Start)
+ 	afterFrame:Show()
+ end
+ local function Note(list, name, ms) if ms > (list[name] or 0) then list[name] = ms end end
+@@ -864,6 +1000,11 @@ local live                      -- { u, v, zoom, width, height }: the view on sc
+ local viewFrame = CreateFrame("Frame")
+ viewFrame:Hide()
+ viewFrame:SetScript("OnUpdate", Ours("view update", function(self)
++	-- 캔버스의 실제 이동/배율은 원래 프레임 속도로 움직인다. 무거운 부가 레이어와
++	-- 컬링만 최대 30Hz로 처리하고, 건너뛴 요청은 frame을 숨기지 않아 최종 상태가 반드시 반영된다.
++	local now = GetTime()
++	if mod.db.performanceMode ~= false and self.omNextUpdate and now < self.omNextUpdate then return end
++	self.omNextUpdate = mod.db.performanceMode ~= false and (now + 1 / 30) or nil
+ 	self:Hide()
+ 	-- (only on the map open: Blizzard resets the view once more as it closes, and a view taken then was
+ 	-- read on the next opening as one put up while it's open, the zone's whole map, before the zoom kept
+@@ -886,6 +1027,7 @@ end
+ 
+ ApplyZoom = function()
+ 	if not active then return end
++	S.performanceMode = mod.db.performanceMode ~= false
+ 	local g, t0 = Before(), Clock()
+ 	S.SetZoom(ZoomFor(map:GetMapID(), CanvasScale()) * DetailK(), CanvasScale())
+ 	After("zoom", g)
+@@ -904,6 +1046,55 @@ local function BlizzardArt()
+ 	for pin in map:EnumeratePinsByTemplate("MapExplorationPinTemplate") do pin:SetShown(show) end
+ end
+ 
++-- [6차] 합성 지도가 떠 있는 동안에는 블리자드가 만들고 곧바로 숨겨질 그림을 처음부터 만들지 않습니다.
++-- 탐험 지역 그림은 지도를 열 때마다 텍스처를 다시 만들고, 지역 지도 타일은 지역이 바뀔 때마다 새로 불러옵니다.
++-- 블리자드 SetMapID는 ScrollContainer:SetMapID(여기서 Attach가 active를 정합니다)를 먼저 부르고, 그다음에
++-- RefreshDetailLayers와 데이터 공급자의 RefreshAllData를 부릅니다. 그래서 두 감싸기는 새 지도의 active를 봅니다.
++-- 합성되지 않는 지도로 바뀌면 Attach가 미뤄 둔 것을 한 번 만듭니다(Catchup).
++local skipArt = { exploreDue = false, detailDue = false, explore = 0, detail = 0 }
++mod.artSkip = skipArt          -- (계측 기록이 건너뛴 횟수를 읽습니다)
++function skipArt.Catchup()
++	local detail, explore = skipArt.detailDue, skipArt.exploreDue
++	skipArt.detailDue, skipArt.exploreDue = false, false
++	-- (닫혀 있으면 블리자드가 열 때 어차피 모두 다시 만듭니다)
++	if not map:IsShown() then return end
++	if detail and map.RefreshDetailLayers then map:RefreshDetailLayers() end
++	if explore and skipArt.provider then skipArt.provider:RefreshAllData() end
++end
++function mod.InstallArtSkip()
++	-- 탐험 지역 그림: 블리자드 공급자의 RefreshAllData(기존 그림을 지우고 새로 받아 모든 텍스처를 다시 붙임)
++	local mixin = MapExplorationDataProviderMixin
++	if mixin and mixin.RefreshAllData then
++		for provider in pairs(map.dataProviders or {}) do
++			if provider.RefreshAllData == mixin.RefreshAllData then skipArt.provider = provider break end
++		end
++	end
++	local provider = skipArt.provider
++	if provider then
++		local refresh = provider.RefreshAllData
++		provider.RefreshAllData = function(self, ...)
++			if active then
++				skipArt.exploreDue, skipArt.explore = true, skipArt.explore + 1
++				return
++			end
++			return refresh(self, ...)
++		end
++	end
++	-- 지역 지도 타일: 이미 BlizzardArt 훅이 걸린 함수를 감쌉니다. 건너뛰면 블리자드의 "다시 그려야 함" 표시가
++	-- 그대로 남아서, 나중에 부를 때 새 지도의 타일을 만듭니다
++	if map.RefreshDetailLayers then
++		local refresh = map.RefreshDetailLayers
++		map.RefreshDetailLayers = function(self, ...)
++			if active then
++				skipArt.detailDue, skipArt.detail = true, skipArt.detail + 1
++				return
++			end
++			return refresh(self, ...)
++		end
++	end
++	skipArt.installed = (provider and "explore" or "") .. (map.RefreshDetailLayers and "+detail" or "")
++end
++
+ -- A viewport-sized shade above all stitched art (including close-up terrain and caves),
+ -- below Blizzard's and OpenMap's pins. It stays still while the canvas pans or zooms.
+ function mod:UpdateBrightness()
+@@ -932,6 +1123,7 @@ local function Attach(mapID, refreshed)
+ 	active = mod.enabled and not mod.instanceWorldHidden and Stitchable(mapID) and S.IsBuilt() and S.Layout(mapID) or false
+ 	S.SetShown(active)
+ 	mod:UpdateBrightness()
++	if not active and (skipArt.detailDue or skipArt.exploreDue) then skipArt.Catchup() end
+ 	BlizzardArt()
+ 	if InCombatLockdown() then
+ 		afterCombat = true                          -- (Blizzard's map left as it is in a fight: CombatOver)
+@@ -962,6 +1154,9 @@ local function Attach(mapID, refreshed)
+ 	if mod.OnStitchedChanged then mod.OnStitchedChanged(active) end
+ end
+ 
++-- 지도 전체(수천 개의 텍스처와 프레임)를 만든다. 호스트 지도나 화면 표시 상태와 무관하므로
++-- 첫 열기 때가 아니라 로딩 화면 중에 미리 실행할 수 있다(아래 Setup의 사전 생성 참고).
++-- (mod의 함수로 둔다: 이 파일의 최상위 local과 Setup의 upvalue 수를 늘리지 않는다)
+ -- zoom levels from the whole world to street level, in this map's scale
+ -- what's built on the stitched art once it is, one a step (a frame each, built ahead: Prebuild), then a refresh
+ local EXTRAS = { "BuildFlights", "BuildPaint", "BuildSketch", "BuildNav", "BuildMapPins" }
+@@ -1652,6 +1847,8 @@ local function Setup()
+ 		if active then RaisePlayer() end
+ 	end)
+ 	dp.OnHide = function()
++		sc.omViewMetrics = nil -- 다음 지도 열기는 같은 배율이어도 전체 알림을 다시 수행한다.
++		viewFrame.omNextUpdate = nil -- 다음 첫 열기는 제한 없이 바로 처리한다.
+ 		-- (the view noted first: closed in a fight, it's the own view's, which stopping it leaves behind; read
+ 		-- after, it was Blizzard's canvas's, the view from before the fight, and the map reopened there)
+ 		if mod.OnMapHidden then mod:OnMapHidden() end
+@@ -1744,6 +1941,7 @@ local function Setup()
+ 
+ 	-- the map may already be showing something
+ 	if map:IsShown() and map:GetMapID() then sc:OnCanvasSizeChanged() end
++
+ end
+ 
+ -- for Extras / Flights / Townsfolk / Panel / Paint
+@@ -2005,6 +2203,7 @@ function mod:BrowseInstanceWorld()
+ end
+ 
+ function mod:Refresh()
++	S.performanceMode = self.db.performanceMode ~= false
+ 	self:RefreshInstancePins()
+ 	ApplyChart()
+ 	self:UpdateBrightness()
+@@ -2063,6 +2262,14 @@ function mod:Diag()
+ 		info and info.name or "?", mapID or 0, active and "stitched" or "Blizzard's",
+ 		active and select(3, View()) or 0, sc:GetCanvasScale(),
+ 		S.stats.zones, S.stats.tiles, S.stats.overlays, S.stats.pins)
++	-- 누적 호출 감소와 실제 타일 재사용을 기존 status 명령에서 확인한다.
++	if S.spatialStats then
++		ns:Print(ns.L["Tile queries: %d entries examined / %d without index."], S.spatialStats.examined, S.spatialStats.baseline)
++	end
++	if S.tileReuseStats then
++		local c = S.tileReuseStats
++		ns:Print(ns.L["Tile cache: %d hits, %d misses, %d retained, %d evictions."], c.hits, c.misses, c.native.size+c.lod.size, c.evictions)
++	end
+ 	local fixed, live = S.RegionCount()
+ 	local kb
+ 	if UpdateAddOnMemoryUsage and GetAddOnMemoryUsage then
+@@ -2072,6 +2279,10 @@ function mod:Diag()
+ 	ns:Print("World map: %d art regions, %d live ones; addon memory %s.", fixed, live, kb and ("%.1f MB"):format(kb / 1024) or "?")
+ 	if map:IsVisible() then
+ 		ns:Print("Drawing %d of the art's textures now; %.0f frames a second.", S.DrawnCount(), GetFramerate())
++	if mod.viewWork then
++		ns:Print(ns.L["View updates: %d; full scale updates: %d; pan-only updates: %d."],
++			mod.viewWork.calls, mod.viewWork.scale, mod.viewWork.pan)
++	end
+ 	else
+ 		ns:Print("The map is closed: open it and run this again for what it's drawing.")
+ 	end
+@@ -2152,6 +2363,8 @@ function mod:Options()
+ 	local function off() return not mod.db.enabled end
+ 	local opts = {
+ 		intro = ns.Desc("Blizzard's world map with every zone stitched together: scroll out of a zone into the next, drag across the whole world. The quest log, the map's controls and Questie all keep working.\n\n|cffffd100Wheel|r zooms at the cursor, |cffffd100drag|r pans, |cffffd100left-click|r zooms into the place under the cursor, |cffffd100right-click|r zooms out a level.\n\nIf you use Leatrix Maps or another world map addon, turn it off.", 1),
++		performanceMode = { type = "toggle", name = ns.L["Performance first"], order = 3, width = "full", get = get, set = set, disabled = off,
++			desc = ns.L["Limit detail updates to 30 Hz, remove blur and paper grain, and pause minimap detail while moving. Original detail returns when movement stops; turn this off for the original effects."] },
+ 		autoSwitch = { type = "toggle", name = ns.L["Load the zone in view"], order = 10, width = "full", get = get, set = set, disabled = off,
+ 			desc = ns.L["Once the map stops moving, it loads the zone or continent you're looking at: its quest areas, coordinates and name, and other addons' icons for it (Questie's, GatherLite's ...). Off, the map keeps the zone it opened on."] },
+ 		hoverHighlight = { type = "toggle", name = ns.L["Highlight the zone under the cursor"], order = 11, width = "full", get = get, set = set, disabled = off,

@@ -807,7 +807,7 @@ function OptionsPrivate.CreateFrame()
         WeakAuras.prettyPrint(L["CDM setup runs out of combat."])
         return
       end
-      StaticPopup_Show("FOREVERAURAS_CDM_SETUP_CONFIRM")
+      StaticPopup_Show(OptionsPrivate.Private.CDMSetupConfirmDialog and OptionsPrivate.Private.CDMSetupConfirmDialog() or "FOREVERAURAS_CDM_SETUP_CONFIRM") -- ForeverAuras (1.4.7-dev.4): says what it will do
     end)
     setupCDM:SetCallback("OnEnter", function(widget)
       GameTooltip:SetOwner(widget.frame, "ANCHOR_RIGHT")

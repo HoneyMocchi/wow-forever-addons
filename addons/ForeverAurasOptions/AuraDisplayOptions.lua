@@ -129,6 +129,13 @@ function OptionsPrivate.GetSecretAuraSettings(data)
   args.growth.name = L["Aura growth direction"]
   args.spacing.name = L["Aura spacing"]
   args.maxIcons.name = L["Maximum auras"]
+  -- (dev.23) A Group Auras display has the Aura (Modern) settings as they are; only the section's name differs.
+  if OptionsPrivate.Private.CDMGroupAuras.IsTrigger(Display.GetSavedTrigger(data)) then
+    args.__title = L["Group Auras Settings"]
+    -- (dev.26, Dan: "this text is VERY annoying / not needed") the note about Show On Always and
+    -- Remaining Time drawing one aura is not shown on a Group Auras display.
+    if args.singleNotice then args.singleNotice.hidden = true end
+  end
   args.textHeight = {type = "range", name = L["Text Area Height"], min = 4, softMax = 300, step = 1,
     hidden = function() return data.regionType ~= "text" end,
     desc = L["Space reserved for each aura's text. Set its width in Font Flags."],

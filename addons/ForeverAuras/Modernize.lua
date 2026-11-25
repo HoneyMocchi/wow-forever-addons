@@ -2512,6 +2512,52 @@ function Private.Modernize(data, oldSnapshot)
     data.toolTipArea = "ICON"
   end
 
+  -- ForeverAuras (1.4.7-dev.5, Dan: "I just want icons inverse to be the same, addon wide, same
+  -- direction, irrelevant of trigger"): an Aura (Modern) icon used to hand its Inverse setting straight
+  -- to the client's swipe, the opposite of every other icon (where Inverse off is the usual aura
+  -- swipe), and was given Inverse = on when it became a Modern display so that it looked right. The
+  -- Modern code now reads the setting as the Icon display does (SecretAuraSingle.lua,
+  -- SecretAuraAppearance.lua, SecretAuraConditions.lua), so the saved setting is turned over once here
+  -- and such an icon draws what it drew before. Only icons that have been through the Modern
+  -- appearance set-up (sharedDisplay); one that has not was never drawn by the old Modern code.
+  -- Conditions that set Inverse on such an icon are turned over with it.
+  -- (1.4.7-dev.7, Astra's dev.5/dev.6 review, Inverse 1) Which icons: those the old Modern drawing drew,
+  -- not every icon that merely has a Modern trigger. That drawing was chosen as
+  -- Display.GetSavedTrigger chooses (BlizzardAuraDisplay.lua): never with manual progress; with a
+  -- progress source or an active-trigger setting that names a trigger, only when that trigger is the
+  -- Modern one. An icon that follows whichever trigger is active (neither names one) was drawn both
+  -- ways at different times, opposite to each other; no setting can keep both looks, so it is
+  -- converted when any of its triggers is Modern and the Modern look is the one kept.
+  if data.internalVersion < 93 and data.regionType == "icon"
+     and type(data.blizzardAuraDisplay) == "table" and data.blizzardAuraDisplay.sharedDisplay
+     and type(data.triggers) == "table" then
+    local function IsModern(entry)
+      return type(entry) == "table" and type(entry.trigger) == "table" and entry.trigger.type == "secretAura"
+    end
+    local source = type(data.progressSource) == "table" and tonumber(data.progressSource[1]) or -1
+    local modern = false
+    if source ~= 0 then
+      if source < 0 then source = tonumber(data.triggers.activeTriggerMode) or -1 end
+      if source > 0 then
+        modern = IsModern(data.triggers[source])
+      else
+        for _, entry in ipairs(data.triggers) do
+          if IsModern(entry) then modern = true break end
+        end
+      end
+    end
+    if modern then
+      data.inverse = not (data.inverse == true)
+      for _, condition in ipairs(data.conditions or {}) do
+        for _, change in ipairs(type(condition) == "table" and condition.changes or {}) do
+          if type(change) == "table" and change.property == "inverse" and type(change.value) == "boolean" then
+            change.value = not change.value
+          end
+        end
+      end
+    end
+  end
+
   -- Migrate event aliases regardless of the imported schema version.
   for _, entry in ipairs(data.triggers or {}) do
     Private.MigrateCDMCooldownTrigger(entry.trigger)

@@ -515,10 +515,20 @@ local function PartFigure(line, quests)
     return FigureText(DoneCount(required), #required)
 end
 
+-- The first of `quests` in the quest log (and not done), with its status
+-- ("Ready" or "Accepted"); nil when none is.
+local function FirstInLog(quests)
+    for _, quest in ipairs(quests) do
+        local status = ns.UI.QuestStatus(quest)
+        if ns.UI.IsInLogStatus(status) then return quest, status end
+    end
+end
+
 -- Where the player stands on the questline, for its fold's row, and its
--- colour: "Completed  ·  Human path", "After The Affray" (the questline
--- comes after another not done yet), "Not started  ·  Level 30", else the
--- next quest to do.
+-- colour: "Completed  ·  Human path", "Ready to turn in: Heart of
+-- Disruption" or "Accepted: Heart of Disruption" (a quest of it in the
+-- quest log), "After The Affray" (the questline comes after another not
+-- done yet), "Not started  ·  Level 30", else the next quest to do.
 function Questlines.StatusText(line)
     local done, total = Questlines.Progress(line)
     if done == total then
@@ -526,6 +536,9 @@ function Questlines.StatusText(line)
         local path = taken and L["%s path"]:format((BranchLabel(line, taken)))
         return Theme:JoinDots(L["Completed"], path), Theme.color.complete
     end
+    local inLog, status = FirstInLog(CountedQuests(line))
+    if status == "Ready" then return L["Ready to turn in: %s"]:format(inLog.name), Theme.color.complete end
+    if status == "Accepted" then return L["Accepted: %s"]:format(inLog.name), Theme.color.accepted end
     local after = line.fold.after and line.findQuest(line.fold.after)
     if after and not IsDone(after) then return L["After %s"]:format(after.name), Theme.color.faint end
     if done == 0 then
@@ -937,12 +950,11 @@ local function NewLabel(page)
     return label
 end
 
--- A card's tag at its top right ("Optional", "Step 3 of 4"): a word in
--- `small` in a small rounded outline.
+-- A card's tag ("Optional", "Step 3 of 4", "Accepted"): a word in `small`
+-- in a small rounded outline. NewCard places it.
 local function NewTag(card)
     local tag = CreateFrame("Frame", nil, card)
     tag:SetHeight(TAG.HEIGHT)
-    tag:SetPoint("TOPRIGHT", -CARD_PAD + 2, -CARD_PAD + 2)
     Theme:Rounded(tag, CLEAR, Theme.color.pillEdge)
     tag.text = Theme:Text(tag, Theme.font.small)
     tag.text:SetPoint("CENTER")
@@ -951,8 +963,9 @@ end
 
 -- A quest's card: its name (a tick before it once done), its giver in the
 -- link colour and its giver's zone (CardZoneText); its outline, fill and
--- tag say what kind of step it is (PaintCard, SetCardTag). A click opens
--- the quest's page.
+-- tag at its top right say what kind of step it is (PaintCard, SetCardTag),
+-- the status tag at its bottom right, on the zone line, whether it is in
+-- the quest log (SetStatusTag). A click opens the quest's page.
 local function NewCard(page)
     local card = CreateFrame("Button", nil, page.canvas)
     Theme:Rounded(card, Theme.color.shutFill, Theme.color.shutEdge)
@@ -960,6 +973,7 @@ local function NewCard(page)
     card.glow = Theme:Glow(card, Theme.color.goal, GOAL.GLOW)
     card.dashes = Theme:DashedOutline(card, Theme.color.pillEdge, BOX.CORNER)
     card.tag = NewTag(card)
+    card.tag:SetPoint("TOPRIGHT", -CARD_PAD + 2, -CARD_PAD + 2)
     local above
     for _, field in ipairs({ "title", "giver", "zone" }) do
         local text = Theme:Text(card, field == "title" and Theme.font.body or Theme.font.small)
@@ -973,6 +987,10 @@ local function NewCard(page)
         text:SetWordWrap(false)
         card[field], above = text, text
     end
+    -- Its top just under the giver's line, so it is centred on the zone
+    -- line on a card of any height, its right edge under the top tag's.
+    card.statusTag = NewTag(card)
+    card.statusTag:SetPoint("TOPRIGHT", card.giver, "BOTTOMRIGHT", 2, 0)
     card:SetScript("OnClick", function(self) page.onOpenQuest(self.quest) end)
     card:SetScript("OnEnter", function(self) self.bg:SetVertexColor(unpack(Theme.color.hover)) end)
     card:SetScript("OnLeave", function(self) self.bg:SetVertexColor(unpack(self.fill)) end)
@@ -985,12 +1003,13 @@ local function NewPill(page)
     return pill
 end
 
-local STATUS_EDGE = { Completed = "complete", Accepted = "accepted" }
+local STATUS_EDGE = { Completed = "complete", Ready = "complete", Accepted = "accepted" }
 
 -- A card's outline and fill. The goal: a purple outline, tint and soft
 -- glow. An optional quest: a dashed outline, gold until done (green once
--- done, yellow while in the quest log), at full strength, so fading is
--- left to steps not taken. Any other: the solid outline in those colours.
+-- done or ready to turn in, yellow while in the quest log), at full
+-- strength, so fading is left to steps not taken. Any other: the solid
+-- outline in those colours.
 local function PaintCard(card, status, isOptional, isGoal)
     local colors = Theme.color
     local statusEdge = STATUS_EDGE[status] and colors[STATUS_EDGE[status]]
@@ -1006,6 +1025,19 @@ local function PaintCard(card, status, isOptional, isGoal)
     card.glow:SetVertexColor(colors.goal[1], colors.goal[2], colors.goal[3], GOAL.GLOW_ALPHA)
 end
 
+-- Card `card`'s tag `tag` showing `text` in `color` in an `edge` outline,
+-- or hidden without `text`; the card's line of text `line` beside it stops
+-- TAG.PAD short of it, else runs to the card's padding.
+local function FillTag(card, tag, line, text, color, edge)
+    tag:SetShown(text ~= nil)
+    if not text then return line:SetPoint("RIGHT", card, "RIGHT", -CARD_PAD, 0) end
+    tag.text:SetText(text)
+    Theme:SetTextColor(tag.text, color)
+    tag.border:SetVertexColor(unpack(edge))
+    tag:SetWidth(math.ceil(tag.text:GetStringWidth()) + TAG.PAD * 2)
+    line:SetPoint("RIGHT", tag, "LEFT", -TAG.PAD, 0)
+end
+
 -- The tag on card `card`: "Step 3 of 4" in the goal's purple on the goal
 -- (`number`: its step), "Optional" in gold on an optional quest, else none.
 -- The card's name stops short of it.
@@ -1017,14 +1049,17 @@ local function SetCardTag(page, card, number, isOptional, isGoal)
     elseif isOptional then
         text, edge, color = L["Optional"], Theme.color.pillEdge, Theme.color.heading
     end
-    local tag = card.tag
-    tag:SetShown(text ~= nil)
-    if not text then return card.title:SetPoint("RIGHT", card, "RIGHT", -CARD_PAD, 0) end
-    tag.text:SetText(text)
-    Theme:SetTextColor(tag.text, color)
-    tag.border:SetVertexColor(unpack(edge))
-    tag:SetWidth(math.ceil(tag.text:GetStringWidth()) + TAG.PAD * 2)
-    card.title:SetPoint("RIGHT", tag, "LEFT", -TAG.PAD, 0)
+    FillTag(card, card.tag, card.title, text, color, edge)
+end
+
+-- The status tag on card `card`, its words and outline in the status's
+-- colour (`color`, from QuestStatus): "Accepted" (yellow) or "Ready to turn
+-- in" (green) while its quest is in the quest log, and "Completed" (green)
+-- on the goal once done, as its outline stays purple. Else none. The zone
+-- line stops short of it.
+local function SetStatusTag(card, status, color, isGoal)
+    local isShown = ns.UI.IsInLogStatus(status) or (isGoal and status == "Completed")
+    FillTag(card, card.statusTag, card.zone, isShown and ns.UI.QuestStatusText[status] or nil, color, color)
 end
 
 -- "or 2 others" for a version step's card (`quest`, the version shown), else nil.
@@ -1035,18 +1070,15 @@ local function OtherVersionsText(quest)
 end
 
 -- A card's last line: its giver's zone ("Lordamere Lake, then inside City of
--- Dalaran" on the goal), "or 2 others" for a version step's, "Accepted"
--- while it is in the quest log and "Not needed" (`isNotNeeded`) once
--- another choice of its step is done.
-local function CardZoneText(page, quest, status, isGoal, isNotNeeded)
+-- Dalaran" on the goal), "or 2 others" for a version step's and "Not
+-- needed" (`isNotNeeded`) once another choice of its step is done.
+local function CardZoneText(page, quest, isGoal, isNotNeeded)
     local zone = GiverZone(quest)
     if isGoal then
         local dungeon = page.fold.instance.name
         zone = zone and L["%s, then inside %s"]:format(zone, dungeon) or L["Inside %s"]:format(dungeon)
     end
-    local accepted = status == "Accepted"
-        and Theme:ColorCode(Theme.color.accepted) .. ns.UI.QuestStatusText.Accepted .. "|r" or nil
-    return Theme:JoinDots(zone, OtherVersionsText(quest), accepted, isNotNeeded and L["Not needed"] or nil)
+    return Theme:JoinDots(zone, OtherVersionsText(quest), isNotNeeded and L["Not needed"] or nil)
 end
 
 -- Quest `quest`'s card at `x`, `y`, `width` wide: dimmed to DIM_ALPHA when
@@ -1055,7 +1087,7 @@ end
 -- Returns the card and its height.
 local function DrawCard(page, quest, x, y, width, isDimmed, isNotNeeded)
     local card = Take(page, "cards", NewCard)
-    local status = ns.UI.QuestStatus(quest)
+    local status, statusColor = ns.UI.QuestStatus(quest)
     local isOptional = page.isOptional[quest.id] == true
     local number = page.numbering.ofQuest[quest]
     local isGoal = page.isHere[quest.id] == true and number ~= nil
@@ -1071,9 +1103,10 @@ local function DrawCard(page, quest, x, y, width, isDimmed, isNotNeeded)
     Theme:SetTextColor(card.title, isGoal and Theme.color.quest or Theme.color.text)
     card.giver:SetText(quest.giver or "")
     Theme:SetTextColor(card.giver, Theme.color.link)
-    card.zone:SetText(CardZoneText(page, quest, status, isGoal, isNotNeeded))
+    card.zone:SetText(CardZoneText(page, quest, isGoal, isNotNeeded))
     Theme:SetTextColor(card.zone, Theme.color.muted)
     SetCardTag(page, card, number, isOptional, isGoal)
+    SetStatusTag(card, status, statusColor, isGoal)
     return card, height
 end
 

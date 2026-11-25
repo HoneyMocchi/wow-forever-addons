@@ -350,15 +350,15 @@ ns.Data:RegisterObserved({
         [12891] = { hit = { 559, 559, 5 }, tick = { 42, 85, 18 } }, -- Acid Breath
     },
     [9025] = { -- Lord Roccor
-        [13729] = { hit = { 169, 169, 1 }, tick = { 43, 43, 1 } }, -- Flame Shock
+        [13729] = { hit = { 169, 169, 2 }, tick = { 43, 43, 5 } }, -- Flame Shock
         [13728] = { hit = { 395, 395, 1 } }, -- Earth Shock
     },
     [9018] = { -- High Interrogator Gerstahn
         [14032] = { tick = { 119, 119, 18 } }, -- Shadow Word: Pain
     },
     [9029] = { -- Eviscerator
-        [14331] = { tick = { 112, 224, 7 } }, -- Vicious Rend
-        [15245] = { hit = { 574, 637, 6 } }, -- Shadow Bolt Volley
+        [14331] = { tick = { 112, 224, 15 } }, -- Vicious Rend
+        [15245] = { hit = { 503, 637, 9 } }, -- Shadow Bolt Volley
     },
     [9031] = { -- Anub'shiah
         [15472] = { hit = { 1098, 1217, 3 } }, -- Shadow Bolt
@@ -371,79 +371,103 @@ ns.Data:RegisterObserved({
         [13895] = { hit = { 1491, 1558, 3 } }, -- Summon Spawn of Bael'Gar
     },
     [9017] = { -- Lord Incendius
-        [13900] = { hit = { 541, 659, 5 } }, -- Fiery Burst
-        [14099] = { hit = { 717, 861, 3 } }, -- Mighty Blow
-        [13899] = { hit = { 364, 364, 1 }, tick = { 187, 212, 7 } }, -- Fire Storm
+        [13900] = { hit = { 535, 673, 9 } }, -- Fiery Burst
+        [14099] = { hit = { 703, 861, 4 } }, -- Mighty Blow
+        [13899] = { hit = { 330, 364, 3 }, tick = { 185, 214, 17 } }, -- Fire Storm
     },
     [9056] = { -- Fineous Darkvire
-        [13953] = { hit = { 740, 740, 1 } }, -- Holy Strike
-        [11978] = { hit = { 56, 56, 1 } }, -- Kick
+        [13953] = { hit = { 740, 886, 2 } }, -- Holy Strike
+        [11978] = { hit = { 56, 56, 2 } }, -- Kick
+        [15493] = { heal = { 1890, 1890, 1 } }, -- Holy Light
     },
     [9041] = { -- Warder Stilgiss
         [12674] = { hit = { 383, 437, 3 } }, -- Frost Nova
         [12675] = { hit = { 662, 662, 1 } }, -- Frostbolt
     },
+    [9024] = { -- Pyromancer Loregrain
+        [15095] = { hit = { 478, 518, 3 } }, -- Molten Blast
+        [15616] = { hit = { 346, 371, 2 }, tick = { 86, 88, 8 } }, -- Flame Shock
+    },
     [8983] = { -- Golem Lord Argelmach
-        [15507] = { hit = { 232, 232, 27 } }, -- Lightning Shield
-        [15305] = { hit = { 402, 1261, 19 } }, -- Chain Lightning
-        [15605] = { hit = { 1100, 1168, 12 } }, -- Shock
+        [15507] = { hit = { 232, 232, 33 } }, -- Lightning Shield
+        [15305] = { hit = { 402, 1278, 24 } }, -- Chain Lightning
+        [15605] = { hit = { 1100, 1168, 14 } }, -- Shock
     },
     [9035] = { -- Anger'rel
-        [15580] = { hit = { 907, 907, 1 } }, -- Strike
+        [15580] = { hit = { 809, 907, 2 } }, -- Strike
+    },
+    [9038] = { -- Seeth'rel
+        [12674] = { hit = { 404, 437, 3 } }, -- Frost Nova
     },
     [9040] = { -- Dope'rel
-        [15583] = { tick = { 98, 98, 5 } }, -- Rupture
-        [15581] = { hit = { 585, 688, 3 } }, -- Sinister Strike
+        [15583] = { tick = { 98, 98, 10 } }, -- Rupture
+        [15581] = { hit = { 585, 688, 5 } }, -- Sinister Strike
     },
     [9037] = { -- Gloom'rel
+        [9080] = { hit = { 902, 902, 1 } }, -- Hamstring
         [15584] = { hit = { 899, 899, 1 } }, -- Cleave
         [13737] = { hit = { 879, 879, 1 } }, -- Mortal Strike
+    },
+    [9034] = { -- Hate'rel
+        [15232] = { hit = { 795, 968, 2 } }, -- Shadow Bolt
+    },
+    [9039] = { -- Doom'rel
+        [12742] = { hit = { 384, 384, 1 } }, -- Immolate
     },
     [9537] = { -- Hurley Blackbreath
         [9573] = { hit = { 559, 559, 2 } }, -- Flame Breath
     },
+    [9543] = { -- Ribbly Screwspigot
+        [12540] = { hit = { 20, 20, 1 } }, -- Gouge
+        [9080] = { hit = { 443, 443, 1 } }, -- Hamstring
+    },
     [9502] = { -- Phalanx
-        [15588] = { hit = { 235, 242, 5 } }, -- Thunderclap
+        [15588] = { hit = { 235, 242, 6 } }, -- Thunderclap
         [14099] = { hit = { 1094, 1172, 2 } }, -- Mighty Blow
         [15285] = { hit = { 506, 564, 2 } }, -- Fireball Volley
     },
     [9156] = { -- Ambassador Flamelash
-        [15573] = { hit = { 912, 981, 3 } }, -- Fire Blast
+        [15573] = { hit = { 912, 981, 5 } }, -- Fire Blast
     },
     [9938] = { -- Magmus
-        [15593] = { hit = { 202, 236, 7 } }, -- War Stomp
-        [15668] = { hit = { 1024, 1277, 9 } }, -- Fiery Burst
+        [15593] = { hit = { 202, 236, 8 } }, -- War Stomp
+        [15668] = { hit = { 1021, 1277, 10 } }, -- Fiery Burst
     },
     [9019] = { -- Emperor Dagran Thaurissan
         [17492] = { hit = { 997, 997, 1 } }, -- Hand of Thaurissan
     },
     [8929] = { -- Princess Moira Bronzebeard
+        [15587] = { hit = { 596, 629, 5 } }, -- Mind Blast
         [15654] = { tick = { 154, 154, 4 } }, -- Shadow Word: Pain
+        [15586] = { heal = { 3751, 3894, 2 } }, -- Heal
     },
     [9196] = { -- Highlord Omokk
-        [10101] = { hit = { 835, 1191, 7 } }, -- Knock Away
+        [10101] = { hit = { 778, 1431, 17 } }, -- Knock Away
     },
     [9237] = { -- War Master Voone
         [10966] = { hit = { 800, 957, 2 } }, -- Uppercut
-        [15754] = { hit = { 1110, 1275, 4 } }, -- Cleave
+        [15754] = { hit = { 1110, 1385, 7 } }, -- Cleave
         [15618] = { hit = { 191, 191, 1 } }, -- Snap Kick
-        [16075] = { hit = { 1750, 1750, 8 } }, -- Throw Axe
+        [16075] = { hit = { 1750, 1750, 16 } }, -- Throw Axe
     },
     [10584] = { -- Urok Doomhowl
-        [16509] = { tick = { 99, 99, 49 } }, -- Rend
-        [15580] = { hit = { 1005, 1512, 8 } }, -- Strike
+        [16509] = { tick = { 99, 99, 79 } }, -- Rend
+        [15580] = { hit = { 1002, 1512, 17 } }, -- Strike
     },
     [9736] = { -- Quartermaster Zigris
-        [15504] = { heal = { 2492, 2784, 4 } }, -- Drink Healing Potion
-        [16497] = { hit = { 170, 206, 8 } }, -- Stun Bomb
-        [15609] = { hit = { 580, 664, 23 } }, -- Hooked Net
-        [16496] = { hit = { 943, 1164, 3 } }, -- Shoot
+        [15504] = { heal = { 2492, 2817, 8 } }, -- Drink Healing Potion
+        [16497] = { hit = { 170, 206, 20 } }, -- Stun Bomb
+        [15609] = { hit = { 578, 666, 40 } }, -- Hooked Net
+        [16496] = { hit = { 914, 1188, 12 } }, -- Shoot
     },
     [10220] = { -- Halycon
-        [13738] = { tick = { 96, 96, 41 } }, -- Rend
+        [13738] = { tick = { 96, 96, 61 } }, -- Rend
+    },
+    [10268] = { -- Gizrul the Slavener
+        [16128] = { tick = { 165, 165, 3 } }, -- Infected Bite
     },
     [9568] = { -- Overlord Wyrmthalak
-        [20691] = { hit = { 799, 1249, 26 } }, -- Cleave
+        [20691] = { hit = { 799, 1253, 40 } }, -- Cleave
     },
     [9217] = { -- Spirestone Lord Magus
         [15230] = { hit = { 610, 756, 6 } }, -- Arcane Bolt
@@ -453,6 +477,46 @@ ns.Data:RegisterObserved({
         [16046] = { hit = { 670, 746, 3 } }, -- Blast Wave
         [15548] = { hit = { 93, 96, 4 } }, -- Thunderclap
         [15580] = { hit = { 971, 971, 1 } }, -- Strike
+    },
+    [9816] = { -- Pyroguard Emberseer
+        [13377] = { hit = { 72, 73, 263 } }, -- Fire Shield
+        [23462] = { hit = { 1877, 2166, 47 } }, -- Fire Nova
+        [23341] = { hit = { 118, 122, 11 } }, -- Flame Buffet
+    },
+    [10264] = { -- Solakar Flamewreath
+        [16727] = { hit = { 233, 291, 30 } }, -- War Stomp
+    },
+    [10509] = { -- Jed Runewatcher
+        [15749] = { hit = { 316, 327, 3 } }, -- Shield Charge
+        [11972] = { hit = { 62, 62, 3 } }, -- Shield Bash
+        [14516] = { hit = { 947, 947, 1 } }, -- Strike
+    },
+    [10899] = { -- Goraluk Anvilcrack
+        [15580] = { hit = { 940, 1295, 6 } }, -- Strike
+    },
+    [10429] = { -- Warchief Rend Blackhand
+        [13736] = { hit = { 1959, 2679, 62 } }, -- Whirlwind
+        [15708] = { hit = { 3958, 5974, 10 } }, -- Mortal Strike
+        [15754] = { hit = { 1531, 2164, 25 } }, -- Cleave
+    },
+    [10339] = { -- Gyth
+        [16359] = { hit = { 793, 793, 29 }, tick = { 83, 166, 157 } }, -- Corrosive Acid Breath
+        [16350] = { hit = { 740, 854, 18 }, tick = { 140, 161, 27 } }, -- Freeze
+        [16390] = { hit = { 1260, 1260, 19 } }, -- Flame Breath
+        [10101] = { hit = { 876, 1094, 10 } }, -- Knock Away
+    },
+    [10430] = { -- The Beast
+        [15570] = { hit = { 951, 951, 51 }, tick = { 231, 231, 158 } }, -- Immolate
+        [16785] = { hit = { 1537, 1769, 119 } }, -- Flamebreak
+        [16636] = { hit = { 429, 489, 64 } }, -- Berserker Charge
+        [16788] = { hit = { 1280, 1687, 46 } }, -- Fireball
+        [16144] = { hit = { 2378, 2378, 57 } }, -- Fire Blast
+    },
+    [10363] = { -- General Drakkisath
+        [16805] = { tick = { 300, 300, 390 } }, -- Conflagration
+        [15588] = { hit = { 257, 265, 172 } }, -- Thunderclap
+        [16419] = { hit = { 2275, 2612, 40 }, tick = { 476, 476, 84 } }, -- Flamestrike
+        [15754] = { hit = { 1874, 2901, 84 } }, -- Cleave
     },
     [14354] = { -- Pusillin
         [22424] = { hit = { 1008, 1119, 4 } }, -- Blast Wave
@@ -476,43 +540,93 @@ ns.Data:RegisterObserved({
         [22689] = { tick = { 200, 300, 10 } }, -- Mangle
         [10101] = { hit = { 538, 538, 1 } }, -- Knock Away
     },
+    [11622] = { -- Rattlegore
+        [10101] = { hit = { 689, 1052, 6 } }, -- Knock Away
+        [18368] = { hit = { 987, 1127, 5 } }, -- Strike
+        [16727] = { hit = { 199, 225, 7 } }, -- War Stomp
+    },
+    [10508] = { -- Ras Frostwhisper
+        [18099] = { hit = { 621, 704, 3 } }, -- Chill Nova
+    },
+    [10505] = { -- Instructor Malicia
+        [17831] = { tick = { 2135, 2135, 6 } }, -- Call of the Grave
+        [17843] = { heal = { 1789, 1789, 1 } }, -- Flash Heal
+    },
+    [11261] = { -- Doctor Theolen Krastinov
+        [16509] = { tick = { 108, 108, 10 } }, -- Rend
+    },
+    [10507] = { -- The Ravenian
+        [18670] = { hit = { 921, 1074, 2 } }, -- Knock Away
+        [15550] = { hit = { 717, 1123, 16 } }, -- Trample
+        [15584] = { hit = { 1111, 1235, 7 } }, -- Cleave
+    },
+    [10504] = { -- Lord Alexei Barov
+        [17467] = { hit = { 150, 150, 147 } }, -- Unholy Aura
+        [15506] = { hit = { 611, 611, 3 }, tick = { 168, 168, 11 } }, -- Immolate
+    },
+    [10502] = { -- Lady Illucia Barov
+        [17289] = { hit = { 1391, 1475, 2 } }, -- Shadow Shock
+        [18671] = { tick = { 204, 204, 80 } }, -- Curse of Agony
+    },
+    [1853] = { -- Darkmaster Gandling
+        [15790] = { hit = { 483, 483, 44 } }, -- Arcane Missiles
+    },
     [10516] = { -- The Unforgiven
-        [14907] = { hit = { 111, 111, 1 } }, -- Frost Nova
+        [14907] = { hit = { 111, 126, 17 } }, -- Frost Nova
     },
     [10808] = { -- Timmy the Cruel
-        [17470] = { hit = { 1006, 1016, 2 }, heal = { 904, 914, 2 } }, -- Ravenous Claw
+        [17470] = { hit = { 1000, 1038, 5 }, heal = { 899, 933, 5 } }, -- Ravenous Claw
     },
     [11032] = { -- Malor the Zealous
-        [12734] = { hit = { 411, 517, 12 } }, -- Ground Smash
-        [17233] = { heal = { 30555, 30555, 1 } }, -- Lay on Hands
+        [12734] = { hit = { 411, 538, 31 } }, -- Ground Smash
+        [17233] = { heal = { 30555, 30555, 2 } }, -- Lay on Hands
     },
     [10997] = { -- Cannon Master Willey
-        [15615] = { hit = { 45, 45, 1 } }, -- Pummel
-        [10101] = { hit = { 929, 929, 1 } }, -- Knock Away
+        [15615] = { hit = { 45, 45, 4 } }, -- Pummel
+        [10101] = { hit = { 834, 1140, 8 } }, -- Knock Away
+        [16496] = { hit = { 993, 993, 1 } }, -- Shoot
     },
     [10811] = { -- Archivist Galford
-        [17366] = { hit = { 846, 846, 1 } }, -- Fire Nova
+        [17366] = { hit = { 840, 961, 31 } }, -- Fire Nova
+        [17293] = { tick = { 200, 200, 7 } }, -- Burning Winds
+        [17274] = { hit = { 2778, 2778, 1 }, tick = { 230, 230, 4 } }, -- Pyroblast
+    },
+    [16101] = { -- Jarien
+        [15284] = { hit = { 806, 846, 4 } }, -- Cleave
+        [22575] = { hit = { 908, 924, 3 } }, -- Shadow Shock
+        [16856] = { hit = { 1261, 1261, 1 } }, -- Mortal Strike
+    },
+    [16102] = { -- Sothos
+        [27646] = { hit = { 600, 1200, 38 } }, -- Shadow Bolt Volley
+        [15749] = { hit = { 250, 558, 6 } }, -- Shield Charge
+        [15655] = { hit = { 160, 320, 5 } }, -- Shield Slam
+    },
+    [10558] = { -- Hearthsinger Forresten
+        [16100] = { hit = { 701, 752, 3 } }, -- Shoot
     },
     [10435] = { -- Magistrate Barthilas
-        [16793] = { hit = { 250, 250, 29 }, heal = { 156, 227, 29 } }, -- Draining Blow
-        [10887] = { hit = { 903, 1379, 11 } }, -- Crowd Pummel
-        [14099] = { hit = { 1209, 1543, 6 } }, -- Mighty Blow
+        [16793] = { hit = { 250, 250, 58 }, heal = { 156, 249, 58 } }, -- Draining Blow
+        [10887] = { hit = { 903, 1497, 23 } }, -- Crowd Pummel
+        [14099] = { hit = { 1209, 1543, 12 } }, -- Mighty Blow
     },
     [10436] = { -- Baroness Anastari
-        [16565] = { hit = { 888, 1184, 48 } }, -- Banshee Wail
+        [16565] = { hit = { 888, 1190, 136 } }, -- Banshee Wail
     },
     [10438] = { -- Maleki the Pallid
-        [17503] = { hit = { 750, 967, 10 } }, -- Frostbolt
-        [17238] = { tick = { 681, 681, 24 }, heal = { 351, 681, 24 } }, -- Drain Life
+        [17503] = { hit = { 736, 971, 21 } }, -- Frostbolt
+        [17238] = { tick = { 681, 681, 35 }, heal = { 351, 681, 35 } }, -- Drain Life
     },
     [10439] = { -- Ramstein the Gorger
-        [5568] = { hit = { 1186, 1948, 23 } }, -- Trample
-        [17307] = { hit = { 1635, 1976, 3 } }, -- Knockout
+        [5568] = { hit = { 1186, 1962, 44 } }, -- Trample
+        [17307] = { hit = { 1635, 2006, 6 } }, -- Knockout
     },
     [10440] = { -- Baron Rivendare
-        [17467] = { hit = { 150, 150, 462 } }, -- Unholy Aura
-        [15708] = { hit = { 2734, 3664, 4 } }, -- Mortal Strike
-        [15754] = { hit = { 951, 1427, 9 } }, -- Cleave
-        [17393] = { hit = { 1272, 1690, 11 } }, -- Shadow Bolt
+        [17467] = { hit = { 150, 150, 1149 } }, -- Unholy Aura
+        [15708] = { hit = { 2257, 3664, 16 } }, -- Mortal Strike
+        [15754] = { hit = { 951, 1478, 38 } }, -- Cleave
+        [17393] = { hit = { 1272, 1692, 21 } }, -- Shadow Bolt
+    },
+    [10809] = { -- Stonespine
+        [14331] = { tick = { 130, 390, 10 } }, -- Vicious Rend
     },
 })

@@ -11,30 +11,45 @@ ns.Data:Register({
     zone = "Stranglethorn Vale",
     levelRange = { 35, 40 },
     encounters = {
-        { id = "ZULALAI", name = "Zul'Alai", display = 144475, npc = 270882, loot = {
+        { id = "ZULALAI", name = "Zul'Alai", display = 144475, npc = 258905, loot = {
             { itemID = 274600 },                    -- Berserker Shackles
             { itemID = 274598 },                    -- Bloodslash Axe
             { itemID = 271718 },                    -- Linken's Boots of Iron
             { itemID = 274599 },                    -- Oathbound Bracers
         } },
-        { id = "VARTAKA", name = "Var'Taka", display = 144487, npc = 270883, loot = {
+        { id = "VARTAKA", name = "Var'Taka", display = 144487, npc = 258924, loot = {
             { itemID = 274602 },                    -- Brinebelly Leggings
             { itemID = 274601 },                    -- Harpoon of Command
             { itemID = 271718 },                    -- Linken's Boots of Iron
             { itemID = 274613 },                    -- Priestess Cloak
+            { itemID = 286649 },                    -- Tidebound Dagger
         } },
-        { id = "CAPTAIN_DREADRISE", name = "Captain Dreadrise", display = 142144, npc = 270884, loot = {
+        { id = "CAPTAIN_DREADRISE", name = "Captain Dreadrise", display = 142144, npc = 260042, loot = {
             { itemID = 274605 },                    -- Briny Sash
             { itemID = 274603 },                    -- Dreadfrost Saber
             { itemID = 274604 },                    -- Frosty Blunderbuss
             { itemID = 271718 },                    -- Linken's Boots of Iron
             { itemID = 286650 },                    -- Pyromancer's Baton
         } },
-        { id = "DEATHLESS_MARROW", name = "Deathless Marrow", display = 142245, npc = 270885, loot = {
+        { id = "DEATHLESS_MARROW", name = "Deathless Marrow", display = 142245, npc = 260202, loot = {
+            { itemID = 276894, dropRate = 1 },      -- Ancient Gurubashi Idol
+            { itemID = 274606 },                    -- Bloodspine Staff
+            { itemID = 274614 },                    -- Knucklebone Ring
+            { itemID = 274607 },                    -- Viscera Spaulders
         } },
-        { id = "GILL", name = "Gill", display = 144023, npc = 270888, loot = {
+        { id = "GILL", name = "Gill", display = 144023, npc = 264177, loot = {
+            { itemID = 286646 },                    -- Gill's Gills
+            { itemID = 286649 },                    -- Tidebound Dagger
         } },
-        { id = "MINLOTH_THE_SERPENT", name = "Min'Loth the Serpent", display = 142286, npc = 270886, loot = {
+        { id = "MINLOTH_THE_SERPENT", name = "Min'Loth the Serpent", display = 142286, npc = 260243, loot = {
+            { itemID = 274608 },                    -- Maw of Min'loth
+            { itemID = 274610 },                    -- Ritual-Binder's Gloves
+            { itemID = 274609 },                    -- Serpentbane Crown
+        } },
+        { id = "PRIMEVAL_ELEMENTAL", name = "Primeval Elemental", display = 143898, npc = 263886, loot = {
+            { itemID = 274615 },                    -- Heart of the Primeval
+            { itemID = 274611 },                    -- Robe of the Drowned
+            { itemID = 274612 },                    -- Waterlogged Burial Shroud
         } },
         { id = "TRASH", name = "Trash Drops", note = "Zone-wide", loot = {
             { itemID = 287003 },                    -- Corroded Handguards

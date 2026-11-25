@@ -2,17 +2,18 @@
 -- raid NeedRoll has a map for, the game's map (the M key, left to the game)
 -- shows NeedRoll's level the player is on over its own, with the window's
 -- boss pins, quest markers, entrances and locked doors. A click on a boss or
--- quest opens NeedRoll's window on it above the map. The game's map stays in
--- charge: its floor dropdown, or NeedRoll's floor chips at the top of the
--- map (which turn the game's map to a floor), picks the level shown, so the
--- layer draws no links to other levels. A right-click on the map always
--- turns NeedRoll's layer off until the map is closed and opened again, as
--- does any other map: the game's own right-click goes to the zone's map,
--- or does nothing on a map with no parent (the World map, where the game's
--- map opens in a dungeon it has no map for). A zone button in the map's
--- bottom left corner, named for the zone the dungeon's entrance is in
--- (Silverpine Forest for Shadowfang Keep), pins the entrance and takes the
--- game's map out there.
+-- quest opens NeedRoll's window on it above the map. The game's floor
+-- dropdown, or NeedRoll's floor chips at the top of the map (one per level,
+-- as the window's floor tabs), picks the level shown, so the layer draws no
+-- links to other levels. A chip turns the game's map to its floor where the
+-- game has one, else draws the level on the layer alone. A right-click on
+-- the map always turns NeedRoll's layer off until the map is closed and
+-- opened again, as does any other map: the game's own right-click goes to
+-- the zone's map, or does nothing on a map with no parent (the World map,
+-- where the game's map opens in a dungeon it has no map for). A zone button
+-- in the map's bottom right corner, named for the zone the dungeon's
+-- entrance is in (Silverpine Forest for Shadowfang Keep), pins the entrance
+-- and takes the game's map out there.
 -- Map in dungeons = Game in Settings leaves the game's map alone.
 --
 -- NeedRoll only reads the game's map here: hooks on its showing and hiding,
@@ -37,6 +38,7 @@ local openedOnMapID     -- the game's map ID as it opened: the player's map
 -- What the layer shows, in the fields the window's pane has: the instance
 -- (nil while off) and its level (levels[instance ID]).
 local layerPane = { levels = {} }
+local PaintFloorChips  -- gilds the floor chip of the level shown (with the floor chips, below)
 
 -- Right-clicks on the layer's widgets go through to the game's map, as on
 -- the game's own map pins (a right-click on a pin still goes to the zone's
@@ -52,6 +54,7 @@ local function Draw()
     local instance = layerPane.instance
     local found = ns.UI.DrawMapLevel(layer, instance, layerPane.levels[instance.id], ns.UI.ArtScale(width, height))
     layer.clip:SetShown(found)
+    PaintFloorChips()
 end
 function layerPane:Refresh() Draw() end
 
@@ -234,18 +237,24 @@ function WorldMapOverlay:Recheck()
     ShowLayer(instance, level)
 end
 
--- The floor chips: whenever the game's map shows a dungeon or raid map the
--- game splits into floors (its map group), a row of the window's floor tabs
--- (text tab chips, UI/RecipeBand.lua) on a dark strip centred at the top of
--- the map area, one chip per floor in the game's order, the shown floor
--- gold. They show with either Map in dungeons setting. A chip is named like
--- NeedRoll's level on that floor (as the window's tabs), else with the
--- game's own floor name. A click turns the game's map to that floor through
--- the game's C_Map.OpenWorldMap, as the zone links on NeedRoll's pages do,
--- never through the map's own SetMapID (that would taint it); NeedRoll's map
+-- The floor chips: a row of the window's floor tabs (text tab chips,
+-- UI/RecipeBand.lua) on a dark strip centred at the top of the map area,
+-- the shown floor gold. While NeedRoll's layer shows a dungeon or raid of
+-- more than one level, there is one chip per level of NeedRoll's, in its
+-- order and named as the window's floor tabs, so every level can be
+-- browsed, the drawings the game lacks too (Blackmaw Hold's). Else, with
+-- either Map in dungeons setting, whenever the game's map shows a dungeon
+-- or raid map the game splits into floors (its map group), one chip per
+-- floor in the game's order, named like NeedRoll's level on it, else with
+-- the game's own floor name.
+-- A chip for a floor the game has turns the game's map there through the
+-- game's C_Map.OpenWorldMap, as the zone links on NeedRoll's pages do,
+-- never through the map's own SetMapID (that would taint it), and NeedRoll's
 -- layer follows like it follows the game's floor dropdown (FollowGameMap).
 -- In combat NeedRoll never moves the game's map: the chip's tooltip says
--- why, and so does chat on a click.
+-- why, and so does chat on a click. A chip for a level the game has no
+-- floor for (or the game's map already shows) only draws that level on the
+-- layer, which is NeedRoll's own drawing and works in combat too.
 local FLOOR_BAR_TOP = 8           -- from the map area's top edge
 local FLOOR_BAR_PAD_X = 10        -- the strip's room left and right of the chips
 local FLOOR_BAR_PAD_Y = 4         -- and above and below them
@@ -254,6 +263,10 @@ local FLOOR_BAR_FILL = { 0, 0, 0, 0.6 }          -- dark enough for the chips' w
 local FLOOR_BAR_EDGE = { 1, 0.82, 0, 0.38 }      -- a faint gold outline
 
 local floorBar  -- the chips' holder on the game's map (.strip, .chips), made as the map loads
+
+-- A chip's floor: { label, mapID = the game's floor the chip turns the
+-- game's map to (nil when the game has none), level = NeedRoll's level the
+-- layer shows for it (nil when the layer is off) }.
 
 -- The game's floors in the group the map `mapID` belongs to, when it is a
 -- dungeon or raid map with more than one; else nil.
@@ -266,8 +279,8 @@ local function DungeonFloors(mapID)
     return floors
 end
 
--- A floor's chip label: NeedRoll's name for its level, else the game's
--- name for the floor, else "Level N".
+-- A game floor's chip label: NeedRoll's name for its level, else the
+-- game's name for the floor, else "Level N".
 local function FloorLabel(floor, index)
     local instance, level = ns.UI.MapFloor(floor.mapID, layerPane.instance)
     if instance then return ns.UI.LevelName(instance, level) end
@@ -275,16 +288,80 @@ local function FloorLabel(floor, index)
     return L["Level %d"]:format(index)
 end
 
--- Turns the game's map to the floor `mapID`; in combat, says why it can't.
-local function ShowFloor(mapID)
-    if mapID == WorldMapFrame:GetMapID() then return end
-    if ns.UI.MapLinksInCombat() then return ns.UI.SayNoFloorChangeInCombat() end
-    ns.UI:WithGameMap(C_Map.OpenWorldMap, mapID)
+-- The chips' floors for the game's floors `gameFloors`, in the game's order.
+local function GameFloorChips(gameFloors)
+    local floors = {}
+    for i, floor in ipairs(gameFloors) do
+        floors[i] = { label = FloorLabel(floor, i), mapID = floor.mapID }
+    end
+    return floors
 end
 
--- Out of combat a chip needs no words; in combat it says why it can't.
+-- The chips' floors for each level of `instance`'s layout map, each with
+-- the game's floor that shows it among `gameFloors` (nil for none).
+local function LevelChips(instance, gameFloors)
+    local gameFloorOfLevel = {}
+    for _, floor in ipairs(gameFloors or {}) do
+        local floorInstance, level = ns.UI.MapFloor(floor.mapID, instance)
+        if floorInstance == instance then
+            gameFloorOfLevel[level] = gameFloorOfLevel[level] or floor.mapID
+        end
+    end
+    local floors = {}
+    for level = 1, #ns.Data:Map(instance.id) do
+        floors[level] = { label = ns.UI.LevelName(instance, level), mapID = gameFloorOfLevel[level], level = level }
+    end
+    return floors
+end
+
+-- The chips' floors while the game's map shows `mapID`: NeedRoll's levels
+-- while the layer shows an instance with more than one, else the game's
+-- floors; nil when there are none to pick from.
+local function ChipFloors(mapID)
+    local gameFloors = DungeonFloors(mapID)
+    local instance = layerPane.instance
+    if instance and #ns.Data:Map(instance.id) > 1 then return LevelChips(instance, gameFloors) end
+    return gameFloors and GameFloorChips(gameFloors)
+end
+
+-- Whether a chip's floor `floor` turns the game's map: the game has the
+-- floor and its map shows another.
+local function MovesGameMap(floor)
+    return floor.mapID ~= nil and floor.mapID ~= WorldMapFrame:GetMapID()
+end
+
+-- Whether `floor` is the one shown: the layer's level while it shows one,
+-- else the game's floor.
+local function IsShownFloor(floor)
+    if floor.level then return floor.level == layerPane.levels[layerPane.instance.id] end
+    return floor.mapID == WorldMapFrame:GetMapID()
+end
+
+-- Gilds the chip of the floor shown, the moment the layer draws a level
+-- (whichever of the two follows the game's map first in a frame).
+function PaintFloorChips()
+    if not (floorBar and floorBar.strip:IsShown()) then return end
+    for _, chip in ipairs(floorBar.chips) do
+        if chip:IsShown() then chip:Paint(IsShownFloor(chip.floor)) end
+    end
+end
+
+-- Shows a chip's floor: the game's map turned to it (in combat, says why
+-- it can't), or the layer drawn on its level.
+local function ShowFloor(floor)
+    if MovesGameMap(floor) then
+        if ns.UI.MapLinksInCombat() then return ns.UI.SayNoFloorChangeInCombat() end
+        return ns.UI:WithGameMap(C_Map.OpenWorldMap, floor.mapID)
+    end
+    if not (floor.level and layerPane.instance) then return end
+    layerPane.levels[layerPane.instance.id] = floor.level
+    Draw()
+end
+
+-- A chip needs no words, except in combat on a chip that would move the
+-- game's map: why it can't.
 local function ShowFloorChipTooltip(chip)
-    if not ns.UI.MapLinksInCombat() then return end
+    if not (ns.UI.MapLinksInCombat() and MovesGameMap(chip.floor)) then return end
     local r, g, b = unpack(Theme.tip.text)
     GameTooltip:SetOwner(chip, "ANCHOR_BOTTOM")
     GameTooltip:SetText(ns.UI.NO_FLOOR_CHANGE_IN_COMBAT, r, g, b, true)
@@ -296,20 +373,20 @@ local function NewFloorChip(strip)
     PassRightClicks(chip)
     chip:HookScript("OnEnter", ShowFloorChipTooltip)
     chip:HookScript("OnLeave", function() GameTooltip:Hide() end)
-    chip:SetScript("OnClick", function(self) ShowFloor(self.mapID) end)
+    chip:SetScript("OnClick", function(self) ShowFloor(self.floor) end)
     return chip
 end
 
 -- Lays the chips for `floors` out on the strip, on balanced, centred lines
 -- as wide as the map area leaves between its corners, and sizes the strip
 -- around them.
-local function DrawFloorChips(floors, shownMapID)
+local function DrawFloorChips(floors)
     local strip, chips, chipsWidth = floorBar.strip, {}, 0
     for i, floor in ipairs(floors) do
         local chip = floorBar.chips[i] or NewFloorChip(strip.chipArea)
         floorBar.chips[i] = chip
-        chip.mapID = floor.mapID
-        chip:SetLabel(Theme:Label(FloorLabel(floor, i)))
+        chip.floor = floor
+        chip:SetLabel(Theme:Label(floor.label))
         chip:Show()
         chips[i] = chip
         chipsWidth = chipsWidth + chip:GetWidth()
@@ -318,23 +395,28 @@ local function DrawFloorChips(floors, shownMapID)
     local room = WorldMapFrame.ScrollContainer:GetWidth() - FLOOR_BAR_SIDE_ROOM * 2
     local width = math.max(1, math.min(chipsWidth, room))
     ns.RecipeBand.PlaceLines(strip.chipArea, chips, width, 0)
-    for _, chip in ipairs(chips) do chip:Paint(chip.mapID == shownMapID) end
+    PaintFloorChips()
     local _, _, _, _, lastChipY = chips[#chips]:GetPoint()
     strip.chipArea:SetSize(width, -lastChipY + chips[#chips]:GetHeight())
     strip:SetSize(width + FLOOR_BAR_PAD_X * 2, strip.chipArea:GetHeight() + FLOOR_BAR_PAD_Y * 2)
 end
 
 -- While the game's map shows: the strip shows and redraws for each new map
--- (a floor picked here, in the game's dropdown, or walked to) and each new
--- width of the map area (the game's map made larger or smaller).
+-- (a floor picked here, in the game's dropdown, or walked to), each new
+-- width of the map area (the game's map made larger or smaller), and each
+-- instance the layer turns on for and level it turns to.
 local function FollowGameMapForFloors()
-    local mapID = WorldMapFrame:GetMapID()
-    local width = WorldMapFrame.ScrollContainer:GetWidth()
-    if mapID == floorBar.shownMapID and width == floorBar.shownWidth then return end
-    floorBar.shownMapID, floorBar.shownWidth = mapID, width
-    local floors = DungeonFloors(mapID)
+    local mapID, width = WorldMapFrame:GetMapID(), WorldMapFrame.ScrollContainer:GetWidth()
+    local instance = layerPane.instance
+    local level = instance and layerPane.levels[instance.id]
+    local drawn = floorBar.drawnFor
+    if drawn.mapID == mapID and drawn.width == width and drawn.instance == instance and drawn.level == level then
+        return
+    end
+    drawn.mapID, drawn.width, drawn.instance, drawn.level = mapID, width, instance, level
+    local floors = ChipFloors(mapID)
     floorBar.strip:SetShown(floors ~= nil)
-    if floors then DrawFloorChips(floors, mapID) end
+    if floors then DrawFloorChips(floors) end
 end
 
 -- The holder is a point at the top of the map area that is shown whenever
@@ -348,6 +430,7 @@ local function CreateFloorBar()
     holder:SetPoint("TOP", container, "TOP", 0, -FLOOR_BAR_TOP)
     holder:SetFrameLevel(WorldMapFrame:GetCanvas():GetFrameLevel() + ZONE_BUTTON_LEVELS_UP)
     holder.chips = {}
+    holder.drawnFor = {}  -- what the chips were last drawn for (FollowGameMapForFloors)
     local strip = CreateFrame("Frame", nil, holder)
     strip:SetPoint("TOP")
     Theme:Rounded(strip, FLOOR_BAR_FILL, FLOOR_BAR_EDGE)
@@ -362,7 +445,7 @@ end
 -- The game's map opening again draws the chips afresh, even on the floor
 -- they last showed: their names may differ now (another dungeon's levels).
 local function RedrawFloorChips()
-    floorBar.shownMapID = nil
+    floorBar.drawnFor = {}
 end
 
 -- NeedRoll's own pin on the game's map, drawn where a link that pins a spot

@@ -155,6 +155,16 @@ local function BossFolds(encounter, bosses)
     return out
 end
 
+-- An encounter's loot as the loot pane lists it: on the PvP tab under a
+-- fold per class (UI/LootGrid.lua's ClassFolds), elsewhere under a fold per
+-- boss when its bosses drop their own (BossFolds), else as it is. Built
+-- once per encounter, like BossFolds.
+local function LootFolds(instance, encounter, bosses)
+    if instance.category ~= "PVP" then return BossFolds(encounter, bosses) end
+    if encounter.folds == nil then encounter.folds = UI.ClassFolds(encounter.loot) or false end
+    return encounter.folds or encounter.loot
+end
+
 -- A dungeon boss's abilities (Data/Abilities.lua) as loot pane entries,
 -- under each boss's name when an encounter has several; nil when none are
 -- known. Raid bosses are left out for now: Forever is the most likely to
@@ -320,12 +330,14 @@ local function ForFaction(list, faction)
     return out, any
 end
 
--- A saved window position ({ point, relativePoint, x, y }) the game takes:
--- two anchor names and two plain numbers. Anything else (a secret value,
--- nil, NaN, a far-off number) is dropped, and the window opens centred again.
+-- A saved position on UIParent ({ point, relativePoint, x, y }) the game
+-- takes: two anchor names and two plain numbers. Anything else (a secret
+-- value, nil, NaN, a far-off number) is dropped, and the window opens
+-- centred again (the run tracker's line, UI/RunTracker.lua, goes back under
+-- the minimap).
 local ANCHOR_POINTS = { TOPLEFT = true, TOP = true, TOPRIGHT = true, LEFT = true, CENTER = true, RIGHT = true,
     BOTTOMLEFT = true, BOTTOM = true, BOTTOMRIGHT = true }
-local function IsUsableWindowPoint(saved)
+function UI.IsUsablePoint(saved)
     if type(saved) ~= "table" then return false end
     local point, relPoint, x, y = ns.Plain(saved[1]), ns.Plain(saved[2]), ns.Plain(saved[3]), ns.Plain(saved[4])
     if type(point) ~= "string" or type(relPoint) ~= "string" then return false end
@@ -338,7 +350,7 @@ end
 local function SavePosition(window)
     local point, _, relPoint, x, y = window:GetPoint()
     local saved = { point, relPoint, x, y }
-    ns.db.window.point = IsUsableWindowPoint(saved) and saved or nil
+    ns.db.window.point = UI.IsUsablePoint(saved) and saved or nil
 end
 
 -- Anchors the window by its top-left corner where it stands. Sizing from the
@@ -838,7 +850,7 @@ function UI:PlaceWindow()
     local height = math.min(math.max(db.height or Size.height, Size.minHeight), maxHeight)
     window:SetSize(width, height)
     local point = db.point
-    local placed = point and IsUsableWindowPoint(point)
+    local placed = point and UI.IsUsablePoint(point)
         and pcall(window.SetPoint, window, point[1], UIParent, point[2], point[3], point[4])
     if not placed then
         db.point = nil
@@ -1215,9 +1227,12 @@ local function CreateContent(body)
     UI.professionOverview:Hide()
     UI.questlinePage = UI.CreateDungeonQuestlinePage(body)
     UI.questlinePage:SetAllPoints(UI.loot)
+    -- A dungeon's or raid's run report (UI/RunPage.lua): local checkouts only, so nil in a release.
+    UI.runPage = ns.RunPage and ns.RunPage.CreateReport(body)
+    if UI.runPage then UI.runPage:SetAllPoints(UI.loot) end
     -- Every page of the content pane, in one list so that whatever hides
     -- them all (another tab, the Settings page) hides each one.
-    UI.contentPages = { UI.loot, UI.overview, UI.professionOverview, UI.questlinePage }
+    UI.contentPages = { UI.loot, UI.overview, UI.professionOverview, UI.questlinePage, UI.runPage }
     UI.content = CreateHost(body, UI.contentPages)
     UI.content:SetPoint("TOPLEFT", UI.encounters, "TOPRIGHT", gutter, 0)
     UI.content:SetPoint("BOTTOMRIGHT", -gutter, gutter)
@@ -1379,15 +1394,23 @@ end
 -- /nr hotfixes) shows in the same pane, in the Settings page's place, while
 -- `hotfixesOpen`: there Back, a right-click and Escape return to Settings.
 
+-- A host across the whole body for `page` (and the pages after it, laid over it), with Back
+-- and its right-click hint in its strip: the Settings page's, and the run history's
+-- (UI/RunHistory.lua, local checkouts only). Back calls `onBack`.
+function UI.CreateBackedHost(onBack, page, ...)
+    local host = CreateWholeBodyHost(UI.body, page, ...)
+    host:SetStrip(true)
+    host.back = Theme:Pill(host.strip, "back")
+    host.back:SetScript("OnClick", onBack)
+    host.hint = PlaceBack(host.back, host.strip)
+    return host
+end
+
 function UI:BuildSettingsPage()
     if self.settingsPage then return end
     local page = ns.Settings:CreatePage(self.body)
     local hotfixesPage = ns.HotfixPage.CreatePage(self.body)
-    local host = CreateWholeBodyHost(self.body, page, hotfixesPage)
-    host:SetStrip(true)
-    host.back = Theme:Pill(host.strip, "back")
-    host.back:SetScript("OnClick", function() UI:SettingsBack() end)
-    host.hint = PlaceBack(host.back, host.strip)
+    local host = UI.CreateBackedHost(function() UI:SettingsBack() end, page, hotfixesPage)
     -- Escape steps back first (the hotfixes to Settings, Settings to the
     -- tab), then shuts the window.
     Theme:OnEscape(host, function() UI:SettingsBack() end)
@@ -1543,7 +1566,7 @@ end
 local SKINNED = {
     "frame", "search", "searchNote", "tabBar", "tabs", "status", "instances", "factionToggle",
     "professionBar", "recipeSidebar", "encounters", "recipeFilter", "loot", "overview", "professionOverview",
-    "questlinePage", "contentPages", "content",
+    "questlinePage", "runPage", "runsPage", "runsHost", "contentPages", "content",
     "back", "backHint", "crumbs",
     "body", "link", "empty",
     "library", "libraryHost", "shopping", "shoppingHost", "wishlist", "wishlistHost", "classes", "classesHost",
@@ -1847,7 +1870,9 @@ function UI:SelectInstance(instance, encounterID)
     local scarce = ns.Data:Scarce(instance.id)
     local overview = instance.professionOverview
     self.state.encounter = overview or instance.encounters[1] or scarce[1]
-    for _, encounters in ipairs({ instance.encounters, scarce, { overview } }) do
+    -- The run section (UI/RunPage.lua, local checkouts only) is picked by its ID too, for Back.
+    local runEntry = ns.RunPage and ns.RunPage.ListEntry(instance)
+    for _, encounters in ipairs({ instance.encounters, scarce, { overview }, { runEntry } }) do
         for _, encounter in ipairs(encounters) do
             if encounter.id == encounterID then self.state.encounter = encounter end
         end
@@ -2014,6 +2039,7 @@ BACK_CLICKS:SetScript("OnEvent", function(_, _, button)
     if button ~= "RightButton" or ns.MapEdit.on then return end
     if not (UI.frame and UI.frame:IsShown()) then return end
     local focus = GetMouseFoci()[1]
+    if ns.RunPage and ns.RunPage.TakeBackClick(focus) then return end
     if UI.settingsOpen then
         -- The hotfixes page lies over the pane rather than in it, and its
         -- struck-through hotfixes take the mouse for their tooltips.
@@ -2348,18 +2374,24 @@ local function ShowLootPage(instance, encounter, highlight)
     -- Factions: a bar with the character's standing, if they have met it.
     local reputation = instance.factionID and { UI.Reputation(instance.factionID) }
     local bosses = ns.Data:Bosses(instance, encounter)
-    local entries = BossFolds(encounter, bosses)
+    local entries = LootFolds(instance, encounter, bosses)
     -- The loot filters (whose All drops names where each item comes from).
     local filtered = LOOT_FILTER_TABS[instance.category] or false
     -- Loot in sections: quest items, weapons, armor... Dungeons and raids
     -- show one row per item name; vendor lists keep every level of an item.
+    -- A faction's standing gets a section per profession, as its quartermaster
+    -- may sell dozens of each profession's recipes.
     encounter.sections = encounter.sections or UI.LootSections(entries, function()
         if UI.state.encounter == encounter then UI:Refresh() end
-    end, nil, not INSTANCE_TABS[instance.category])
+    end, nil, not INSTANCE_TABS[instance.category], instance.category == "FACTION")
     entries = filtered and UI.FilterLoot(encounter.sections) or encounter.sections
-    local itemCount = 0
+    -- Each item once, though a PvP item several classes can use sits under each.
+    local itemCount, counted = 0, {}
     for _, row in ipairs(entries) do
-        if not (row.header or row.fold) then itemCount = itemCount + 1 end
+        if not (row.header or row.fold or counted[row]) then
+            counted[row] = true
+            itemCount = itemCount + 1
+        end
     end
     -- Built once per encounter, so this is the list UI:UpdateBossTabs found.
     local abilities = AbilityEntries(instance, encounter, bosses)
@@ -2381,7 +2413,10 @@ end
 -- Searching covers every category, so it can show results over an empty tab.
 function UI:Refresh()
     local state = self.state
-    if self:ShowSettingsPage() then return end
+    -- The run history (UI/RunHistory.lua, local checkouts only) lies over a Dungeons or Raids
+    -- tab while it is open; it is asked first, so it hides while the Settings page shows.
+    local isRunHistoryShown = ns.RunPage ~= nil and ns.RunPage.ShowHistory()
+    if self:ShowSettingsPage() or isRunHistoryShown then return end
     RefreshStrip()
     local wholeBodyPane = not state.search and WHOLE_BODY[state.category]
     for _, paneKey in pairs(WHOLE_BODY) do
@@ -2397,6 +2432,7 @@ function UI:Refresh()
     local questline = not state.search and not quest and state.questline or nil
     local overview = not state.search and (quest or encounter and encounter.overview)
     local professionOverview = not state.search and encounter and encounter.professionOverview or false
+    local runReport = not state.search and encounter and encounter.runPage or false
     -- The Professions tab shows the profession bar and the filter sidebar in
     -- the instance list's place.
     local isProfessionTab = state.category == "PROFESSION"
@@ -2406,10 +2442,11 @@ function UI:Refresh()
     if isProfessionTab then self.professionBar:Paint() end
     self.encounters:SetShown(hasData)
     self.loot:SetShown((hasData or state.search ~= nil) and not overview and not professionOverview
-        and not questline)
+        and not questline and not runReport)
     self.overview:SetShown(overview and true or false)
     self.professionOverview:SetShown(professionOverview)
     self.questlinePage:SetShown(questline ~= nil)
+    if self.runPage then self.runPage:SetShown(runReport) end
     self.empty:SetShown(not hasData and not state.search)
     self:UpdateLink()
     local small = not state.search and hasData and SMALL_GRID[instance.category]
@@ -2434,6 +2471,9 @@ function UI:Refresh()
         ShowOverviewPage(instance)
     elseif professionOverview then
         self.professionOverview:ShowProfession(instance)
+        self.status:SetText("")
+    elseif runReport then
+        self.runPage:ShowRun(instance)
         self.status:SetText("")
     elseif encounter and instance.category == "PROFESSION" and encounter.scarce then
         ShowScarcePage(instance, encounter)
@@ -2644,8 +2684,16 @@ function UI:Toggle()
     if self.frame and self.frame:IsShown() then self:Hide() else self:Show() end
 end
 
-function UI:Show()
+-- Theme starts in the native skin; until NeedRoll's window is first built,
+-- this puts the style saved in Settings in place. Read only once it is
+-- needed, not at login, since ElvUI fills in its colors after login. Also
+-- for windows that can open before NeedRoll's (the level-up window).
+function UI:UseSavedSkin()
     if not self.frame then Theme:SetSkin(ns.db.skin) end
+end
+
+function UI:Show()
+    self:UseSavedSkin()
     self:Build()
     self:UpdateVersionNote()
     ns.Search:Warm()

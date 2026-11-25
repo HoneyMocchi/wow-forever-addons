@@ -3605,7 +3605,7 @@ end
 --     newest UNLOCKS_KEPT. One candidate is a strong link; the scraper
 --     narrows several down across observations.
 -- The snapshots and what each character handed in or dropped are kept in
--- NeedRollDB.questOffers["Name-Realm"] = {
+-- NeedRollDB.questOffers[ns.CharacterKey()] = {
 --     npcs = { ["n1234" or "o5678"] = { at, level, quests = { [questID] = true }, isWhole } },
 --     history = { { quest, at, done } }, forgotUntil, completedCount }
 -- The scraper reads only the quest log, so character names stay here.

@@ -148,6 +148,8 @@ end
 local function FoldKey(token)
     return "CLASS:" .. token
 end
+-- The loot pane's PvP class folds are keyed the same way (ns.UI.ClassFolds).
+TierSets.ClassFoldKey = FoldKey
 
 -- The list's rows: a fold row for each class with sets there, in the game's
 -- class order (Talents.CLASS_IDS), then the sets with no class (Zul'Gurub's

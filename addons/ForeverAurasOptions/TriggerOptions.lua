@@ -378,13 +378,15 @@ function OptionsPrivate.GetTriggerTitle(data, triggernum)
       local triggerType = trigger.type
       local name
       if triggerType == "secretAura" then
-        name = "Aura (Modern)"
+        -- (1.4.7-dev.25, Dan: "can we make it say CDM: Cooldown, CDM: Group Auras etc")
+        name = trigger.cdmGroupAuras and (L["CDM"] .. ": " .. L["Group Auras"]) or "Aura (Modern)"
       elseif triggerType == "aura2" then
         name = "Aura (Legacy)"
       elseif triggerType == "custom" then
         name = L["Custom"]
       elseif event_prototype then
         name = event_prototype.name
+        if triggerType == "cdm" then name = L["CDM"] .. ": " .. tostring(name) end
       else
         return ("Trigger %i: %s(Unknown trigger)"):format(triggernum, trigger.event or trigger.type or "???")
       end

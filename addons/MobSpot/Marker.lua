@@ -1,26 +1,24 @@
--- koKR 전용 표시 문구. 다른 언어에서는 원문을 반환하며 저장 데이터와 명령어는 바꾸지 않습니다.
 local KO = setmetatable({}, { __index = function(_, key) return key end })
 if GetLocale() == "koKR" then
-    KO["Skull"] = "해골"
-    KO["Red cross"] = "빨간 가위표"
-    KO["Star"] = "별"
-    KO["Diamond"] = "다이아몬드"
-    KO["Moon"] = "달"
-    KO["Green arrow"] = "초록 화살표"
-    KO["Map pin"] = "지도 핀"
-    KO["Quest mark"] = "퀘스트 표식"
-    KO["Rare mob"] = "희귀 NPC"
-    KO["Treasure chest"] = "보물 상자"
-    KO["Dungeon skull"] = "던전 해골"
-    KO["Spiky star"] = "뾰족한 별"
-    KO["Purple orb"] = "보라색 구슬"
     KO["Arcane ring"] = "비전 고리"
     KO["Bob up and down"] = "위아래로 움직임"
+    KO["Diamond"] = "다이아몬드"
+    KO["Dungeon skull"] = "던전 해골"
+    KO["Green arrow"] = "초록 화살표"
+    KO["Map pin"] = "지도 핀"
+    KO["Moon"] = "달"
     KO["Pulse"] = "맥동"
+    KO["Purple orb"] = "보라색 구슬"
+    KO["Quest mark"] = "퀘스트 표식"
+    KO["Rare mob"] = "희귀 NPC"
+    KO["Red cross"] = "빨간 가위표"
+    KO["Skull"] = "해골"
+    KO["Spiky star"] = "뾰족한 별"
     KO["Spin"] = "회전"
+    KO["Star"] = "별"
     KO["Stay still"] = "정지"
+    KO["Treasure chest"] = "보물 상자"
 end
-
 -- MobSpot: a marker over a listed mob's nameplate
 -- Drawn by MobSpot on the nameplate, so only the player sees it. The game's raid markers can't be
 -- set by addons on Forever (SetRaidTarget is protected). Nameplates the game keeps from addons
@@ -88,6 +86,11 @@ for _, m in ipairs(ALL) do
 	end
 end
 
+-- The choices for the marker over enemy players: the same pictures, or none.
+ns.PLAYER_MARKERS = { { key = "none", name = "No marker" } }
+for _, m in ipairs(ns.MARKERS) do ns.PLAYER_MARKERS[#ns.PLAYER_MARKERS + 1] = m end
+ns.DEFAULT_PLAYER_MARKER = "cross"
+
 function ns.MarkerInfo(key)
 	for _, m in ipairs(ns.MARKERS) do
 		if m.key == key then return m end
@@ -97,6 +100,7 @@ end
 
 -- "|A...|a" or "|T...|t" text that shows the marker's picture in a menu line.
 function ns.MarkerIcon(m, size)
+	if not m.file then return "" end -- "No marker"
 	if m.atlas then return ("|A:%s:%d:%d|a"):format(m.atlas, size, size) end
 	return ("|T%s:%d:%d|t"):format(m.file, size, size)
 end
@@ -134,7 +138,7 @@ local function onUpdate()
 end
 
 local function track(marker, on)
-	moving[marker] = on or nil
+	moving[marker] = (on and marker.motion ~= "none") or nil
 	driver:SetScript("OnUpdate", next(moving) and onUpdate or nil)
 end
 
@@ -147,8 +151,9 @@ local function unsnap(icon)
 	end
 end
 
+-- marker.kind is "player" over an enemy player, which has a picture of its own; else a mob's.
 local function style(marker)
-	local m = ns.MarkerInfo(ns.db.markerStyle)
+	local m = ns.MarkerInfo(marker.kind == "player" and ns.db.playerMarkerStyle or ns.db.markerStyle)
 	local size = ns.db.markerSize
 	marker:SetSize(size, size)
 	marker.size = size
@@ -165,6 +170,7 @@ local function style(marker)
 	icon:SetSize(size, size)
 	icon:SetAlpha(1)
 	icon:SetRotation(0)
+	track(marker, marker:IsVisible())
 	if marker:IsVisible() then animate(marker, GetTime()) end
 end
 
@@ -186,15 +192,16 @@ end
 ---------------------------------------------------------------------------
 
 local shown = {} -- [nameplate unit] = the marker frame on it
+local plateMarkers = setmetatable({}, { __mode = "k" }) -- [plate] = marker (avoids mutating Blizzard NamePlate frames)
 
 local function markerFor(plate)
-	local marker = plate.MobSpotMarker
+	local marker = plateMarkers[plate]
 	if marker then return marker end
 	marker = ns.NewMarker(plate)
 	marker:SetPoint("BOTTOM", plate, "TOP", 0, 4)
 	marker:SetFrameLevel(plate:GetFrameLevel() + 20)
 	marker:Hide()
-	plate.MobSpotMarker = marker
+	plateMarkers[plate] = marker
 	return marker
 end
 
@@ -205,17 +212,24 @@ local function hide(unit)
 	marker:Hide()
 end
 
--- Shows the marker over `unit`'s nameplate when `listed` is true, else takes it off.
-function ns.Mark(unit, listed)
-	if not (listed and ns.db.marker) then
+-- Shows the marker over `unit`'s nameplate: the mobs' for `kind` "mob", the players' for
+-- "player". Takes it off for nil, or when that kind has no marker.
+function ns.Mark(unit, kind)
+	if not (kind and ns.db.marker) or (kind == "player" and ns.db.playerMarkerStyle == "none") then
 		hide(unit)
 		return
 	end
-	if shown[unit] then return end
-	local plate = C_NamePlate.GetNamePlateForUnit(unit)
-	if not plate or plate:IsForbidden() then return end
-	local marker = markerFor(plate)
-	shown[unit] = marker
+	local marker = shown[unit]
+	if not marker then
+		local plate = C_NamePlate.GetNamePlateForUnit(unit)
+		if not plate or plate:IsForbidden() then return end
+		marker = markerFor(plate)
+		shown[unit] = marker
+	end
+	if marker.kind ~= kind then -- nameplates are handed from one unit to the next
+		marker.kind = kind
+		style(marker)
+	end
 	marker:Show()
 end
 
@@ -228,7 +242,7 @@ ns.On("NAME_PLATE_UNIT_REMOVED", hide)
 ns.Listen("SettingChanged", function(name)
 	if (name == "marker" and not ns.db.marker) or (name == "enabled" and not ns.db.enabled) then
 		ns.ClearMarks()
-	elseif name == "markerStyle" or name == "markerSize" or name == "markerMotion" then
+	elseif name == "markerStyle" or name == "playerMarkerStyle" or name == "markerSize" or name == "markerMotion" then
 		for _, marker in ipairs(frames) do style(marker) end
 	end
 end)

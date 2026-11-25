@@ -5,7 +5,10 @@ local AddonName = ...
 ---@class Private
 local Private = select(2, ...)
 
-local internalVersion = 91
+-- ForeverAuras (1.4.7-dev.5): 93, for the Aura (Modern) icon Inverse conversion (Modernize.lua). 92 is
+-- skipped on purpose: an export stamped 92 has been seen in a bug report, from a build that is not
+-- one of ours, so nothing may assume a "92" aura went through our conversion.
+local internalVersion = 93
 
 -- Lua APIs
 local insert = table.insert
@@ -326,14 +329,17 @@ function SlashCmdList.WeakAuras(input)
     Private.PrintLoadAllocation(args[1])
   elseif msg == "help" then
     Private.PrintHelp();
+  elseif msg == "groupauras" then
+    -- ForeverAuras (1.4.7-dev.6): prints the Cooldown Manager group auras published as a Spell List (CDMGroupAuras.lua).
+    if Private.PrintCDMGroupAuras then Private.PrintCDMGroupAuras() end
   elseif msg == "cdmsetup" then
-    Private.RunCDMSetup()
-  elseif msg == "gaineddebug" then
-    -- ForeverAuras (1.3.10-dev.7): prints when a Show On: Aura(s) Gained flash animation
-    -- is played, stopped or finishes (BlizzardAuraDisplay.lua, StyleFlash). Diagnostics
-    -- only; keep it off during performance captures.
-    Private.gainedDebug = not Private.gainedDebug
-    print("|cff88ccffFA gained|r", Private.gainedDebug and "printing on" or "printing off")
+    -- ForeverAuras (1.4.7): runs the setup. Only the bare command does; anything after it prints the
+    -- usage and does nothing (the "why" printout of the dev builds is removed).
+    if not args[1] then
+      Private.RunCDMSetup()
+    else
+      print("Usage: /fa cdmsetup")
+    end
   elseif msg == "modern" then
     -- ForeverAuras: "/fa modern <aura id>" prints an Aura (Modern) display's
     -- state (its spell list, Missing clip and sample) for bug reports.
@@ -421,6 +427,11 @@ function SlashCmdList.WeakAuras(input)
     local Flow = Private.BlizzardAuraDisplay
     if id == "off" and Flow.UnmarkCarriers then Flow.UnmarkCarriers()
     elseif Flow.MarkCarriers then Flow.MarkCarriers(id) end
+  elseif msg == "rowpixels" then
+    -- ForeverAuras (development, 1.4.8-dev.5): "/fa rowpixels <group>" prints
+    -- where a Modern Aura Group's row sits in screen pixels (SecretAuraFlow.lua).
+    local id = input:match("^%s*%S+%s+(.-)%s*$")
+    if Private.BlizzardAuraDisplay.PrintRowPixels then Private.BlizzardAuraDisplay.PrintRowPixels(id) end
   elseif msg == "carriers" then
     -- ForeverAuras (development): "/fa carriers <group>" prints the
     -- independent-carriers state of a Modern Aura Group (SecretAuraFlow.lua).

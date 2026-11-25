@@ -2523,6 +2523,10 @@ FDJ.DB["Gnomeregan"] = {
         rewardSummary = "Nogg's Gold Ring",
         id = 2950,
         requires = 28,
+        -- routebuy (2.0.10): the Route sends you to the auction house for
+        -- these while they are missing; a delivery, no run of its own
+        routeBuy = { {2842, "Silver Bar", 1}, {1206, "Moss Agate", 1} },
+        routeNoRun = true,
         name = "Nogg's Ring Redo",
         startsInDungeon = true,
         faction = "Horde",
@@ -4626,12 +4630,10 @@ FDJ.DB["Uldaman"] = {
             name = "Obsidian Sentinel",
             npcID = 7023,
             aliases = {"Obsidian Sentinel"},
-            -- lootremoved (2.1.3, M 21 Nov 2026): Blizzard took its loot
-            -- away for now (a gold farm): the red line under its name, and
-            -- its loot greyed out like gear the Loot Filter rules out
-            -- (Systems/LootFilter.lua).
-            lootNote = "LOOT_NOTE_LOOT_REMOVED",
-            lootRemoved = true,
+            -- lootback (2.1.5, M 24 Nov 2026: "obsidian sentinel is now
+            -- dropping loot again"): the red line and the greyed-out loot of
+            -- lootremoved (2.1.3) are gone. To take its loot away again:
+            -- lootNote = "LOOT_NOTE_LOOT_REMOVED", lootRemoved = true.
             description = "Level 42 mechanical guardian near the back entrance to Uldaman, after Ironaya. Drops the Obsidian Power Source for the Mage quest Power in Uldaman.",
             loot = {
                 {274430, "Rock Sentinel Slicer", "Two-Hand, Axe", 3},
@@ -5318,10 +5320,10 @@ FDJ.DB["The Drowned City"] = {
         liveXPFallback = 8450,
         rewardSummary = "",
         requiredItems = {
-            {270308, "The First Tablet of I'lalai", 1, "Rubbing of the first tablet, inside the Drowned City"},
-            {270309, "The Second Tablet of I'lalai", 1, "Rubbing of the second tablet, inside the Drowned City"},
-            {270310, "The Third Tablet of I'lalai", 1, "Rubbing of the third tablet, inside the Drowned City"},
-            {270311, "The Fourth Tablet of I'lalai", 1, "Rubbing of the fourth tablet, inside the Drowned City"},
+            {270308, "The First Tablet of I'lalai", 1, "Down the stairs after the first boss, on the left"},
+            {270309, "The Second Tablet of I'lalai", 1, "Next to the boss Var'Taka"}, -- tabletnotes (2.1.6)
+            {270310, "The Third Tablet of I'lalai", 1, "In Captain Dreadrise's area"},
+            {270311, "The Fourth Tablet of I'lalai", 1, "Next to the last boss, Min'loth the Serpent"},
         },
     }, {
         -- Follow-up to The Drowned City (Wowhead Forever quest 96078; a
@@ -5995,6 +5997,11 @@ FDJ.DB["Alcaz Prison"] = {
                 {287023, "Iron-Wrought Cuffs", "Wrist, Plate", 3},
                 {287024, "Mark of Captivity", "Neck", 3},
                 {287025, "Enchantresses' Spire", "Two-Hand, Staff", 3, "Strashaz Enchantress"}, -- Wowhead Forever: Strashaz Enchantress 5.78%
+                -- escapeplan (2.1.4, M 23 Nov 2026: "add this loot to alcaz
+                -- trash"): Escape Plan, gun, item level 54, needs 49, a zone
+                -- drop in Alcaz Prison (Wowhead Forever's Alcaz Prison drops;
+                -- SOURCES.txt, escapeplan)
+                {287026, "Escape Plan", "Ranged, Gun", 3},
             },
         },
     },
@@ -6265,6 +6272,22 @@ FDJ.DB["Blackmaw Hold"] = {
             loot = {
                 {280083, "Truesight Rifle", "Ranged, Gun", 3}, -- 16/28
                 {280084, "Furbolg Rib Protector", "Chest, Mail", 3}, -- 12/28
+            },
+        },
+        {
+            -- mopes (2.1.6, M 24 Nov 2026: "add this rare to Blackmaw Hold.
+            -- Same thing with another level"): rare elite demon, level not
+            -- known. Wowhead Forever npc=247412: its two Blackmaw Hold drops
+            -- (22 loots); its Blackmaw Pouch (the furbolgs' quest item) and
+            -- Mote of Unstable Magic left out, as for Vitrix.
+            name = "Mopes",
+            npcID = 247412,
+            aliases = {"Mopes"},
+            description = "Rare spawn.",
+            rare = true,
+            loot = {
+                {280082, "Staff of Sorrow", "Two-Hand, Staff", 3}, -- 13/22
+                {280081, "Sad-Sack Sandals", "Feet, Cloth", 3}, -- 9/22
             },
         },
         {
@@ -6897,6 +6920,30 @@ FDJ.DB["Shaper's Terrace"] = {
             },
         },
         {
+            -- kingop (2.1.6, M 24 Nov 2026: "we need to add this rare mob in
+            -- Shaper Terrace. Unfortunately, I don't know his level"): a rare
+            -- elite beast. Wowhead Forever npc=261993: found in The Shaper's
+            -- Terrace, its two drops (11 loots: the Chestplate 6, the Grips 5).
+            -- Where he stands is not known yet (no map pin).
+            name = "King Op",
+            npcID = 261993,
+            aliases = {"King Op"},
+            rare = true,
+            loot = {
+                {280027, "Crownroar Chestplate", "Chest, Plate", 3, tip = {
+                    "Binds when picked up",
+                    {"Chest", "Plate"},
+                    "657 Armor",
+                    "+21 Spirit",
+                    "|cff1eff00Equip: Improves your chance to get a critical strike by 1.0%.|r",
+                    "|cff1eff00Equip: Increases healing done by up to 40 and damage done by up to 13 for all magical spells and effects.|r",
+                    "Requires Level 58",
+                    "Sell Price: 4|TInterface\\MoneyFrame\\UI-GoldIcon:0:0:2:0|t 7|TInterface\\MoneyFrame\\UI-SilverIcon:0:0:2:0|t 51|TInterface\\MoneyFrame\\UI-CopperIcon:0:0:2:0|t",
+                }},
+                {280026, "Albinofur Grips", "Hands, Mail", 3},
+            },
+        },
+        {
             -- Only dungeon-specific non-boss drops belong here.
             name = "Trash Drops",
             trash = true,
@@ -7354,6 +7401,7 @@ FDJ.DB["Sunken Temple"] = {
         {
             name = "Altar Bosses",
             children = { 5713, 5715, 5714, 5717, 5712, 5716 },
+            deadWith = "Atal'alarion", -- altarneeded (2.1.4, M 22 Nov 2026): with Atal'alarion dead the tracker counts the six as dead too
             portraitNpcID = 5713,
             description = "The six Atal'ai troll guardians on the balconies round the ring: Gasher, Hukku, Loro, Mijan, Zolo and Zul'Lor. All six must die before Jammal'an the Prophet comes down. They share one loot table.",
             loot = {
@@ -7569,6 +7617,7 @@ FDJ.DB["Sunken Temple"] = {
         {
             name = "Avatar of Hakkar",
             npcID = 8443,
+            optional = true, -- altarneeded (2.1.4): only there with the Filled Egg of Hakkar (The God Hakkar): a run ends without it
             aliases = {"Avatar of Hakkar"},
             description = "Summoned at the central altar with the Filled Egg of Hakkar (The God Hakkar).",
             loot = {
@@ -7591,6 +7640,8 @@ FDJ.DB["Sunken Temple"] = {
                 {10844, "Spire of Hakkar", "Two-Hand, Staff", 3},
                 {10845, "Warrior's Embrace", "Chest, Plate", 3},
                 {10846, "Bloodshot Greaves", "Feet, Mail", 3},
+                -- avatarpattern (2.1.6, M 25 Nov 2026: "HE DROPped this pattern", his loot roll screenshot at the dead Avatar)
+                {252871, "Pattern: Mender's Leather Gauntlets", "Recipe, Leatherworking", 3},
                 {10663, "Essence of Hakkar", "Quest Item", 1},
             },
         },
@@ -7776,15 +7827,44 @@ FDJ.DB["Scholomance"] = {
         classOnly = "SHAMAN",
         objective = "Use the Divination Scryer in the heart of the Great Ossuary's basement in the Scholomance. Doing so will bring forth spirits you must fight. Defeating these spirits will summon forth Death Knight Darkreaver; defeat him. Bring Darkreaver's Head to Sagorne Creststrider in the Valley of Wisdom, Orgrimmar.",
         rewardSummary = "",
-        id = 7668,
+        -- darkreaver (2.1.4, Aurheim on Discord, 23 Nov 2026: "Quest on
+        -- Forever is ID 8258 ... you pick between Skyfury Helm and Skyfury
+        -- Gauntlets. Both are epic"): Forever's quest is 8258, not the old
+        -- 7668 (Helm of Latent Power); SOURCES.txt, darkreaver. (lvl58, M 23
+        -- Nov 2026: "it's available from level 58 ... go back to showing
+        -- XP": level 58 as on Wowhead Forever, and its XP again.)
+        id = 8258,
         name = "The Darkreaver Menace",
         faction = "Horde",
         pickup = "Sagorne Creststrider, Valley of Wisdom, Orgrimmar",
         level = 60,
         requires = 58,
-        rewardItems = {{18807, "Helm of Latent Power", 3}},
+        rewardChoice = true,
+        rewardItems = {{20134, "Skyfury Helm", 4}, {20133, "Skyfury Gauntlets", 4}},
         note = "Shaman quest. Clear Rattlegore's basement, use the scryer and defeat Death Knight Darkreaver; return his head.",
         turnin = "Sagorne Creststrider, Valley of Wisdom, Orgrimmar",
+        liveXPFallback = 9950,
+    },
+    {
+        -- darkreaverally (2.1.4, M 23 Nov 2026: "alliance also has this chain,
+        -- make sure you apply accordingly to the alliance npcs"): the
+        -- Alliance's own, 97169 from Eldrun Stormbreaker in Ironforge's
+        -- Forlorn Cavern (after his Material Assistance, 97168); the same
+        -- event, level and rewards as the Horde's 8258 (SOURCES.txt,
+        -- darkreaverally).
+        classOnly = "SHAMAN",
+        objective = "Use the Divination Scryer in the heart of the Great Ossuary's basement in the Scholomance. Doing so will bring forth spirits you must fight. Defeating these spirits will summon forth Death Knight Darkreaver; defeat him. Bring Darkreaver's Head to Eldrun Stormbreaker in the Forlorn Caverns, Ironforge.",
+        rewardSummary = "",
+        id = 97169,
+        name = "The Darkreaver Menace",
+        faction = "Alliance",
+        pickup = "Eldrun Stormbreaker, Forlorn Cavern, Ironforge",
+        level = 60,
+        requires = 58,
+        rewardChoice = true,
+        rewardItems = {{20134, "Skyfury Helm", 4}, {20133, "Skyfury Gauntlets", 4}},
+        note = "Shaman quest. Clear Rattlegore's basement, use the scryer and defeat Death Knight Darkreaver; return his head.",
+        turnin = "Eldrun Stormbreaker, Forlorn Cavern, Ironforge",
         liveXPFallback = 9950,
     },
     },
@@ -8235,7 +8315,6 @@ FDJ.DB["Maraudon"] = {
         level = 48,
         requires = 39,
         rewardItems = {{17774, "Mark of the Chosen", 2}},
-        note = "Loot the Amulet of Spirits from the Nameless Prophet in the outer caves, then use it to fight the five Khans: three in the outer caves, one on the purple route and one on the orange route. Combine their gems with the amulet.",
         turnin = "Centaur Pariah, southern Desolace",
         liveXPFallback = 5450,
     },

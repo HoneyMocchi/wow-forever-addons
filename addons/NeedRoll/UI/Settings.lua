@@ -2,11 +2,12 @@
 -- place of the tabs' panes, with Back to return. General holds the
 -- player's settings: the language of NeedRoll's own text (a box opening a
 -- menu, switching after a reload), then each a switch between its choices:
--- window style, UI scale, the minimap button, whether the world map shows
--- NeedRoll's map inside a dungeon, the lines naming bosses on item tooltips
--- and quest chains on quest tooltips, the collection ticks after item names,
--- where open and shut sections are remembered; last the key that opens
--- NeedRoll. Modules turns each tab on or off (ns.Modules, Core/Init.lua).
+-- window style, UI scale, the minimap button (then, in local checkouts only,
+-- the run tracker's line under the minimap and its kill cards), whether the
+-- world map shows NeedRoll's map inside a dungeon, the lines naming bosses on
+-- item tooltips and quest chains on quest tooltips, the collection ticks after
+-- item names, where open and shut sections are remembered; last the key that
+-- opens NeedRoll. Modules turns each tab on or off (ns.Modules, Core/Init.lua).
 -- The Discord button by the title shows the community's invite, ready to
 -- copy. A quiet link under the columns opens the Game hotfixes page
 -- (UI/Hotfixes.lua), which shares the page's scrolling.
@@ -33,6 +34,18 @@ local SAMPLE_ITEM = 118 -- Minor Healing Potion, in Professions Icons' row
 -- off for everyone (see Switch in Core/Drops.lua).
 local function IsSharingSwitchedOff()
     return not ns.Drops.isSharingEnabled
+end
+
+-- The run tracker's switches are hidden where the tracker is left out: a release, which
+-- records no runs (ns.Runs.available, Core/Runs.lua).
+local function IsRunTrackerLeftOut()
+    return not ns.Runs.available
+end
+
+-- Saves a run tracker switch (NeedRollDB `key`) and lets the tracker follow it at once.
+local function SetRunTrackerOption(key, isOn)
+    ns.db[key] = isOn
+    if ns.RunTracker then ns.RunTracker.ApplySettings() end
 end
 
 -- The window styles the Settings page offers: each skin that can be shown
@@ -84,6 +97,24 @@ local OPTIONS = {
         names = { L["Shown"], L["Hidden"] },
         current = function() return ns.db.minimap.hide and L["Hidden"] or L["Shown"] end,
         pick = function(name) ns.MinimapButton:SetHidden(name == L["Hidden"]) end,
+    },
+    -- The run tracker's progress (on the Objectives pane or under the minimap) and cards
+    -- (UI/RunTracker.lua): English, as the tracker's own words, until it ships.
+    {
+        label = "Run progress on screen",
+        names = { L["Shown"], L["Hidden"] },
+        current = function() return ns.db.runProgressLine == false and L["Hidden"] or L["Shown"] end,
+        pick = function(name) SetRunTrackerOption("runProgressLine", name == L["Shown"]) end,
+        about = "Bosses down, over your objectives or under the minimap",
+        isHidden = IsRunTrackerLeftOut,
+    },
+    {
+        label = "Boss kill cards",
+        names = { L["On"], L["Off"] },
+        current = function() return ns.db.runKillCards == false and L["Off"] or L["On"] end,
+        pick = function(name) SetRunTrackerOption("runKillCards", name == L["On"]) end,
+        about = "A short card as each boss dies",
+        isHidden = IsRunTrackerLeftOut,
     },
     {
         label = L["Map in dungeons"],

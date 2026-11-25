@@ -254,10 +254,13 @@ end
 
 -- What's ahead for your own class (the Overview page) ------------------------------
 
--- A rank as the Overview names it: { spellID, rank (its number), cost, tab }.
+-- A rank as the Overview names it: { spellID, rank (its number), cost, tab,
+-- level (the level a trainer teaches it at; nil for a rank 1 from a quest or
+-- talent), spell (the spell it is a rank of, ClassSpells.Of's entry) }.
 local function RankRef(spell, index)
     local rank = spell.ranks[index]
-    return { spellID = rank[RANK_SPELL], rank = index, cost = rank[RANK_COST] or 0, tab = spell.tab }
+    return { spellID = rank[RANK_SPELL], rank = index, cost = rank[RANK_COST] or 0, tab = spell.tab,
+        level = rank[RANK_LEVEL], spell = spell }
 end
 
 -- "Frostbolt 7", or the name alone for a rank 1. Empty until the game has
@@ -312,7 +315,8 @@ end
 
 -- Asks the game for the spells it hasn't sent yet (their names and
 -- descriptions read "" until it comes), running `onLoaded` once all of a
--- burst has arrived.
+-- burst has arrived. Returns how many it is waiting for: with 0, every
+-- spell is already there and `onLoaded` doesn't run.
 function ClassSpells.Load(spellIDs, onLoaded)
     local waiting = 0
     for _, spellID in ipairs(spellIDs) do
@@ -325,6 +329,7 @@ function ClassSpells.Load(spellIDs, onLoaded)
             end)
         end
     end
+    return waiting
 end
 
 -- The page's figures ----------------------------------------------------------------

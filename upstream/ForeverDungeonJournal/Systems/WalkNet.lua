@@ -122,6 +122,66 @@ do
         return math.floor(flags / bit) % 2 == 1
     end
 
+    -- mojache (2.1.4): does the straight line (px, py) -> (tx, ty) cut across a
+    -- camp (FDJ.WALKNET_AVOID, Data/WalkNet.lua) that is no shortcut for this
+    -- side (side 3: for anyone)? Then it is no shortcut, however short.
+    local avoid = {}
+    local function Crosses(c, side, px, py, tx, ty)
+        if side ~= 1 and side ~= 2 then return false end
+        local camps = avoid[c]
+        if camps == nil then
+            camps = {}
+            for _, a in ipairs(FDJ.WALKNET_AVOID and FDJ.WALKNET_AVOID[c] or {}) do
+                local list = {}
+                for x, y in string.gmatch(a.points or "", "(-?%d+) (-?%d+) ") do list[#list + 1] = { tonumber(x), tonumber(y) } end
+                camps[#camps + 1] = { side = a.side, r = tonumber(a.r) or 90, list = list }
+            end
+            avoid[c] = camps
+        end
+        local dx, dy = tx - px, ty - py
+        local len2 = dx * dx + dy * dy
+        for i = 1, #camps do
+            local camp = camps[i]
+            if camp.side == side or camp.side == 3 then
+                for j = 1, #camp.list do
+                    local q = camp.list[j]
+                    local t = 0
+                    if len2 > 0 then t = math.max(0, math.min(1, ((q[1] - px) * dx + (q[2] - py) * dy) / len2)) end
+                    if Yards(q[1], q[2], px + t * dx, py + t * dy) <= camp.r then return true end
+                end
+            end
+        end
+        return false
+    end
+
+    -- mojache (2.1.4): is the player in a way between walls (a stretch with
+    -- flag 16, the trench south of Camp Mojache)? There the straight line is
+    -- no shortcut, however short: the way is walked as it is.
+    local CORRIDOR = 30 -- yards from such a stretch
+    local function InCorridor(net, side, x, y)
+        local X, Y, A, B, F = net.X, net.Y, net.A, net.B, net.F
+        local bx0, bx1 = math.floor((x - CORRIDOR) / BUCKET), math.floor((x + CORRIDOR) / BUCKET)
+        local by0, by1 = math.floor((y - CORRIDOR) / BUCKET), math.floor((y + CORRIDOR) / BUCKET)
+        for bx = bx0, bx1 do
+            for by = by0, by1 do
+                local list = net.buckets[bx * 4096 + by]
+                for i = 1, list and #list or 0 do
+                    local e = list[i]
+                    local f = F[e]
+                    if Bit(f, 16) and (side == 3 or Bit(f, side)) then
+                        local ax, ay = X[A[e]], Y[A[e]]
+                        local dx, dy = X[B[e]] - ax, Y[B[e]] - ay
+                        local len2 = dx * dx + dy * dy
+                        local t = 0
+                        if len2 > 0 then t = math.max(0, math.min(1, ((x - ax) * dx + (y - ay) * dy) / len2)) end
+                        if Yards(x, y, ax + t * dx, ay + t * dy) <= CORRIDOR then return true end
+                    end
+                end
+            end
+        end
+        return false
+    end
+
     -- The stretches a place (x, y) can join the net at: those nearest it in
     -- its own zone (the nearest, and the ones not much further).
     -- -> { { d = yards to the stretch, e = edge, t = how far along it (0 at a, 1 at b), x, y = the point on it }, ... }
@@ -351,7 +411,10 @@ do
         -- along the net (by the yards alone, roads no cheaper) is hardly
         -- longer than the straight line, nothing stands between: the
         -- straight line, also off a way already begun.
-        if here and here == there then
+        -- mojache (2.1.4): no straight line across the other faction's camp,
+        -- nor off a way between walls
+        local crossing = Crosses(c, Side(), px, py, tx, ty) or InCorridor(net, Side(), px, py)
+        if here and here == there and not crossing then
             local side = Side()
             local plain = Field(net, c, side, tx, ty, true)
             local joins = not plain.none and Joins(net, c, side, px, py, NEAR) or nil
@@ -463,7 +526,7 @@ do
                 state.node, state.field = nil, nil
                 return nil
             end
-            if sameZone and not onRoad and way < straight * LONGER + 60 then
+            if sameZone and not onRoad and not crossing and way < straight * LONGER + 60 then
                 state.node, state.field = nil, nil
                 return nil
             end
@@ -531,21 +594,58 @@ do
     -- line: the arrow points at it as always.
     local DIRS = { { 1, 1, 0 }, { 2, -1, 0 }, { 4, 0, 1 }, { 8, 0, -1 }, { 16, 1, 1 }, { 32, 1, -1 }, { 64, -1, 1 }, { 128, -1, -1 } }
     local KIND_COST = { [1] = 1.0, [2] = 0.8, [3] = 1.3, [4] = 2.5, [5] = 1.0, [6] = 3.0 }
-    local function HasBit(mask, bit) return math.floor(mask / bit) % 2 == 1 end
+    -- (gridbound: a cell's steps looked up, not divided out: the bytes 0-255)
+    local BITT = {}
+    for k = 0, 7 do
+        local bit, t = 2 ^ k, {}
+        for m = 0, 255 do t[m] = math.floor(m / bit) % 2 == 1 end
+        BITT[bit] = t
+    end
+    local function HasBit(mask, bit)
+        local t = BITT[bit]
+        local v = t and t[mask]
+        if v ~= nil then return v end
+        return math.floor(mask / bit) % 2 == 1
+    end
     local grids
+    -- azsgrid (2.1.5): a grid's cells are read the first time the player
+    -- and a place are both on it (Ready), not all grids at the first aim.
     local function Grids()
         if grids then return grids end
         grids = {}
         for _, data in ipairs(FDJ.WALKGRIDS or {}) do
+            grids[#grids + 1] = { c = data.continent, x0 = data.x0, y0 = data.y0, cell = data.cell, nx = data.nx, ny = data.ny, data = data, fields = {},
+                leave = data.leave == true, exits = type(data.exits) == "table" and data.exits or nil } -- (gridleave)
+        end
+        FDJ.WALKGRIDS = nil -- (each grid keeps its own strings until it is read)
+        return grids
+    end
+    local function Ready(g)
+        local data = g.data
+        if not data then return g end
+        g.data = nil
+        do
             local nx, ny = data.nx, data.ny
             local open, cost = {}, {}
+            -- (gridbound: read byte by byte, the hex digits by a table: twice as quick)
+            local HEX = {}
+            for k = 0, 9 do HEX[48 + k] = k end
+            for k = 0, 5 do HEX[65 + k], HEX[97 + k] = 10 + k, 10 + k end
+            local byte = string.byte
             for i = 1, nx do
                 local row, kinds = data.open[i] or "", data.kind[i] or ""
+                local ob = { byte(row, 1, 2 * ny) }
+                local kb = { byte(kinds, 1, ny) }
+                local base = (i - 1) * ny
                 for j = 1, ny do
-                    local idx = (i - 1) * ny + j
-                    open[idx] = tonumber(string.sub(row, 2 * j - 1, 2 * j), 16) or 0
-                    cost[idx] = KIND_COST[tonumber(string.sub(kinds, j, j)) or 0]
-                    if not cost[idx] then open[idx] = 0 end
+                    local idx = base + j
+                    local hi, lo = HEX[ob[2 * j - 1] or 48], HEX[ob[2 * j] or 48]
+                    local c = KIND_COST[(kb[j] or 48) - 48]
+                    if c and hi and lo then
+                        open[idx], cost[idx] = hi * 16 + lo, c
+                    else
+                        open[idx] = 0
+                    end
                 end
             end
             -- no step leads off the grid, or onto a cell that cannot be stood on
@@ -556,7 +656,7 @@ do
                     if mask ~= 0 then
                         for d = 1, 8 do
                             local dir = DIRS[d]
-                            if math.floor(mask / dir[1]) % 2 == 1 then
+                            if BITT[dir[1]][mask] then
                                 local a, b = i + dir[2], j + dir[3]
                                 if a < 1 or b < 1 or a > nx or b > ny or open[(a - 1) * ny + b] == 0 then
                                     mask = mask - dir[1]
@@ -573,10 +673,9 @@ do
                     end
                 end
             end
-            grids[#grids + 1] = { c = data.continent, x0 = data.x0, y0 = data.y0, cell = data.cell, nx = nx, ny = ny, open = open, cost = cost, fields = {} }
+            g.open, g.cost = open, cost
         end
-        FDJ.WALKGRIDS = nil -- the strings are not needed again
-        return grids
+        return g
     end
     -- The cell under (x, y): its row, column (from 0); nil off the grid.
     local function CellAt(g, x, y)
@@ -607,13 +706,57 @@ do
         return g.x0 + (i + 0.5) * g.cell, g.y0 + (j + 0.5) * g.cell
     end
     -- From the place's cell: the cost and the yards of the cheapest way to every cell that reaches it.
-    local function GridField(g, goal)
+    -- gridleave (2.1.5 dev, M 24 Nov 2026 at 48.6, 29.6 in Azshara, the coursers to kill at 57.9, 23.5,
+    -- off the grid): a place off a grid that leads off itself (leave = true): goal is its key ("off:x:y"),
+    -- and the way ends at whichever open cell on the grid's edge is best, with the yards from there on in
+    -- a straight line (the ground off the grid is open).
+    -- gridbound (2.1.6, rgcoast: a bigger grid, about 0.2 s for each new
+    -- place): the way is worked out from the place until a little past the
+    -- player's cell (from), 1.3 times its cost and 150 more; a cell within
+    -- that is known exactly (all cells under the stop are settled). Walked
+    -- off further: worked out again from there.
+    local function GridField(g, goal, tx, ty, from)
         for i = 1, #g.fields do
-            if g.fields[i].goal == goal then return g.fields[i] end
+            local f = g.fields[i]
+            if f.goal == goal then
+                if not f.limit or not from or (f.dist[from] and f.dist[from] <= f.limit) then return f end
+                table.remove(g.fields, i)
+                break
+            end
         end
+        local limit
         local ny, open, cost, cell = g.ny, g.open, g.cost, g.cell
-        local dist, walk = { [goal] = 0 }, { [goal] = 0 }
-        local heapCost, heapNode, size = { 0 }, { goal }, 1
+        local dist, walk, heapCost, heapNode, size
+        if type(goal) == "number" then
+            dist, walk = { [goal] = 0 }, { [goal] = 0 }
+            heapCost, heapNode, size = { 0 }, { goal }, 1
+        else
+            dist, walk, heapCost, heapNode, size = {}, {}, {}, {}, 0
+            local edge = {}
+            -- (only an edge the place lies beyond: the straight line on from it never comes back over the grid;
+            -- with g.exits, only its cells marked 1 there: the land goes on off the grid)
+            local north, south = tx >= g.x0 + g.nx * cell, tx < g.x0
+            local west, east = ty >= g.y0 + ny * cell, ty < g.y0
+            local ex = g.exits or {}
+            local function Mark(s, k) return type(s) ~= "string" or string.sub(s, k, k) == "1" end
+            local function Add(i, j)
+                local idx = i * ny + j + 1
+                local out = (i == 0 and south and Mark(ex.south, j + 1)) or (i == g.nx - 1 and north and Mark(ex.north, j + 1))
+                    or (j == 0 and east and Mark(ex.east, i + 1)) or (j == ny - 1 and west and Mark(ex.west, i + 1))
+                if out and open[idx] ~= 0 and not dist[idx] then
+                    local x, y = Centre(g, idx)
+                    local d = Yards(x, y, tx, ty)
+                    dist[idx], walk[idx] = d, d
+                    edge[#edge + 1] = idx
+                end
+            end
+            for i = 0, g.nx - 1 do Add(i, 0) Add(i, ny - 1) end
+            for j = 1, ny - 2 do Add(0, j) Add(g.nx - 1, j) end
+            -- (in order of cost: a sorted list is a heap)
+            table.sort(edge, function(a, b) return dist[a] < dist[b] end)
+            for k = 1, #edge do heapCost[k], heapNode[k] = dist[edge[k]], edge[k] end
+            size = #edge
+        end
         while size > 0 do
             local c, u = heapCost[1], heapNode[1]
             local lastCost, lastNode = heapCost[size], heapNode[size]
@@ -631,6 +774,8 @@ do
                 end
                 heapCost[i], heapNode[i] = lastCost, lastNode
             end
+            if limit and c > limit then break end
+            if u == from then limit = c * 1.3 + 150 end
             if c <= dist[u] then
                 for d = 1, 8 do
                     local dir = DIRS[d]
@@ -656,7 +801,7 @@ do
                 end
             end
         end
-        local field = { goal = goal, dist = dist, walk = walk }
+        local field = { goal = goal, dist = dist, walk = walk, limit = (size > 0) and limit or nil }
         if #g.fields >= 4 then table.remove(g.fields, 1) end
         g.fields[#g.fields + 1] = field
         return field
@@ -692,23 +837,46 @@ do
         end
         return i == ei and j == ej
     end
+    -- gridleave: where the straight line from (ax, ay) on the grid to (bx, by)
+    -- off it leaves the grid (a little inside its last cell); nil: nowhere.
+    local function Edge(g, ax, ay, bx, by)
+        local dx, dy = bx - ax, by - ay
+        local len = math.sqrt(dx * dx + dy * dy)
+        if len < 0.001 then return nil end
+        local x1, y1 = g.x0 + g.nx * g.cell, g.y0 + g.ny * g.cell
+        local t = 1
+        if dx > 0 and bx >= x1 then t = math.min(t, (x1 - ax) / dx) elseif dx < 0 and bx < g.x0 then t = math.min(t, (g.x0 - ax) / dx) end
+        if dy > 0 and by >= y1 then t = math.min(t, (y1 - ay) / dy) elseif dy < 0 and by < g.y0 then t = math.min(t, (g.y0 - ay) / dy) end
+        t = t - g.cell * 0.25 / len
+        if t <= 0 then return nil end
+        local ex, ey = ax + dx * t, ay + dy * t
+        if not CellAt(g, ex, ey) then return nil end
+        return ex, ey
+    end
     -- -> handled (the player and the place are on one grid and a way is
     -- known), then the aim { x, y } and the yards from it on; no aim: the
     -- place itself is in a straight line.
     local function GridAim(memo, tx, ty, px, py, c)
         if not (Number(tx) and Number(ty) and Number(px) and Number(py)) then return false end
-        local g
+        local g, off
         for _, grid in ipairs(Grids()) do
-            if grid.c == c and CellAt(grid, px, py) and CellAt(grid, tx, ty) then g = grid break end
+            if grid.c == c and CellAt(grid, px, py) then
+                if CellAt(grid, tx, ty) then g = grid break end
+                if grid.leave and not off then off = grid end -- gridleave: the place off it
+            end
         end
+        g = g or off
         if not g then memo.walkgrid = nil return false end
+        Ready(g)
         local state = memo.walkgrid
         if state and state.g == g and Yards(state.tx, state.ty, tx, ty) < 1 and Yards(state.px, state.py, px, py) < 2 then
             return true, state.aim, state.rest
         end
-        local goal, from = Stand(g, tx, ty), Stand(g, px, py)
+        local away = CellAt(g, tx, ty) == nil
+        local goal = away and string.format("off:%.0f:%.0f", tx, ty) or Stand(g, tx, ty)
+        local from = Stand(g, px, py)
         if not goal or not from then memo.walkgrid = nil return false end
-        local field = GridField(g, goal)
+        local field = GridField(g, goal, tx, ty, from)
         local dist = field.dist
         if not dist[from] then memo.walkgrid = nil return false end -- no way known from here
         state = { g = g, tx = tx, ty = ty, px = px, py = py }
@@ -735,10 +903,16 @@ do
         local sx, sy = px, py
         local si, sj = CellAt(g, px, py)
         if not si or si * ny + sj + 1 ~= from then sx, sy = Centre(g, from) end
-        if at == goal and Clear(g, sx, sy, tx, ty) then return true, nil, nil end
-        if at == goal then
-            local gx, gy = Centre(g, goal)
-            if Clear(g, sx, sy, gx, gy) then return true, nil, nil end
+        if away then
+            -- gridleave: the straight line to the place clear as far as the grid goes: straight at it
+            local ex, ey = Edge(g, sx, sy, tx, ty)
+            if ex and Clear(g, sx, sy, ex, ey) then return true, nil, nil end
+        else
+            if at == goal and Clear(g, sx, sy, tx, ty) then return true, nil, nil end
+            if at == goal then
+                local gx, gy = Centre(g, goal)
+                if Clear(g, sx, sy, gx, gy) then return true, nil, nil end
+            end
         end
         local aimCell
         for n = #way, 1, -1 do

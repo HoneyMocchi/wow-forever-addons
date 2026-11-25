@@ -611,7 +611,7 @@ do
                     menu:Hide()
                     -- 2.0.4: Hide opens Options at its line (highlighted); the
                     -- player ticks it there, so they know where to undo it.
-                    if FDJ.OpenSettingsAt then FDJ.OpenSettingsAt("OPT_HIDE_SLEEPING_BAG") else FDJ.SetSleepingBagHidden(true) end
+                    if FDJ.OpenSettingsAt then FDJ.OpenSettingsAt("OPT_SHOW_SLEEPING_BAG") else FDJ.SetSleepingBagHidden(true) end
                 end)
                 menu.hide = item
                 -- Closes on its own once the mouse has been away for a moment.
@@ -903,7 +903,7 @@ do
     -- trackpull (2.0.50) took Track (these windows) off the dungeons; that
     -- was a misunderstanding. trackback (2.0.6): Track is on every dungeon's
     -- quest list again, as in 2.0.5. What stays out of the release is only
-    -- the dungeon route, the arrow guide (vault "route"); the waypoint arrow
+    -- the dungeon route, the arrow guide; the waypoint arrow
     -- still follows only the chain pages (FollowChains).
     local function Trackable(name)
         local d = name and FDJ.DB and FDJ.DB[name]
@@ -1536,10 +1536,21 @@ do
                         local goTo = details.objectiveMap
                         if type(goTo) == "table" and goTo.mapID then entry.turnin, entry.goTo = goTo, true end
                     end
+                    -- arrowat (2.1.4, onyxiaally): a step handed in inside a
+                    -- dungeon (Marshal Windsor in Blackrock Depths) has no spot
+                    -- outside: the arrow leads to details.arrowAt (its door).
+                    if not entry.turnin and type(details.arrowAt) == "table" and details.arrowAt.mapID then
+                        entry.turnin, entry.goTo = details.arrowAt, true
+                    end
                 elseif not current then
                     current = true
                     entry.state = "next"
                     entry.start = StartSpot({ id = id, pickup = details.pickup, startMap = details.map, startItem = details.startItem })
+                    -- arrowat (2.1.4): picked up inside a dungeon, or from an
+                    -- item that drops there (A Crumpled Up Note): its door
+                    if not entry.start and type(details.arrowAt) == "table" and details.arrowAt.mapID then
+                        entry.start, entry.goTo = details.arrowAt, true
+                    end
                 else
                     entry.state = "later"
                 end
@@ -1555,12 +1566,12 @@ do
         return out
     end
 
-    -- dungeonroute: the dungeon Route (arrow guide) is not in the release
-    -- (kept in the private vault).
+    -- (the dungeon Route is kept out of this build: what the quest
+    -- tracker asks of it, answered as "no Route")
     local function RouteOn() return false end
-    local function RouteSkips() return {} end
     local function Routes() return {} end
-    local function RoutePlan() return {} end
+    local function RouteSkips() return {} end
+    local function OptedOut() return false end
 
     -- ------------------------------------------------------- the frame art
     -- The game's own Options window frame (metal edges, corners and title
@@ -2352,7 +2363,11 @@ do
                 local info, window = owner.info, owner:GetParent()
                 local name = window and window.dungeon
                 if not (info and info.quest and info.quest.id and name) then return end
-                RouteSkips(name)[info.quest.id] = (not self:GetChecked()) and true or nil
+                -- optin (2.1.4): ticking a quest that is off the Route unless
+                -- ticked keeps it on (false: ticked, not nil)
+                local value = nil
+                if not self:GetChecked() then value = true elseif info.quest.routeOptIn then value = false end
+                RouteSkips(name)[info.quest.id] = value
                 if PlaySound and SOUNDKIT then
                     local sound = self:GetChecked() and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON or SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF
                     if sound then pcall(PlaySound, sound) end
@@ -2768,7 +2783,7 @@ do
             if row.routeBox then -- dungeonroute (2.0.5)
                 local boxed = routed and info.state ~= "done" and info.quest and info.quest.id ~= nil
                 row.routeBox:SetShown(boxed and true or false)
-                if boxed then row.routeBox:SetChecked(not routeSkip[info.quest.id]) end
+                if boxed then row.routeBox:SetChecked(not routeSkip[info.quest.id] and not OptedOut(info.quest, routeSkip)) end -- (optin)
             end
             row.title:ClearAllPoints()
             row.title:SetPoint("TOPLEFT", row, "TOPLEFT", textX, 0)
@@ -2888,21 +2903,25 @@ do
         for _, name in ipairs(names) do
             local dungeon = FDJ.DB[name]
             -- noArrow: a chain page without the waypoint arrow (Onyxia Attunement).
-            if dungeon and dungeon.questChainPage and not dungeon.noArrow and not Locked(name) then
+            -- onyxiaally (2.1.4): noArrow = { [faction] = true }: only that faction's chain without it
+            local noArrow = dungeon and (dungeon.noArrow == true or (type(dungeon.noArrow) == "table" and dungeon.noArrow[Faction()] == true))
+            if dungeon and dungeon.questChainPage and not noArrow and not Locked(name) then
                 now[name] = true
-                local spot, title, turnIn
+                -- (goTo, onyxiaally: a place to go to, not a person to take
+                -- the quest from or hand it in to: no ! or ? on the arrow)
+                local spot, title, turnIn, goTo
                 for _, quest in ipairs(QuestsOf(name)) do
                     local info = RowInfo(quest, level)
                     if info.state == "ready" or info.state == "log" then
-                        spot, title, turnIn = info.turnin, info.name, true
+                        spot, title, turnIn, goTo = info.turnin, info.name, not info.goTo, info.goTo
                     elseif info.state == "todo" then
                         local pending = false
                         for _, entry in ipairs(ChainSteps(info)) do
                             if entry.state == "next" then
-                                pending, spot, title = true, entry.start, (entry.arrowName or entry.name)
+                                pending, spot, title, goTo = true, entry.start, (entry.arrowName or entry.name), entry.goTo
                                 break
                             elseif entry.state == "log" or entry.state == "ready" then
-                                pending, spot, title, turnIn = true, entry.turnin, (entry.arrowName or entry.name), not entry.goTo -- (stepgoto)
+                                pending, spot, title, turnIn, goTo = true, entry.turnin, (entry.arrowName or entry.name), not entry.goTo, entry.goTo -- (stepgoto)
                                 break
                             end
                         end
@@ -2910,37 +2929,7 @@ do
                     end
                     if spot then break end
                 end
-                FDJ.FollowWaypoint(name, spot, title, turnIn)
-            end
-        end
-        -- dungeonroute (2.0.5): a dungeon's route, stop by stop.
-        for _, name in ipairs(ShownTracked()) do
-            local dungeon = FDJ.DB[name]
-            if dungeon and not dungeon.questChainPage and RouteOn(name) and not Locked(name) then
-                now[name] = true
-                local plan = RoutePlan(name)
-                local stop = plan[1]
-                -- routeready (2.0.8): all errands done, the entrance is next:
-                -- no arrow, the "You're ready to go in!" box, until its Show
-                -- location button is clicked.
-                if stop and stop.entrance and FDJ.RouteReady and not FDJ.RouteReady(name) then
-                    FDJ.FollowWaypoint(name, nil)
-                elseif stop and FDJ.RouteGoalHere and FDJ.RouteGoalHere(stop) then
-                    -- killzone (2.0.8): at the place to kill / collect: no arrow
-                    -- goalhere (2.0.9, M 16 Nov 2026): the arrow stays (it going
-                    -- away looked like it broke): what to kill / collect there in
-                    -- place of the yards (FDJ.RouteGoalLines).
-                    if FDJ.RouteNotReady then FDJ.RouteNotReady(name) end
-                    FDJ.FollowWaypoint(name, stop.spot, stop.title, stop.turnIn, FDJ.RouteGoalLines(plan, stop), type(stop.id) == "string" and stop.id:find("^goto:") ~= nil, stop.skipQuest)
-                elseif stop then
-                    if not stop.entrance and FDJ.RouteNotReady then FDJ.RouteNotReady(name) end
-                    FDJ.FollowWaypoint(name, stop.spot, stop.title, stop.turnIn, nil, type(stop.id) == "string" and stop.id:find("^goto:") ~= nil, stop.skipQuest) -- (skipnow)
-                else
-                    if FDJ.RouteNotReady then FDJ.RouteNotReady(name) end
-                    FDJ.FollowWaypoint(name, nil)
-                end
-            elseif dungeon and FDJ.RouteNotReady then
-                FDJ.RouteNotReady(name) -- Route off
+                FDJ.FollowWaypoint(name, spot, title, turnIn, nil, goTo and true or nil)
             end
         end
         for name in pairs(followed) do
@@ -2949,62 +2938,6 @@ do
         followed = now
     end
     FDJ.FollowRoutes = FollowChains
-    -- killzone (2.0.8, M 15 Nov 2026): a stop that is a place to kill or
-    -- collect things (a goto: stop, no person named: Down the Scarlet Path's
-    -- Valley of Bones, the motes in Demon Fall Canyon) needs no arrow once you
-    -- are there: within 250 yards of the spot, or anywhere in its subzone.
-    -- The subzone is learned the first time you are within 100 yards (so it
-    -- is surely the right one) and kept (ForeverDungeonJournalDB.goalAreas,
-    -- per client language): after a /reload anywhere in the valley, still no
-    -- arrow. It stays away while you are within 400 yards; leave the area and
-    -- it comes back. A person to talk to (Sputtervalve) keeps it.
-    function FDJ.RouteGoalHere(stop)
-        if type(stop) ~= "table" or type(stop.id) ~= "string" or not stop.id:find("^goto:") then return false end
-        if stop.exact then return false end -- drownedally (2.0.9): one thing at one place (a tablet), not an area
-        if type(stop.spot) == "table" and stop.spot.exact then return false end -- (plankjump: a spot of one place, the arrow pointing at it)
-        local spot = stop.spot
-        if type(spot) ~= "table" or spot.targetName or not spot.mapID then return false end
-        FDJ.routeGoalsHere = FDJ.routeGoalsHere or {}
-        local here = FDJ.routeGoalsHere
-        local areas = {}
-        if type(ForeverDungeonJournalDB) == "table" then
-            if type(ForeverDungeonJournalDB.goalAreas) ~= "table" then ForeverDungeonJournalDB.goalAreas = {} end
-            areas = ForeverDungeonJournalDB.goalAreas
-        end
-        local key = string.format("%s|%.3f|%.3f", tostring(spot.mapID), tonumber(spot.x) or 0, tonumber(spot.y) or 0)
-        local yards = FDJ.YardsToSpot and FDJ.YardsToSpot(spot)
-        local sub = type(GetSubZoneText) == "function" and GetSubZoneText() or ""
-        if type(sub) ~= "string" then sub = "" end
-        local locale = type(GetLocale) == "function" and GetLocale() or ""
-        -- goalnear (2.0.13): a small place (spot.goalNear yards: the Lordamere
-        -- Internment Camp, 40): the arrow leads right into it
-        local reach = tonumber(spot.goalNear)
-        if yards and yards <= (reach or 100) and sub ~= "" then areas[key] = { sub = sub, locale = locale } end
-        local learned = areas[key]
-        local inArea = sub ~= "" and type(learned) == "table" and learned.sub == sub and learned.locale == locale
-        if reach then inArea = inArea and yards ~= nil and yards <= reach + 150 end
-        if (yards and yards <= (reach or 250)) or inArea or (here[stop.id] and yards and yards <= (reach and reach + 110 or 400)) then
-            here[stop.id] = true
-            return true
-        end
-        here[stop.id] = nil
-        return false
-    end
-    -- goalhere (2.0.9, M 16 Nov 2026): what the arrow says at the place to
-    -- kill / collect (FDJ.RouteGoalHere): the objectives of every quest done
-    -- there, as the tracker shows them ("0/15 Kurzen Jungle Fighter slain",
-    -- Bad Medicine's two lines under it: same place), done ones in grey.
-    function FDJ.RouteGoalLines(plan, stop)
-        local lines, seen = {}, {}
-        for _, task in ipairs(type(plan) == "table" and plan or {}) do
-            local id = type(task) == "table" and type(task.id) == "string" and tonumber(task.id:match("^goto:(%d+)$")) or nil
-            if id and not seen[id] and (task == stop or (task.key ~= nil and task.key == stop.key)) then
-                seen[id] = true
-                for _, line in ipairs(ObjectiveText(id)) do lines[#lines + 1] = line end
-            end
-        end
-        return lines
-    end
     -- Show on Map on a chain page's spot (FDJ.SetWaypointArrow): follow it.
     function FDJ.FollowChainArrow(name)
         local dungeon = name and FDJ.DB and FDJ.DB[name]
@@ -3101,6 +3034,7 @@ do
         local journal = _G.ForeverDungeonJournalFrame
         local b = journal and journal.questTrackButton
         if not b then return end
+        if FDJ.UpdateRouteButton then FDJ.UpdateRouteButton(name) end -- dungeonroute (2.0.5)
         if not name or #QuestsOf(name) == 0 or not Trackable(name) then -- trackpull (2.0.50)
             b.dungeon = nil
             b:Hide()
@@ -3521,6 +3455,18 @@ end
 -- have it, red when not) and a bar like the game's reputation bar with your
 -- standing and its progress. Placed above Objective; returns the new cursorY.
 ;(function()
+    do -- repshort: "Requires Exalted 999 / 1000" (REP_REQUIRES without the faction)
+        local strings = {
+            enUS = "Requires %s", deDE = "Benötigt %s", frFR = "Requiert %s", esES = "Requiere %s",
+            itIT = "Richiede %s", ptBR = "Requer %s", ruRU = "Требуется отношение «%s»",
+            koKR = "평판 필요: %s", zhCN = "需要声望：%s", zhTW = "需要聲望：%s",
+        }
+        strings.esMX = strings.esES
+        for locale, text in pairs(strings) do
+            local t = FDJ.Locales and FDJ.Locales[locale]
+            if t and t.REP_REQUIRES_ONLY == nil then t.REP_REQUIRES_ONLY = text end
+        end
+    end
     local STANDING_EN = { "Hated", "Hostile", "Unfriendly", "Neutral", "Friendly", "Honored", "Revered", "Exalted" }
     local COLORS = {
         { 0.80, 0.30, 0.22 }, { 0.80, 0.30, 0.22 }, { 0.75, 0.27, 0.00 }, { 0.90, 0.70, 0.00 },
@@ -3609,10 +3555,21 @@ end
                 local row = Row(journal, i)
                 local name, have, value, size = Standing(factionID)
                 if type(name) ~= "string" or name == "" or Secret(name) then name = need.name or "?" end
-                local met = have and have >= want
+                -- steprep (2.1.6): need.value: so far into that standing too
+                local into = tonumber(need.value)
+                local met = have and (have > want or (have == want and (not into or (tonumber(value) or 0) >= into)))
+                local wanted = Label(want)
+                if into then wanted = wanted .. " " .. into .. " / " .. ((want >= 8) and 1000 or math.max(into, tonumber(size) or into)) end
                 row.text:ClearAllPoints()
                 row.text:SetPoint("TOPLEFT", journal.questDetailContent, "TOPLEFT", 0, -cursorY)
-                row.text:SetText(FDJ.L("REP_REQUIRES", Label(want), name))
+                -- repshort (2.1.6, M 25 Nov 2026: "the text clips ... just cut with the
+                -- Stormpike Guard ... it's obvious what you need to do"): with
+                -- a value ("Exalted 999 / 1000") the faction is left out
+                if into then
+                    row.text:SetText(FDJ.L("REP_REQUIRES_ONLY", wanted))
+                else
+                    row.text:SetText(FDJ.L("REP_REQUIRES", wanted, name))
+                end
                 -- warnfont (2.1.1): red (not met) in the warning font.
                 if met then
                     row.text:SetFontObject("ForeverDJ_GameFontNormal")

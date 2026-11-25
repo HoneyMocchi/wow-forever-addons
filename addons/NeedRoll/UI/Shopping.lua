@@ -396,23 +396,36 @@ end
 
 -- Gold line ---------------------------------------------------------------
 
--- Whether `characters` (from Shop:MoneyOnAllCharacters) live on more than one realm.
+-- A character's saved realm name, or nil when none was saved (WoW: Forever's
+-- build 71037 left GetRealmName() empty).
+local function KnownRealm(character)
+    if character.realm == "" then return nil end
+    return character.realm
+end
+
+-- Whether `characters` (from Shop:MoneyOnAllCharacters) live on more than one
+-- realm, by the realm names saved for them.
 local function SpansRealms(characters)
+    local firstRealm
     for _, character in ipairs(characters) do
-        if character.realm ~= characters[1].realm then return true end
+        local realm = KnownRealm(character)
+        firstRealm = firstRealm or realm
+        if realm and realm ~= firstRealm then return true end
     end
     return false
 end
 
 -- Who has what: one line per character, richest first, the name in its
--- class colour (with the realm when they span more than one).
+-- class colour (with the realm, where one was saved, when they span more
+-- than one).
 local function ShowGoldTooltip(line)
     local _, characters = Shop:MoneyOnAllCharacters()
     local showRealm = SpansRealms(characters)
     GameTooltip:SetOwner(line, "ANCHOR_TOPLEFT")
     GameTooltip:AddLine(L["Gold on each character"], unpack(Theme.tip.title))
     for _, character in ipairs(characters) do
-        local name = showRealm and (character.name .. "-" .. character.realm) or character.name
+        local realm = showRealm and KnownRealm(character)
+        local name = realm and (character.name .. "-" .. realm) or character.name
         local color = ClassColor(character.class)
         GameTooltip:AddDoubleLine(name, ns.Money(character.money, true), color.r, color.g, color.b,
             unpack(Theme.tip.text))

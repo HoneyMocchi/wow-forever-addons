@@ -76,6 +76,11 @@ end
 -- buttons still find them.
 function MinimapButton:Restyle()
     local button = self.button
+    -- LibDBIcon tells other addons about a new button before Register
+    -- returns, so a minimap addon may already have reskinned it and removed
+    -- the ring or disc (or loaded its own LibDBIcon without them). Then the
+    -- button's look is that addon's, and NeedRoll leaves it alone.
+    if not (button and button.icon and button.border and button.background) then return end
     local logo, ring, disc = button.icon, button.border, button.background
     local look = C_Texture.GetAtlasInfo(BRONZE.atlas) and BRONZE or GOLD
     ring:ClearAllPoints()

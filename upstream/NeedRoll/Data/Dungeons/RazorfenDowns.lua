@@ -114,6 +114,7 @@ ns.Data:Register({
             { itemID = 10765, dropRate = 0.2737 },  -- Bonefingers
             { itemID = 10761, dropRate = 0.1889 },  -- Coldrage Dagger
             { itemID = 274381 },                    -- Coldbringer Spine
+            { itemID = 254040 },                    -- Pattern: Frothing Cord
             { itemID = 251398 },                    -- Plans: Officer's Boots
             { itemID = 251399 },                    -- Plans: Sentinel's Boots
             { itemID = 251400 },                    -- Plans: Warder's Boots

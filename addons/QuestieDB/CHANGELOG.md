@@ -1,22 +1,21 @@
-# QuestieDB 1.1.4
-
-### General fixes
-
-- Show QuestieDB version in addon list ([Cabro](https://github.com/Questie/QuestieDB/commit/0dc2169173c463e72afc4f93ff1e34197f7e186f))
+# QuestieDB 1.1.6
 
 ### Quest fixes
 
-- [Forever] Update quest XP data ([BreakBB](https://github.com/Questie/QuestieDB/commit/89f208e26ba06f387a87b64953678883fe846450))
+- Fix tooltips for A Moon-Kissed Blade ([Cabro](https://github.com/Questie/QuestieDB/commit/b1ea7bf239a2ed71e28397bfc86225ea46faeee8))
+- Glue quests in chain for Breaking the Keystone ([Cabro](https://github.com/Questie/QuestieDB/commit/afddbf2e71866158b6798375463b643ad0fbf503))
+- [Forever] Add starter for "Tattered Journal" ([BreakBB](https://github.com/Questie/QuestieDB/commit/0fca8318009043dfc79429a2d46ac30ae80d74cc))
+- [Forever] Update quest XP data ([BreakBB](https://github.com/Questie/QuestieDB/commit/4d170ef7f914c345776781a5b94f5e083a1af0ed))
 
 ### Database fixes
 
-- [Forever] Fix location of "Henrig Lonebrow's Journal" ([BreakBB](https://github.com/Questie/QuestieDB/commit/0388969651832b7dea5a6ee5a9d19f767cd4ce86))
-- [Forever] Rename "Elixir of Fortitude" to "Elixir of Lesser Fortitude" (item 3825) ([BreakBB](https://github.com/Questie/QuestieDB/commit/4eca55553db99c8142f83ec07975b7dec8f6e28f))
-- [Forever] Update quests, NPCs, objects and items data ([BreakBB](https://github.com/Questie/QuestieDB/commit/1a1edf3116490fa371c9f1b21b8acae008e7ad60))
+- [Forever] Adjust drop rate for Thunder Lizard Blood and Super Reaper 6000 Blueprints ([Cabro](https://github.com/Questie/QuestieDB/commit/268f30b6a3307b522cf749dca3c8190703fbaaf3))
+- [Forever] Adjust faction for Arille Azuregaze, Alfred Copperworth, Paige and Angelique Butler ([Cabro](https://github.com/Questie/QuestieDB/commit/74109eb7f00e0b3697c2ac6692c9236744c14ffb))
+- [Forever] Update quests, NPCs, objects and items data ([BreakBB](https://github.com/Questie/QuestieDB/commit/b9aa3789371920aa64f282f0cf3fc3c6f955c354))
 
 ### Localization fixes
 
-- Restore profession station object translations ([anon1231823](https://github.com/Questie/QuestieDB/commit/9cf27d6491dd80f1998aa0a846dbea9a3c5daad9))
-- [Forever] Update all translations ([BreakBB](https://github.com/Questie/QuestieDB/commit/51ebc17d853f1cd67f24a9e79e266a5cd2e2833a))
+- [Forever] Update NPC subnames ([BreakBB](https://github.com/Questie/QuestieDB/commit/a69fedc4de47fc05a9cd00d07bb2062b6c18eeca))
+- [Forever] Update all translations ([BreakBB](https://github.com/Questie/QuestieDB/commit/3fb2fdaa18262617cb811f108548d868106f4f2f))
 
-[All changes since v1.1.3](https://github.com/Questie/QuestieDB/compare/v1.1.3..933ec77a8151441c31a6356816feadaf145af73d)
+[All changes since v1.1.5](https://github.com/Questie/QuestieDB/compare/v1.1.5..4377c981ac368d1593ec92788218e0a689a6a02b)

@@ -1,5 +1,6 @@
 Dungeon maps for Hall of Thanes, Ruins of Lordaeron, Excavation Site: Wetlands,
-City of Dalaran (with the Dalaran Sewers) and Blackmaw Hold
+City of Dalaran (with the Dalaran Sewers) and Blackmaw Hold (with the
+Festering Grotto and its four levels below)
 
 Map art by Santiago Reyes, from his Atlas de Azeroth: Forever series.
 Used in NeedRoll with his permission. The art is his and is not covered by
@@ -11,10 +12,11 @@ His watermark is kept on each map, which is only resized and cut into tiles
   X                          https://x.com/SR433_20
 
 Dev/ holds maps by Santiago Reyes of dungeons NeedRoll doesn't show players
-yet: The Drowned City, Krol'dok Stronghold, Shaper's Terrace and Alcaz Prison
-(Main Unit and Maximum Security Unit). They are for local development
-checkouts only and are left out of the released addon. The same terms apply
-to them, and each is only resized and cut into tiles with his watermark kept.
+yet: The Drowned City (with Atal'Byzal), Krol'dok Stronghold, Shaper's
+Terrace and Alcaz Prison (Main Unit and Maximum Security Unit). They are for
+local development checkouts only and are left out of the released addon. The
+same terms apply to them, and each is only resized and cut into tiles with
+his watermark kept.
 The character sketches on Alcaz Prison's Maximum Security Unit map are
 original illustrations by Nysha (@nyswhf) and PallBadguy (@pall.bdguy), as
 the map's corner credit says.

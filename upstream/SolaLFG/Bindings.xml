@@ -1,0 +1,5 @@
+<Bindings>
+	<Binding name="FP_TOGGLE" header="SOLALFG" category="ADDONS">
+		if (FP_Toggle) then FP_Toggle(); elseif (FP_Frame:IsShown()) then FP_Frame:Hide(); else FP_Frame:Show(); end
+	</Binding>
+</Bindings>
