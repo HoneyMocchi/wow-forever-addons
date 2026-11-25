@@ -54,11 +54,13 @@
     <Script file="PvP\DarkspearRaiders.lua"/>
     <Script file="PvP\TheramoreExpeditionaryForce.lua"/>
     <Script file="Factions\ArgentDawn.lua"/>
+    <Script file="Factions\AzerothCommerceAuthority.lua"/>
     <Script file="Factions\BarkskinBurrow.lua"/>
     <Script file="Factions\BloodsailBuccaneers.lua"/>
     <Script file="Factions\BootyBay.lua"/>
     <Script file="Factions\BroodOfNozdormu.lua"/>
     <Script file="Factions\CenarionCircle.lua"/>
+    <Script file="Factions\DurotarSupplyAndLogistics.lua"/>
     <Script file="Factions\EarthenRing.lua"/>
     <Script file="Factions\Everlook.lua"/>
     <Script file="Factions\Gadgetzan.lua"/>

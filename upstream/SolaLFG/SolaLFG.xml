@@ -1,0 +1,1029 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/ C:\Projects\WoW\Bin\Interface\FrameXML\UI.xsd">
+	<Font name="FP_FontDefault" inherits="GameFontNormal" virtual="true">
+		<Color r="0.941" g="0.929" b="0.910"/>
+	</Font>
+	<Font name="FP_FontLeft" inherits="FP_FontDefault" justifyH="LEFT" virtual="true"/>
+
+	<!-- Row String Template -->
+	<SimpleHTML name="FP_StringTemplate" virtual="true">
+		<Layers>
+			<Layer level="OVERLAY">
+				<FontString name="$parentText" inherits="FP_FontLeft" maxlines="1">
+					<Anchors>
+						<Anchor point="RIGHT"/>
+						<Anchor point="LEFT"/>
+					</Anchors>
+				</FontString>
+			</Layer>
+		</Layers>
+	</SimpleHTML>
+
+	<!-- Row Template -->
+	<Button name="FP_RowTemplate" virtual="true">
+		<Size>
+			<AbsDimension y="22"/>
+		</Size>
+		<Frames>
+			<Frame name="$parentTime" inherits="FP_StringTemplate">
+				<Size>
+					<AbsDimension x="44" y="20"/>
+				</Size>
+				<Anchors>
+					<Anchor point="LEFT" relativeTo="$parent" relativePoint="LEFT">
+						<Offset x="0" y="0"/>
+					</Anchor>
+				</Anchors>
+			</Frame>
+			<Frame name="$parentDungeon" inherits="FP_StringTemplate">
+				<Size>
+					<AbsDimension x="115" y="20"/>
+				</Size>
+				<Anchors>
+					<Anchor point="LEFT" relativeTo="$parentTime" relativePoint="RIGHT">
+						<Offset x="8" y="0"/>
+					</Anchor>
+				</Anchors>
+			</Frame>
+			<Frame name="$parentName" inherits="FP_StringTemplate">
+				<Size>
+					<AbsDimension x="80" y="20"/>
+				</Size>
+				<Anchors>
+					<Anchor point="LEFT" relativeTo="$parentDungeon" relativePoint="RIGHT">
+						<Offset x="8" y="0"/>
+					</Anchor>
+				</Anchors>
+			</Frame>
+			<Frame name="$parentMsg" inherits="FP_StringTemplate">
+				<Size>
+					<AbsDimension y="20"/>
+				</Size>
+				<Anchors>
+					<Anchor point="LEFT" relativeTo="$parentName" relativePoint="RIGHT">
+						<Offset x="8" y="0"/>
+					</Anchor>
+					<Anchor point="RIGHT" relativeTo="$parent" relativePoint="RIGHT">
+						<Offset x="-6" y="0"/>
+					</Anchor>
+				</Anchors>
+			</Frame>
+		</Frames>
+		<HighlightTexture file="Interface\Buttons\WHITE8x8" alphaMode="ADD">
+			<Color r="0.130" g="0.122" b="0.114" a="0.75"/>
+		</HighlightTexture>
+		<Scripts>
+			<OnLoad>self:RegisterForClicks("LeftButtonDown", "RightButtonDown")</OnLoad>
+			<OnClick>FP_MenuClicked(self, button, "SEL_SHOUT")</OnClick>
+			<OnEnter>FP_Tooltip.LIST(self)</OnEnter>
+			<OnLeave>GameTooltip:Hide()</OnLeave>
+		</Scripts>
+	</Button>
+
+	<!-- Frame Template (BackdropTemplate) -->
+	<Frame name="FP_FrameTemplate" inherits="BackdropTemplate" frameStrata="HIGH" virtual="true">
+		<KeyValues>
+			<KeyValue key="backdropInfo" value="FP_Backdrop_Info" type="global"/>
+		</KeyValues>
+		<Scripts>
+			<OnLoad>
+				if BackdropTemplateMixin and BackdropTemplateMixin.OnBackdropLoaded then
+					BackdropTemplateMixin.OnBackdropLoaded(self)
+				end
+			</OnLoad>
+		</Scripts>
+	</Frame>
+
+	<!-- Master Addon Container Frame -->
+	<Frame name="FP_Frame" toplevel="true" movable="true" clampedToScreen="false" parent="UIParent" frameStrata="HIGH" hidden="true">
+		<Scripts>
+			<OnShow>
+				FP_OnFrameShow(self)
+			</OnShow>
+		</Scripts>
+		<Anchors>
+			<Anchor point="CENTER" relativePoint="CENTER"/>
+		</Anchors>
+		<Frames>
+			<!-- Main List Frame -->
+			<Frame name="FP_ListFrame" enableMouse="true" inherits="BackdropTemplate" frameStrata="HIGH" resizable="false" movable="true" clampedToScreen="false">
+				<Size>
+					<AbsDimension x="750" y="564"/>
+				</Size>
+				<Anchors>
+					<Anchor point="TOP" relativeTo="$parent" relativePoint="TOP">
+						<Offset>
+							<AbsDimension x="0" y="-40"/>
+						</Offset>
+					</Anchor>
+				</Anchors>
+				<KeyValues>
+					<KeyValue key="backdropInfo" value="FP_Backdrop_Info" type="global"/>
+				</KeyValues>
+				<Scripts>
+					<OnLoad>
+						if BackdropTemplateMixin and BackdropTemplateMixin.OnBackdropLoaded then
+							BackdropTemplateMixin.OnBackdropLoaded(self)
+						end
+						
+					</OnLoad>
+					<OnMouseDown>
+						if button == "LeftButton" then
+							FP_ListFrame:StartMoving()
+						elseif button == "RightButton" then
+							FP_CloseOnRightClick()
+						end
+					</OnMouseDown>
+					<OnMouseUp>
+						FP_ListFrame:StopMovingOrSizing()
+						FP_ListMove()
+					</OnMouseUp>
+				</Scripts>
+				<Layers>
+					<!-- Table Column Headers -->
+					<Layer level="OVERLAY">
+						<FontString name="$parentDungeonHeader" inherits="GameFontNormalSmall" justifyH="LEFT">
+							<Color r="0.831" g="0.655" b="0.271"/>
+							<Anchors>
+								<Anchor point="TOPLEFT">
+									<Offset x="64" y="-61"/>
+								</Anchor>
+							</Anchors>
+						</FontString>
+						<FontString name="$parentNameHeader" inherits="GameFontNormalSmall" justifyH="LEFT">
+							<Color r="0.831" g="0.655" b="0.271"/>
+							<Anchors>
+								<Anchor point="TOPLEFT">
+									<Offset x="187" y="-61"/>
+								</Anchor>
+							</Anchors>
+						</FontString>
+						<FontString name="$parentMsgHeader" inherits="GameFontNormalSmall" justifyH="LEFT">
+							<Color r="0.831" g="0.655" b="0.271"/>
+							<Anchors>
+								<Anchor point="TOPLEFT">
+									<Offset x="275" y="-61"/>
+								</Anchor>
+							</Anchors>
+						</FontString>
+						<!-- Search Labels -->
+						<FontString name="FP_MenuFrameFilter" inherits="GameFontHighlightSmall">
+							<Color r="0.353" g="0.749" b="0.690"/>
+							<Anchors>
+								<Anchor point="TOPLEFT">
+									<Offset x="236" y="-12"/>
+								</Anchor>
+							</Anchors>
+						</FontString>
+						<FontString name="FP_MenuFrameIgnore" inherits="GameFontHighlightSmall">
+							<Color r="0.812" g="0.400" b="0.475"/>
+							<Anchors>
+								<Anchor point="TOPLEFT">
+									<Offset x="432" y="-12"/>
+								</Anchor>
+							</Anchors>
+						</FontString>
+					</Layer>
+				</Layers>
+				<Frames>
+					<!-- Hidden Compatibility Bridges -->
+					<Button name="$parentBridgeToTitle" hidden="true">
+						<Size x="1" y="1"/>
+						<Anchors><Anchor point="TOPLEFT"/></Anchors>
+						<Scripts>
+							<OnClick>
+								if (FP_TitleFrame:IsShown()) then
+									FP_TitleFrame:Hide()
+									FP_Options.titlebarVisible = false
+								else
+									FP_TitleFrame:Show()
+									FP_Options.titlebarVisible = true
+								end
+							</OnClick>
+						</Scripts>
+					</Button>
+					<Button name="$parentBridgeToMenu" hidden="true">
+						<Size x="1" y="1"/>
+						<Anchors><Anchor point="TOPLEFT"/></Anchors>
+						<Scripts>
+							<OnClick>
+								if (FP_MenuFrame:IsShown()) then
+									FP_MenuFrame:Hide()
+									FP_Options.menubarVisible = false
+								else
+									FP_MenuFrame:Show()
+									FP_Options.menubarVisible = true
+								end
+							</OnClick>
+						</Scripts>
+					</Button>
+
+					<!-- Toolbar Controls -->
+					<!-- Dungeon Filter Dropdown Button -->
+					<Button name="$parentFilterDungeon" inherits="BackdropTemplate" id="2">
+						<Size>
+							<AbsDimension x="140" y="26"/>
+						</Size>
+						<Anchors>
+							<Anchor point="TOPLEFT">
+								<Offset x="12" y="-7"/>
+							</Anchor>
+						</Anchors>
+						<Layers>
+							<Layer level="OVERLAY">
+								<FontString name="$parentText" inherits="GameFontHighlightSmall" justifyH="LEFT">
+									<Anchors>
+										<Anchor point="LEFT"><Offset x="8" y="0"/></Anchor>
+										<Anchor point="RIGHT"><Offset x="-20" y="0"/></Anchor>
+									</Anchors>
+								</FontString>
+								<FontString name="$parentArrow" inherits="GameFontHighlightSmall" text="v">
+									<Color r="0.541" g="0.522" b="0.502"/>
+									<Anchors>
+										<Anchor point="RIGHT"><Offset x="-6" y="0"/></Anchor>
+									</Anchors>
+								</FontString>
+							</Layer>
+						</Layers>
+						<Scripts>
+							<OnLoad>
+								self:RegisterForClicks("LeftButtonDown", "RightButtonDown", "MiddleButtonDown")
+							</OnLoad>
+							<OnClick>
+								FP_MenuClicked(self, button, "MENU_FILTERDUNGEON")
+								FP_Tooltip.FILTERDUNGEON(self)
+							</OnClick>
+							<OnEnter>
+								FP_Tooltip.FILTERDUNGEON(self)
+							</OnEnter>
+							<OnLeave>GameTooltip:Hide()</OnLeave>
+						</Scripts>
+					</Button>
+					<!-- Class Filter Dropdown Button -->
+					<Button name="$parentFilterClass" inherits="BackdropTemplate" hidden="true">
+						<Size>
+							<AbsDimension x="95" y="24"/>
+						</Size>
+						<Anchors>
+							<Anchor point="LEFT" relativeTo="$parentFilterDungeon" relativePoint="RIGHT">
+								<Offset x="6" y="0"/>
+							</Anchor>
+						</Anchors>
+						<Layers>
+							<Layer level="OVERLAY">
+								<FontString name="$parentText" inherits="GameFontHighlightSmall" justifyH="LEFT">
+									<Anchors>
+										<Anchor point="LEFT"><Offset x="8" y="0"/></Anchor>
+										<Anchor point="RIGHT"><Offset x="-20" y="0"/></Anchor>
+									</Anchors>
+								</FontString>
+								<FontString name="$parentArrow" inherits="GameFontHighlightSmall" text="v">
+									<Color r="0.541" g="0.522" b="0.502"/>
+									<Anchors>
+										<Anchor point="RIGHT"><Offset x="-6" y="0"/></Anchor>
+									</Anchors>
+								</FontString>
+							</Layer>
+						</Layers>
+						<Scripts>
+							<OnLoad>
+								_G[self:GetName().."Text"]:SetText(FP_TEXT_LIST_LABEL)
+							</OnLoad>
+						</Scripts>
+					</Button>
+
+					<!-- Filter Include Keyword EditBox -->
+					<EditBox name="FP_MenuFrameFilterText" inherits="BackdropTemplate" enableMouse="true" autoFocus="false">
+						<Size>
+							<AbsDimension x="110" y="24"/>
+						</Size>
+						<Anchors>
+							<Anchor point="LEFT" relativeTo="FP_MenuFrameFilter" relativePoint="RIGHT">
+								<Offset x="6" y="0"/>
+							</Anchor>
+						</Anchors>
+						<Scripts>
+							<OnTabPressed>FP_MenuFrameIgnoreText:SetFocus()</OnTabPressed>
+							<OnEscapePressed>self:ClearFocus()</OnEscapePressed>
+							<OnEnterPressed>FP_MenuClicked(self, "LeftButton", "APPLY_FILTER") self:ClearFocus()</OnEnterPressed>
+						</Scripts>
+					</EditBox>
+					<!-- Filter Apply Button -->
+					<Button name="FP_MenuFrameFilterApply" inherits="BackdropTemplate" text="FP_TEXT_APPLY_FILTER">
+						<Size>
+							<AbsDimension x="48" y="24"/>
+						</Size>
+						<Anchors>
+							<Anchor point="LEFT" relativeTo="FP_MenuFrameFilterText" relativePoint="RIGHT">
+								<Offset x="4" y="0"/>
+							</Anchor>
+						</Anchors>
+						<NormalFont style="GameFontHighlightSmall"/>
+						<Scripts>
+							<OnClick>FP_MenuClicked(self, button, "APPLY_FILTER")</OnClick>
+						</Scripts>
+					</Button>
+
+					<!-- Ignore Keyword EditBox -->
+					<EditBox name="FP_MenuFrameIgnoreText" inherits="BackdropTemplate" enableMouse="true" autoFocus="false">
+						<Size>
+							<AbsDimension x="110" y="24"/>
+						</Size>
+						<Anchors>
+							<Anchor point="LEFT" relativeTo="FP_MenuFrameIgnore" relativePoint="RIGHT">
+								<Offset x="6" y="0"/>
+							</Anchor>
+						</Anchors>
+						<Scripts>
+							<OnTabPressed>FP_MenuFrameWhText:SetFocus()</OnTabPressed>
+							<OnEscapePressed>self:ClearFocus()</OnEscapePressed>
+							<OnEnterPressed>FP_MenuClicked(self, "LeftButton", "IGNORE") self:ClearFocus()</OnEnterPressed>
+							<OnEnter>FP_Tooltip.IGNORE(self)</OnEnter>
+							<OnLeave>GameTooltip:Hide()</OnLeave>
+						</Scripts>
+					</EditBox>
+					<!-- Ignore Apply Button -->
+					<Button name="FP_MenuFrameIgnoreButton" inherits="BackdropTemplate" text="FP_TEXT_IGNORE">
+						<Size>
+							<AbsDimension x="48" y="24"/>
+						</Size>
+						<Anchors>
+							<Anchor point="LEFT" relativeTo="FP_MenuFrameIgnoreText" relativePoint="RIGHT">
+								<Offset x="4" y="0"/>
+							</Anchor>
+						</Anchors>
+						<NormalFont style="GameFontHighlightSmall"/>
+						<Scripts>
+							<OnClick>FP_MenuClicked(self, button, "IGNORE")</OnClick>
+						</Scripts>
+					</Button>
+					<!-- Reset Exclusions Button -->
+					<Button name="FP_MenuFrameExceptionDelete" inherits="BackdropTemplate" text="FP_TEXT_EXCEPTION_DELETE">
+						<Size>
+							<AbsDimension x="60" y="24"/>
+						</Size>
+						<Anchors>
+							<Anchor point="LEFT" relativeTo="FP_MenuFrameIgnoreButton" relativePoint="RIGHT">
+								<Offset x="4" y="0"/>
+							</Anchor>
+						</Anchors>
+						<NormalFont style="GameFontHighlightSmall"/>
+						<Scripts>
+							<OnClick>FP_MenuClicked(self, button, "MENU_EXCEPTION_DELETE")</OnClick>
+						</Scripts>
+					</Button>
+
+					<!-- Time Sort Button -->
+					<Button name="$parentTimeSort" inherits="BackdropTemplate" id="1" text="TIME">
+						<Size>
+							<AbsDimension x="44" y="20"/>
+						</Size>
+						<Anchors>
+							<Anchor point="TOPLEFT">
+								<Offset x="12" y="-58"/>
+							</Anchor>
+						</Anchors>
+						<NormalFont style="GameFontHighlightSmall"/>
+						<Scripts>
+							<OnClick>
+								local asc = FP_SortButtonClicked(self)
+								local baseText = FP_TEXT_TIME_LABEL or "Time"
+								if asc then
+									self:SetText(baseText.." ^")
+								else
+									self:SetText(baseText.." v")
+								end
+							</OnClick>
+							<OnEnter>
+								local fs = self:GetFontString()
+								if fs then fs:SetTextColor(1, 0.85, 0.5) end
+								FP_Tooltip.SORTTIME(self)
+							</OnEnter>
+							<OnLeave>
+								local fs = self:GetFontString()
+								if fs then fs:SetTextColor(0.831, 0.655, 0.271) end
+								GameTooltip:Hide()
+							</OnLeave>
+						</Scripts>
+					</Button>
+					<!-- Dungeon Sort Clickable Header Button -->
+					<Button name="$parentDungeonSort" inherits="BackdropTemplate" id="2">
+						<Size>
+							<AbsDimension x="115" y="20"/>
+						</Size>
+						<Anchors>
+							<Anchor point="LEFT" relativeTo="$parentTimeSort" relativePoint="RIGHT">
+								<Offset x="8" y="0"/>
+							</Anchor>
+						</Anchors>
+						<Scripts>
+							<OnClick>
+								local asc = FP_SortButtonClicked(self)
+								local baseText = FP_TEXT_DUNGEON_LABEL or "Dungeon"
+								if asc then
+									self:SetText(baseText.." ^")
+								else
+									self:SetText(baseText.." v")
+								end
+							</OnClick>
+							<OnEnter>
+								FP_ListFrameDungeonHeader:SetTextColor(1, 0.85, 0.5)
+							</OnEnter>
+							<OnLeave>
+								FP_ListFrameDungeonHeader:SetTextColor(0.831, 0.655, 0.271)
+							</OnLeave>
+						</Scripts>
+					</Button>
+
+					<!-- Rows (1 to 20) -->
+					<Button name="$parentRow1" inherits="FP_RowTemplate" id="1">
+						<Anchors>
+							<Anchor point="TOPLEFT">
+								<Offset x="12" y="-82"/>
+							</Anchor>
+							<Anchor point="RIGHT">
+								<Offset x="-30" y="0"/>
+							</Anchor>
+						</Anchors>
+					</Button>
+					<Button name="$parentRow2" inherits="FP_RowTemplate" id="2">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeTo="$parentRow1" relativePoint="BOTTOMLEFT"/>
+							<Anchor point="RIGHT"><Offset x="-30" y="0"/></Anchor>
+						</Anchors>
+					</Button>
+					<Button name="$parentRow3" inherits="FP_RowTemplate" id="3">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeTo="$parentRow2" relativePoint="BOTTOMLEFT"/>
+							<Anchor point="RIGHT"><Offset x="-30" y="0"/></Anchor>
+						</Anchors>
+					</Button>
+					<Button name="$parentRow4" inherits="FP_RowTemplate" id="4">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeTo="$parentRow3" relativePoint="BOTTOMLEFT"/>
+							<Anchor point="RIGHT"><Offset x="-30" y="0"/></Anchor>
+						</Anchors>
+					</Button>
+					<Button name="$parentRow5" inherits="FP_RowTemplate" id="5">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeTo="$parentRow4" relativePoint="BOTTOMLEFT"/>
+							<Anchor point="RIGHT"><Offset x="-30" y="0"/></Anchor>
+						</Anchors>
+					</Button>
+					<Button name="$parentRow6" inherits="FP_RowTemplate" id="6">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeTo="$parentRow5" relativePoint="BOTTOMLEFT"/>
+							<Anchor point="RIGHT"><Offset x="-30" y="0"/></Anchor>
+						</Anchors>
+					</Button>
+					<Button name="$parentRow7" inherits="FP_RowTemplate" id="7">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeTo="$parentRow6" relativePoint="BOTTOMLEFT"/>
+							<Anchor point="RIGHT"><Offset x="-30" y="0"/></Anchor>
+						</Anchors>
+					</Button>
+					<Button name="$parentRow8" inherits="FP_RowTemplate" id="8">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeTo="$parentRow7" relativePoint="BOTTOMLEFT"/>
+							<Anchor point="RIGHT"><Offset x="-30" y="0"/></Anchor>
+						</Anchors>
+					</Button>
+					<Button name="$parentRow9" inherits="FP_RowTemplate" id="9">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeTo="$parentRow8" relativePoint="BOTTOMLEFT"/>
+							<Anchor point="RIGHT"><Offset x="-30" y="0"/></Anchor>
+						</Anchors>
+					</Button>
+					<Button name="$parentRow10" inherits="FP_RowTemplate" id="10">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeTo="$parentRow9" relativePoint="BOTTOMLEFT"/>
+							<Anchor point="RIGHT"><Offset x="-30" y="0"/></Anchor>
+						</Anchors>
+					</Button>
+					<Button name="$parentRow11" inherits="FP_RowTemplate" id="11">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeTo="$parentRow10" relativePoint="BOTTOMLEFT"/>
+							<Anchor point="RIGHT"><Offset x="-30" y="0"/></Anchor>
+						</Anchors>
+					</Button>
+					<Button name="$parentRow12" inherits="FP_RowTemplate" id="12">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeTo="$parentRow11" relativePoint="BOTTOMLEFT"/>
+							<Anchor point="RIGHT"><Offset x="-30" y="0"/></Anchor>
+						</Anchors>
+					</Button>
+					<Button name="$parentRow13" inherits="FP_RowTemplate" id="13">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeTo="$parentRow12" relativePoint="BOTTOMLEFT"/>
+							<Anchor point="RIGHT"><Offset x="-30" y="0"/></Anchor>
+						</Anchors>
+					</Button>
+					<Button name="$parentRow14" inherits="FP_RowTemplate" id="14">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeTo="$parentRow13" relativePoint="BOTTOMLEFT"/>
+							<Anchor point="RIGHT"><Offset x="-30" y="0"/></Anchor>
+						</Anchors>
+					</Button>
+					<Button name="$parentRow15" inherits="FP_RowTemplate" id="15">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeTo="$parentRow14" relativePoint="BOTTOMLEFT"/>
+							<Anchor point="RIGHT"><Offset x="-30" y="0"/></Anchor>
+						</Anchors>
+					</Button>
+					<Button name="$parentRow16" inherits="FP_RowTemplate" id="16">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeTo="$parentRow15" relativePoint="BOTTOMLEFT"/>
+							<Anchor point="RIGHT"><Offset x="-30" y="0"/></Anchor>
+						</Anchors>
+					</Button>
+					<Button name="$parentRow17" inherits="FP_RowTemplate" id="17">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeTo="$parentRow16" relativePoint="BOTTOMLEFT"/>
+							<Anchor point="RIGHT"><Offset x="-30" y="0"/></Anchor>
+						</Anchors>
+					</Button>
+					<Button name="$parentRow18" inherits="FP_RowTemplate" id="18">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeTo="$parentRow17" relativePoint="BOTTOMLEFT"/>
+							<Anchor point="RIGHT"><Offset x="-30" y="0"/></Anchor>
+						</Anchors>
+					</Button>
+					<Button name="$parentRow19" inherits="FP_RowTemplate" id="19">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeTo="$parentRow18" relativePoint="BOTTOMLEFT"/>
+							<Anchor point="RIGHT"><Offset x="-30" y="0"/></Anchor>
+						</Anchors>
+					</Button>
+					<Button name="$parentRow20" inherits="FP_RowTemplate" id="20">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeTo="$parentRow19" relativePoint="BOTTOMLEFT"/>
+							<Anchor point="RIGHT"><Offset x="-30" y="0"/></Anchor>
+						</Anchors>
+					</Button>
+					<Button name="$parentRow21" inherits="FP_RowTemplate" id="21">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeTo="$parentRow20" relativePoint="BOTTOMLEFT"/>
+							<Anchor point="RIGHT"><Offset x="-30" y="0"/></Anchor>
+						</Anchors>
+					</Button>
+					<Button name="$parentRow22" inherits="FP_RowTemplate" id="22">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeTo="$parentRow21" relativePoint="BOTTOMLEFT"/>
+							<Anchor point="RIGHT"><Offset x="-30" y="0"/></Anchor>
+						</Anchors>
+					</Button>
+					<Button name="$parentRow23" inherits="FP_RowTemplate" id="23">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeTo="$parentRow22" relativePoint="BOTTOMLEFT"/>
+							<Anchor point="RIGHT"><Offset x="-30" y="0"/></Anchor>
+						</Anchors>
+					</Button>
+					<Button name="$parentRow24" inherits="FP_RowTemplate" id="24">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeTo="$parentRow23" relativePoint="BOTTOMLEFT"/>
+							<Anchor point="RIGHT"><Offset x="-30" y="0"/></Anchor>
+						</Anchors>
+					</Button>
+					<Button name="$parentRow25" inherits="FP_RowTemplate" id="25">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeTo="$parentRow24" relativePoint="BOTTOMLEFT"/>
+							<Anchor point="RIGHT"><Offset x="-30" y="0"/></Anchor>
+						</Anchors>
+					</Button>
+					<Button name="$parentRow26" inherits="FP_RowTemplate" id="26">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeTo="$parentRow25" relativePoint="BOTTOMLEFT"/>
+							<Anchor point="RIGHT"><Offset x="-30" y="0"/></Anchor>
+						</Anchors>
+					</Button>
+					<Button name="$parentRow27" inherits="FP_RowTemplate" id="27">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeTo="$parentRow26" relativePoint="BOTTOMLEFT"/>
+							<Anchor point="RIGHT"><Offset x="-30" y="0"/></Anchor>
+						</Anchors>
+					</Button>
+					<Button name="$parentRow28" inherits="FP_RowTemplate" id="28">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeTo="$parentRow27" relativePoint="BOTTOMLEFT"/>
+							<Anchor point="RIGHT"><Offset x="-30" y="0"/></Anchor>
+						</Anchors>
+					</Button>
+
+					<!-- ScrollFrame -->
+					<ScrollFrame name="$parentScrollFrame" inherits="FauxScrollFrameTemplate" hidden="false" enableMouse="true">
+						<Anchors>
+							<Anchor point="TOPLEFT">
+								<Offset x="0" y="-82"/>
+							</Anchor>
+							<Anchor point="BOTTOMRIGHT">
+								<Offset x="-30" y="8"/>
+							</Anchor>
+						</Anchors>
+						<Scripts>
+							<OnVerticalScroll>FauxScrollFrame_OnVerticalScroll(self, offset, 24, FP_Refresh)</OnVerticalScroll>
+							<OnShow>FP_Refresh()</OnShow>
+							<OnMouseDown>
+								if button == "LeftButton" then
+									FP_ListFrame:StartMoving()
+								elseif button == "RightButton" then
+									FP_CloseOnRightClick()
+								end
+							</OnMouseDown>
+							<OnMouseUp>
+								FP_ListFrame:StopMovingOrSizing()
+								FP_ListMove()
+							</OnMouseUp>
+						</Scripts>
+					</ScrollFrame>
+				</Frames>
+			</Frame>
+
+			<!-- Title Bar Frame -->
+			<Frame name="FP_TitleFrame" enableMouse="true" inherits="FP_FrameTemplate">
+				<Size>
+					<AbsDimension x="750" y="36"/>
+				</Size>
+				<Anchors>
+					<Anchor point="BOTTOMLEFT" relativeTo="FP_ListFrame" relativePoint="TOPLEFT"/>
+					<Anchor point="BOTTOMRIGHT" relativeTo="FP_ListFrame" relativePoint="TOPRIGHT"/>
+				</Anchors>
+				<Scripts>
+					<OnMouseDown>
+						if button == "LeftButton" then
+							FP_ListFrame:StartMoving()
+						elseif button == "RightButton" then
+							FP_CloseOnRightClick()
+						end
+					</OnMouseDown>
+					<OnMouseUp>
+						FP_ListFrame:StopMovingOrSizing()
+						FP_ListMove()
+					</OnMouseUp>
+				</Scripts>
+				<Layers>
+					<Layer level="OVERLAY">
+						<FontString name="$parentText" inherits="GameFontNormalLarge" justifyH="LEFT">
+							<Anchors>
+								<Anchor point="LEFT" relativePoint="LEFT">
+									<Offset x="14" y="0"/>
+								</Anchor>
+							</Anchors>
+						</FontString>
+					</Layer>
+				</Layers>
+				<Frames>
+					<!-- Scan Active Toggle Pill -->
+					<Button name="$parentActivation" inherits="BackdropTemplate">
+						<Size>
+							<AbsDimension x="95" y="22"/>
+						</Size>
+						<Anchors>
+							<Anchor point="LEFT">
+								<Offset x="144" y="0"/>
+							</Anchor>
+						</Anchors>
+						<NormalFont style="GameFontHighlightSmall"/>
+						<Scripts>
+							<OnEnter>FP_Tooltip.ACTIVATE(self)</OnEnter>
+							<OnLeave>GameTooltip:Hide()</OnLeave>
+							<OnClick>
+								FP_MenuClicked(self, button, "MENU_ACTIVATION")
+								FP_Tooltip.ACTIVATE(self)
+							</OnClick>
+						</Scripts>
+					</Button>
+					<!-- Bell Sound Alert Toggle Pill (72x22, 15% reduced width) -->
+					<Button name="$parentActivateBellnWindow" inherits="BackdropTemplate">
+						<Size>
+							<AbsDimension x="72" y="22"/>
+						</Size>
+						<Anchors>
+							<Anchor point="LEFT" relativeTo="$parentActivation" relativePoint="RIGHT">
+								<Offset x="6" y="0"/>
+							</Anchor>
+						</Anchors>
+						<NormalFont style="GameFontHighlightSmall"/>
+						<Scripts>
+							<OnEnter>FP_Tooltip.ACTIVATEBELLNWINDOW(self)</OnEnter>
+							<OnLeave>GameTooltip:Hide()</OnLeave>
+							<OnClick>
+								FP_MenuClicked(self, button, "MENU_ACTIVATE_BELLNWINDOW")
+								FP_Tooltip.ACTIVATEBELLNWINDOW(self)
+							</OnClick>
+						</Scripts>
+					</Button>
+					<!-- Ad Auto-Announce Toggle Pill (72x22, 15% reduced width) -->
+					<Button name="$parentAnnouncing" inherits="BackdropTemplate" hidden="true">
+						<Size>
+							<AbsDimension x="72" y="22"/>
+						</Size>
+						<Anchors>
+							<Anchor point="LEFT" relativeTo="$parentActivateBellnWindow" relativePoint="RIGHT">
+								<Offset x="6" y="0"/>
+							</Anchor>
+						</Anchors>
+						<NormalFont style="GameFontHighlightSmall"/>
+						<Scripts>
+							<OnEnter>FP_Tooltip.ANNOUNCE(self)</OnEnter>
+							<OnLeave>GameTooltip:Hide()</OnLeave>
+							<OnClick>
+								FP_MenuClicked(self, button, "MENU_ANNOUNCE")
+								FP_Tooltip.ANNOUNCE(self)
+							</OnClick>
+						</Scripts>
+					</Button>
+					<!-- Close Button (Sola 22x22 X Button) -->
+					<Button name="$parentCloseButton" inherits="BackdropTemplate">
+						<Size>
+							<AbsDimension x="22" y="22"/>
+						</Size>
+						<Anchors>
+							<Anchor point="RIGHT">
+								<Offset x="-8" y="0"/>
+							</Anchor>
+						</Anchors>
+						<NormalFont style="GameFontHighlight"/>
+						<Scripts>
+							<OnEnter>FP_Tooltip.CLOSE(self)</OnEnter>
+							<OnLeave>GameTooltip:Hide()</OnLeave>
+							<OnClick>FP_Frame:Hide()</OnClick>
+						</Scripts>
+					</Button>
+					<!-- Line Count Buttons (Hidden / Fixed Size Window) -->
+					<Button name="$parentIncreaseButton" hidden="true"><Size x="1" y="1"/></Button>
+					<Button name="$parentDecreaseButton" hidden="true"><Size x="1" y="1"/></Button>
+					<Button name="$parentMaxButton" hidden="true"><Size x="1" y="1"/></Button>
+					<Button name="$parentMinButton" hidden="true"><Size x="1" y="1"/></Button>
+
+					<!-- Option Button -->
+					<Button name="$parentOption" inherits="BackdropTemplate" text="FP_OPTION">
+						<Size>
+							<AbsDimension x="48" y="22"/>
+						</Size>
+						<Anchors>
+							<Anchor point="RIGHT" relativeTo="$parentCloseButton" relativePoint="LEFT">
+								<Offset x="-6" y="0"/>
+							</Anchor>
+						</Anchors>
+						<NormalFont style="GameFontHighlightSmall"/>
+						<Scripts>
+							<OnLoad>self:RegisterForClicks("LeftButtonDown","RightButtonDown")</OnLoad>
+							<OnEnter>FP_Tooltip.OPTION(self)</OnEnter>
+							<OnLeave>GameTooltip:Hide()</OnLeave>
+							<OnClick>FP_MenuClicked(self, button, "MENU_OPTION")</OnClick>
+						</Scripts>
+					</Button>
+					<!-- Help Button (Amber) -->
+					<Button name="FP_MenuFrameInfo" inherits="BackdropTemplate" text="FP_TEXT_HELP">
+						<Size>
+							<AbsDimension x="52" y="22"/>
+						</Size>
+						<Anchors>
+							<Anchor point="RIGHT" relativeTo="$parentOption" relativePoint="LEFT">
+								<Offset x="-4" y="0"/>
+							</Anchor>
+						</Anchors>
+						<NormalFont style="GameFontHighlightSmall"/>
+						<Scripts>
+							<OnClick>FP_MenuClicked(self, button, "MENU_INFO")</OnClick>
+						</Scripts>
+					</Button>
+				</Frames>
+			</Frame>
+
+			<!-- Action Footer Frame -->
+			<Frame name="FP_MenuFrame" enableMouse="true" inherits="FP_FrameTemplate">
+				<Size>
+					<AbsDimension x="750" y="44"/>
+				</Size>
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeTo="FP_ListFrame" relativePoint="BOTTOMLEFT"/>
+					<Anchor point="TOPRIGHT" relativeTo="FP_ListFrame" relativePoint="BOTTOMRIGHT"/>
+				</Anchors>
+				<Scripts>
+					<OnMouseDown>
+						if button == "LeftButton" then
+							FP_ListFrame:StartMoving()
+						elseif button == "RightButton" then
+							FP_CloseOnRightClick()
+						end
+					</OnMouseDown>
+					<OnMouseUp>
+						FP_ListFrame:StopMovingOrSizing()
+						FP_ListMove()
+					</OnMouseUp>
+				</Scripts>
+				<Layers>
+					<Layer level="OVERLAY">
+						<FontString name="$parentWh" inherits="GameFontHighlightSmall" text="FP_TEXT_WH_LABEL">
+							<Color r="0.831" g="0.655" b="0.271"/>
+							<Anchors>
+								<Anchor point="LEFT">
+									<Offset x="14" y="0"/>
+								</Anchor>
+							</Anchors>
+						</FontString>
+					<FontString name="$parentAd" inherits="GameFontHighlightSmall" text="FP_TEXT_AD_LABEL" hidden="true">
+							<Color r="0.831" g="0.655" b="0.271"/>
+							<Anchors>
+								<Anchor point="TOPLEFT" relativeTo="$parentWh" relativePoint="BOTTOMLEFT">
+									<Offset x="0" y="-15"/>
+								</Anchor>
+							</Anchors>
+						</FontString>
+					</Layer>
+				</Layers>
+				<Frames>
+					<!-- Whisper Macro Input -->
+					<EditBox name="$parentWhText" inherits="BackdropTemplate" enableMouse="true" autoFocus="false">
+						<Size>
+							<AbsDimension x="220" y="26"/>
+						</Size>
+						<Anchors>
+							<Anchor point="LEFT" relativeTo="$parentWh" relativePoint="RIGHT">
+								<Offset x="8" y="0"/>
+							</Anchor>
+						</Anchors>
+						<Scripts>
+							<OnTabPressed>FP_MenuFrameFilterText:SetFocus()</OnTabPressed>
+							<OnEscapePressed>self:ClearFocus()</OnEscapePressed>
+							<OnTextChanged>
+								if self:GetText() ~= FP_UserDefinedWhMsg then
+									FP_UserDefinedWhMsg = self:GetText()
+									local lvl = UnitLevel("player")
+									local cls = UnitClass("player")
+									local expectedAuto = (lvl and cls) and string.format(FP_TEXT_AUTO_WHISPER_FORMAT or "%d %s 초대 부탁드립니다", lvl, cls) or ""
+									if self:GetText() ~= expectedAuto then
+										FP_WhAutoLevel = false
+									end
+								end
+							</OnTextChanged>
+							<OnEnterPressed>
+								if shouterSelected then
+									FP_MenuClicked(FP_MenuFrameApply, "LeftButton", "MENU_APPLY")
+								end
+								self:ClearFocus()
+							</OnEnterPressed>
+						</Scripts>
+					</EditBox>
+					<!-- Whisper Macro Preset Dropdown Toggle Button (▼) -->
+					<Button name="$parentWhPresetBtn" inherits="BackdropTemplate" text="&#9660;">
+						<Size>
+							<AbsDimension x="24" y="26"/>
+						</Size>
+						<Anchors>
+							<Anchor point="LEFT" relativeTo="$parentWhText" relativePoint="RIGHT">
+								<Offset x="3" y="0"/>
+							</Anchor>
+						</Anchors>
+						<NormalFont style="GameFontHighlightSmall"/>
+						<Scripts>
+							<OnClick>FP_ToggleWhPresetMenu(self)</OnClick>
+							<OnEnter>FP_Tooltip_WhPresetBtn(self)</OnEnter>
+							<OnLeave>GameTooltip:Hide()</OnLeave>
+						</Scripts>
+					</Button>
+					<!-- Whisper preset add button -->
+					<Button name="$parentWhAddBtn" inherits="BackdropTemplate" text="FP_TEXT_ADD">
+						<Size>
+							<AbsDimension x="44" y="26"/>
+						</Size>
+						<Anchors>
+							<Anchor point="LEFT" relativeTo="$parentWhPresetBtn" relativePoint="RIGHT">
+								<Offset x="4" y="0"/>
+							</Anchor>
+						</Anchors>
+						<NormalFont style="GameFontHighlightSmall"/>
+						<Scripts>
+							<OnClick>FP_AddCurrentWhPreset()</OnClick>
+							<OnEnter>FP_Tooltip_WhAddBtn(self)</OnEnter>
+							<OnLeave>GameTooltip:Hide()</OnLeave>
+						</Scripts>
+					</Button>
+					<!-- Apply Whisper Button (Teal / Primary) -->
+					<Button name="$parentApply" inherits="BackdropTemplate" text="FP_TEXT_APPLY">
+						<Size>
+							<AbsDimension x="66" y="26"/>
+						</Size>
+						<Anchors>
+							<Anchor point="LEFT" relativeTo="$parentWhAddBtn" relativePoint="RIGHT">
+								<Offset x="6" y="0"/>
+							</Anchor>
+						</Anchors>
+						<NormalFont style="GameFontHighlightSmall"/>
+						<Scripts>
+							<OnClick>FP_MenuClicked(self, button, "MENU_APPLY")</OnClick>
+							<OnEnter>FP_Tooltip.APPLYBINDING(self)</OnEnter>
+							<OnLeave>GameTooltip:Hide()</OnLeave>
+						</Scripts>
+					</Button>
+					<!-- Exception Button (Rose / Danger) -->
+					<Button name="$parentException" inherits="BackdropTemplate" text="FP_TEXT_EXCEPTION">
+						<Size>
+							<AbsDimension x="54" y="26"/>
+						</Size>
+						<Anchors>
+							<Anchor point="RIGHT">
+								<Offset x="-20" y="0"/>
+							</Anchor>
+						</Anchors>
+						<NormalFont style="GameFontHighlightSmall"/>
+						<Scripts>
+							<OnClick>FP_MenuClicked(self, button, "MENU_EXCEPTION")</OnClick>
+							<OnEnter>FP_Tooltip.EXCEPTIONBINDING(self)</OnEnter>
+							<OnLeave>GameTooltip:Hide()</OnLeave>
+						</Scripts>
+					</Button>
+					<!-- Who Query Button -->
+					<Button name="$parentWho" inherits="BackdropTemplate" text="FP_TEXT_WHO">
+						<Size>
+							<AbsDimension x="54" y="26"/>
+						</Size>
+						<Anchors>
+							<Anchor point="RIGHT" relativeTo="$parentException" relativePoint="LEFT">
+								<Offset x="-4" y="0"/>
+							</Anchor>
+						</Anchors>
+						<NormalFont style="GameFontHighlightSmall"/>
+						<Scripts>
+							<OnClick>FP_MenuClicked(self, button, "MENU_WHO")</OnClick>
+							<OnEnter>FP_Tooltip.WHOBINDING(self)</OnEnter>
+							<OnLeave>GameTooltip:Hide()</OnLeave>
+						</Scripts>
+					</Button>
+					<!-- Whisper Chatbox Button -->
+					<Button name="$parentWhisper" inherits="BackdropTemplate" text="FP_TEXT_WHISPER">
+						<Size>
+							<AbsDimension x="54" y="26"/>
+						</Size>
+						<Anchors>
+							<Anchor point="RIGHT" relativeTo="$parentWho" relativePoint="LEFT">
+								<Offset x="-4" y="0"/>
+							</Anchor>
+						</Anchors>
+						<NormalFont style="GameFontHighlightSmall"/>
+						<Scripts>
+							<OnClick>FP_MenuClicked(self, button, "MENU_WHISPER")</OnClick>
+							<OnEnter>FP_Tooltip.WHISPERBINDING(self)</OnEnter>
+							<OnLeave>GameTooltip:Hide()</OnLeave>
+						</Scripts>
+					</Button>
+					<!-- Auto Announce Input (MessageQueue) -->
+					<EditBox name="$parentAdText" inherits="BackdropTemplate" enableMouse="true" autoFocus="false" hidden="true">
+						<Size>
+							<AbsDimension x="500" y="24"/>
+						</Size>
+						<Anchors>
+							<Anchor point="LEFT" relativeTo="$parentAd" relativePoint="RIGHT">
+								<Offset x="8" y="0"/>
+							</Anchor>
+						</Anchors>
+						<Scripts>
+							<OnTabPressed>FP_MenuFrameFilterText:SetFocus()</OnTabPressed>
+							<OnEscapePressed>self:ClearFocus()</OnEscapePressed>
+							<OnTextChanged>FP_UserDefinedAdMsg = self:GetText()</OnTextChanged>
+							<OnEnterPressed>
+								FP_MenuClicked(self, "LeftButton", "MENU_ANNOUNCE")
+								self:ClearFocus()
+							</OnEnterPressed>
+						</Scripts>
+					</EditBox>
+					<!-- Auto Announce Toggle Button (MessageQueue) -->
+					<Button name="$parentAnnounce" inherits="BackdropTemplate" text="FP_TEXT_START_AD" hidden="true">
+						<Size>
+							<AbsDimension x="74" y="24"/>
+						</Size>
+						<Anchors>
+							<Anchor point="LEFT" relativeTo="$parentAdText" relativePoint="RIGHT">
+								<Offset x="8" y="0"/>
+							</Anchor>
+						</Anchors>
+						<NormalFont style="GameFontHighlightSmall"/>
+						<Scripts>
+							<OnClick>FP_MenuClicked(self, button, "MENU_ANNOUNCE")</OnClick>
+						</Scripts>
+					</Button>
+					<!-- Resize Grip (Disabled / Fixed Size) -->
+					<Button name="FP_ListFrameResizeGrip" hidden="true">
+						<Size x="1" y="1"/>
+					</Button>
+				</Frames>
+			</Frame>
+
+			<!-- Dropdown Menu Anchor Frame -->
+			<Frame name="FP_DropDownMenu" inherits="UIDropDownMenuTemplate" id="1">
+				<Scripts>
+					<OnLoad></OnLoad>
+				</Scripts>
+			</Frame>
+		</Frames>
+	</Frame>
+
+	<!-- Event & Timer Engine Frame -->
+	<Frame name="FP_InviteControlFrame">
+		<Scripts>
+			<OnLoad>if FP_OnLoad then FP_OnLoad(self) end</OnLoad>
+			<OnEvent>if FP_OnEvent then FP_OnEvent(self, event, ...) end</OnEvent>
+			<OnUpdate>if FP_OnUpdate then FP_OnUpdate(self, elapsed) end</OnUpdate>
+		</Scripts>
+	</Frame>
+</Ui>

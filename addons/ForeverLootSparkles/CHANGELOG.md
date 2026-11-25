@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.1.0
+
+- The addon's creator has a "Forever Loot Sparkles Creator" line in the tooltip.
+
+## 2.0.0
+
+- The addon is back to what it started as: it only keeps the game's loot sparkle on quest items switched on.
+- Removed: the sparkles on ore veins, herbs, corpses with loot and quest objects, and their four checkboxes. They relied on Blizzard's soft targeting, which caused friendly spells cast without a target to land on someone nearby instead of you, left empty nameplates over dead mobs and showed interact icons above objects. For herb and ore sparkles, try [Lueur](https://www.curseforge.com/wow/addons/lueur).
+- On the first login after the update, the soft targeting settings the addon changed (**Enable Interact Key**, the interact icons on objects, the interact range and the soft target nameplate) go back to what you had before 1.2.0. If you changed one of them yourself in the meantime, yours stays.
+
 ## 1.3.1
 
 - The addon no longer touches your outline mode, so the Self Highlight outline around your character works again. It only keeps the loot sparkle switched on. Up to 1.3.0 it switched the outline mode off; pick it again under Options > Graphics if you want it back.

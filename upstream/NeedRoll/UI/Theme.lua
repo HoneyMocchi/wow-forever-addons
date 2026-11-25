@@ -1162,6 +1162,25 @@ function Theme:Pill(parent, symbol)
     return pill
 end
 
+-- A cross button `size` square, for closing or clearing: the pill's "close"
+-- strokes centred on it, in `colors.muted`, `colors.heading` while the
+-- mouse is over it. `colors` is the skin's palette when left out, or a fixed
+-- one for a frame that keeps one look (Theme:Palette). The caller places it
+-- and sets its OnClick.
+function Theme:CloseButton(parent, size, colors)
+    colors = colors or self.color
+    local button = CreateFrame("Button", nil, parent)
+    button:SetSize(size, size)
+    local strokes = SymbolStrokes(button, "close", "CENTER", 0)
+    local function Tint(color)
+        for _, line in ipairs(strokes) do line:SetVertexColor(color[1], color[2], color[3], 1) end
+    end
+    button:SetScript("OnEnter", function() Tint(colors.heading) end)
+    button:SetScript("OnLeave", function() Tint(colors.muted) end)
+    Tint(colors.muted)
+    return button
+end
+
 -- A pill in the Native style, whatever style NeedRoll's window uses: for
 -- NeedRoll's buttons in the game's own windows (the quest log, the world
 -- map), which look like the game's around them. A pill keeps the colors and
@@ -1800,17 +1819,9 @@ local SEARCH_CLEAR_SIZE = 14
 -- its right end, shown while there is text, as the game's own search box
 -- has one. Named clearButton as the game's template names its own.
 local function AddClearButton(box, colors)
-    local clear = CreateFrame("Button", nil, box)
-    clear:SetSize(SEARCH_CLEAR_SIZE, SEARCH_CLEAR_SIZE)
+    local clear = Theme:CloseButton(box, SEARCH_CLEAR_SIZE, colors)
     clear:SetPoint("RIGHT", -5, 0)
-    local strokes = SymbolStrokes(clear, "close", "CENTER", 0)
-    local function Tint(color)
-        for _, line in ipairs(strokes) do line:SetVertexColor(color[1], color[2], color[3], 1) end
-    end
-    clear:SetScript("OnEnter", function() Tint(colors.heading) end)
-    clear:SetScript("OnLeave", function() Tint(colors.muted) end)
     clear:SetScript("OnClick", function() ClearSearch(box) end)
-    Tint(colors.muted)
     clear:Hide()
     box.clearButton = clear
 end

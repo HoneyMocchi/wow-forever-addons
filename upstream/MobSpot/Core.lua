@@ -6,6 +6,7 @@
 --   Scan.lua      finding listed mobs: nameplates and the map's markers
 --   Alert.lua     what the player sees and hears
 --   Marker.lua    a marker over a listed mob's nameplate
+--   Distance.lua  /ms distance, a test of how far the target is
 --   Options.lua   Esc > Options > AddOns > MobSpot
 --   Minimap.lua   minimap button and addon compartment entry
 
@@ -18,6 +19,11 @@ ns.PREFIX = "|cff33ff99MobSpot:|r "
 
 function ns.Print(text)
 	DEFAULT_CHAT_FRAME:AddMessage(ns.PREFIX .. text)
+end
+
+-- A line in chat only while /ms debug is on, for finding out what the game reports.
+function ns.Debug(text)
+	if ns.debug then DEFAULT_CHAT_FRAME:AddMessage("|cff808080MobSpot debug:|r " .. text) end
 end
 
 -- A value the addon can read: nil for the game's hidden ("secret") values, which can't be compared.
@@ -35,18 +41,25 @@ local DEFAULTS = {
 	mobs = {},               -- [lowercase name] = { name = "Shown name", npcID = number or nil, on = true }
 	mapMarkers = true,       -- mobs the game marks on the map and minimap
 	rares = false,           -- also every rare mob, listed or not
+	playersEnemy = false,    -- also players of the other faction
+	playersAttack = false,   -- also players the player can attack
+	playersPvp = false,      -- those two also inside battlegrounds and arenas
 	sound = "raidwarning",   -- a key of ns.SOUNDS
+	playerSound = "alarm",   -- the same, for the enemy players alert
 	radius = false,          -- the scan radius the player picked, in yards; false until they pick one
 	nameplates = false,      -- true once the player had MobSpot turn on enemy nameplates
-	alertAgain = 30,         -- seconds a mob has to be out of reach before it alerts again
+	alertEach = false,       -- every mob of the same name alerts on its own, not only the first
 	screenText = true,       -- big message at the top of the screen
+	keepMessage = false,     -- that message stays for as long as the mob is in range
+	messageSpot = false,     -- { x, y } where the player dragged that message in Edit Mode
 	chatLine = true,         -- a line in chat
 	flash = true,            -- flash the screen edges, and the game's taskbar icon
 	marker = true,           -- a marker over a listed mob's nameplate
 	markerStyle = "skull",   -- a key of ns.MARKERS
+	playerMarkerStyle = "cross", -- a key of ns.PLAYER_MARKERS, for enemy players
 	markerSize = 34,         -- the marker's size
 	markerMotion = "bob",    -- a key of ns.MOTIONS
-	minimap = { hide = false, minimapPos = 250 },
+	minimap = { hide = false, minimapPos = 120 },
 }
 
 local function copy(value)
@@ -236,11 +249,11 @@ end
 -- The keybind and /ms target: puts the current target on the list, or takes it off.
 function ns.ToggleTarget()
 	local name = ns.Plain(UnitName("target"))
-	if not UnitExists("target") or not name then
+	if ns.Plain(UnitExists("target")) ~= true or not name then
 		ns.Print("target a mob first, then press the key again to add it.")
 		return
 	end
-	if UnitIsPlayer("target") then
+	if ns.Plain(UnitIsPlayer("target")) == true then
 		ns.Print("MobSpot looks for mobs, not players.")
 		return
 	end
@@ -333,6 +346,7 @@ local function help()
 	print("  /ms remove <name or ID> - take a mob off the list")
 	print("  /ms list - show the list")
 	print("  /ms test - show a test alert")
+	print("  /ms distance - test how far your target is and whether its nameplate shows")
 	print("  /ms minimap - show or hide the minimap button")
 end
 
@@ -379,6 +393,11 @@ SlashCmdList.MOBSPOT = function(msg)
 		list()
 	elseif command == "test" then
 		ns.TestAlert()
+	elseif command == "distance" or command == "range" then
+		ns.TestDistance()
+	elseif command == "debug" then
+		ns.debug = not ns.debug
+		ns.Print(ns.debug and "debug lines are on until you reload or type /ms debug again." or "debug lines are off.")
 	elseif command == "minimap" then
 		ns.SetMinimapShown(ns.db.minimap.hide)
 		ns.Print(ns.db.minimap.hide and "minimap button hidden." or "minimap button shown.")

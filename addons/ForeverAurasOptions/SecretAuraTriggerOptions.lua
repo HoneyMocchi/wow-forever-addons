@@ -371,6 +371,10 @@ local function GetOptions(data, triggernum)
   end
   OptionsPrivate.commonOptions.AddCommonTriggerOptions(options, data, triggernum, true)
   OptionsPrivate.AuraEditor.AddOptions(options, data, triggernum)
+  -- ForeverAuras (1.4.7-dev.15, Dan's screenshots of the Cooldown trigger and of Aura (Modern)): a
+  -- Group Auras trigger gets this same page (unit filters, aura filters, Show On), with the spell
+  -- fields replaced by the Cooldown Manager's list of entries (CDMGroupAuraOptions.lua).
+  if OptionsPrivate.Private.CDMGroupAuras.IsTrigger(trigger) then OptionsPrivate.ApplyCDMGroupAuraOptions(options, data, triggernum) end
   OptionsPrivate.AddTriggerMetaFunctions(options, data, triggernum)
   return {["trigger." .. triggernum .. ".secretAura"] = options}
 end

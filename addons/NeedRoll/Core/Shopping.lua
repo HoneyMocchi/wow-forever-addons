@@ -137,7 +137,7 @@ end
 
 -- Bank ---------------------------------------------------------------------
 -- What each character keeps in the bank, saved from their last bank visit
--- (NeedRollDB.bank["Name-Realm"] = { [itemID] = count }), so "In bank"
+-- (NeedRollDB.bank[ns.CharacterKey()] = { [itemID] = count }), so "In bank"
 -- still shows away from the bank. The bank only changes while it is open,
 -- and it is scanned again on every change then.
 local isBankOpen = false
@@ -198,8 +198,8 @@ ns:On("BAG_UPDATE_DELAYED", function() if isBankOpen then ScanBank() end end)
 
 -- Alts ---------------------------------------------------------------------
 -- Every character's bags are saved too (NeedRollDB.bags, like the bank),
--- with their realm and faction (NeedRollDB.characters), so the Shopping
--- List can count what the alts hold. Only alts on the same realm and
+-- with their server and faction (NeedRollDB.characters), so the Shopping
+-- List can count what the alts hold. Only alts on the same server and
 -- faction count, since only they can mail it over. An alt shows up once it
 -- has logged in with this version, and its bank once it has visited it.
 local function CarriedBags()
@@ -209,16 +209,29 @@ local function CarriedBags()
     return bags
 end
 
--- Saves who this character is, and their money, in NeedRollDB.characters.
--- The record is updated field by field, so a bag scan and a money change
--- each keep what the other saved.
+-- This character's realm name as the game gave it: now, or, since WoW:
+-- Forever's build 71037 left GetRealmName() empty, to a character on its
+-- server before (NeedRollDB.realmOfServer, Core/Init.lua); nil when the game
+-- never did. Never the realm of a record moved from an old "Name-<realm>"
+-- key: which server that key was saved on can be a guess.
+local function MyRealmName()
+    local realm = ns.Plain(GetRealmName())
+    if realm and realm ~= "" then return realm end
+    local realmOfServer = ns.db and ns.db.realmOfServer
+    return realmOfServer and realmOfServer[ns.PlayerServerID()]
+end
+
+-- Saves who this character is, and their money, in NeedRollDB.characters:
+-- name, realm (MyRealmName), server (the server ID in its GUID,
+-- ns.PlayerServerID), faction, class, money. The record is updated field by
+-- field, so a bag scan and a money change each keep what the other saved.
 local function SaveCharacter()
     if not ns.db then return end
     ns.db.characters = ns.db.characters or {}
     local key = ns.CharacterKey()
     local record = ns.db.characters[key] or {}
     ns.db.characters[key] = record
-    record.name, record.realm = UnitName("player"), GetRealmName()
+    record.name, record.realm, record.server = ns.Plain(UnitName("player")), MyRealmName(), ns.PlayerServerID()
     record.faction, record.class = UnitFactionGroup("player"), select(2, UnitClass("player"))
     record.money = GetMoney()
 end
@@ -234,17 +247,27 @@ ns:On("PLAYER_LOGOUT", ScanBags)
 ns:On("PLAYER_ENTERING_WORLD", SaveCharacter)
 ns:On("PLAYER_MONEY", SaveCharacter)
 
+-- Whether the saved character `char` is on this character's server (`me`:
+-- its server ID and realm name). Records saved since GUID keys say by the
+-- server ID; an older one (the alt hasn't logged in since) only by a realm
+-- name both have.
+local function IsOnMyServer(char, me)
+    if char.server and me.server then return char.server == me.server end
+    return char.realm ~= nil and char.realm ~= "" and char.realm == me.realm
+end
+
 -- What this character's alts hold of itemID, bags and bank together: the
 -- total, and { name, count, class } per alt that has any, most first.
 function Shop:AltCounts(itemID)
     local total, list = 0, {}
     local characters = ns.db and ns.db.characters
     if not characters then return total, list end
-    local myKey, realm, faction = ns.CharacterKey(), GetRealmName(), UnitFactionGroup("player")
+    local myKey, faction = ns.CharacterKey(), UnitFactionGroup("player")
+    local me = { server = ns.PlayerServerID(), realm = MyRealmName() }
     for key, char in pairs(characters) do
         local bags, bank = ns.db.bags and ns.db.bags[key], ns.db.bank and ns.db.bank[key]
         local count = (bags and bags[itemID] or 0) + (bank and bank[itemID] or 0)
-        local canMail = key ~= myKey and char.realm == realm and char.faction == faction
+        local canMail = key ~= myKey and char.faction == faction and IsOnMyServer(char, me)
         if canMail and count > 0 then
             total = total + count
             table.insert(list, { name = char.name, count = count, class = char.class })
@@ -270,15 +293,16 @@ end
 
 -- The money on every character NeedRoll has saved, whatever their realm or
 -- faction: the total in copper, and { name, realm, class, money } per
--- character, richest first. This character's money is the live amount; the
+-- character, richest first (realm nil or "" when no realm name was ever
+-- saved for it). This character's money is the live amount; the
 -- others' is what they had at their last save (SavedVariables are written
 -- only on /reload, logout or exit). Characters saved before NeedRoll kept
 -- money are left out until they log in again.
 function Shop:MoneyOnAllCharacters()
     local total = GetMoney()
-    local list = { { name = UnitName("player"), realm = GetRealmName(), class = select(2, UnitClass("player")),
-        money = total } }
     local myKey = ns.CharacterKey()
+    local list = { { name = ns.Plain(UnitName("player")) or "?", realm = MyRealmName(),
+        class = select(2, UnitClass("player")), money = total } }
     for key, char in pairs(ns.db and ns.db.characters or {}) do
         if key ~= myKey and char.money then
             total = total + char.money

@@ -37,6 +37,7 @@ ns.Data:Register({
             { itemID = 11624, dropRate = 0.25 },    -- Kentic Amice
             { itemID = 22240, dropRate = 0.1241 },  -- Greaves of Withering Despair
             { itemID = 254106 },                    -- Pattern: Radiant Gloves
+            { itemID = 11140 },                     -- Prison Cell Key
             { itemID = 251403 },                    -- Plans: Officer's Gloves
             { itemID = 251404 },                    -- Plans: Sentinel's Gloves
             { itemID = 251405 },                    -- Plans: Warder's Gloves
@@ -254,6 +255,7 @@ ns.Data:Register({
             { itemID = 11822, dropRate = 0.3596 },  -- Omnicast Boots
             { itemID = 11669, dropRate = 0.3067 },  -- Naglering
             { itemID = 11819, dropRate = 0.08 },    -- Second Wind
+            { itemID = 273113 },                    -- Blueprint: Master Forge
             { itemID = 273127 },                    -- Golem Heart
         } },
         { id = "THE_SEVEN", name = "The Seven", loot = {
@@ -305,6 +307,7 @@ ns.Data:Register({
             { itemID = 12791, dropRate = 0.3333 },  -- Barman Shanker
             { itemID = 12793, dropRate = 0.3333 },  -- Mixologist's Tunic
             { itemID = 18653, dropRate = 0.1706 },  -- Schematic: Goblin Jumper Cables XL
+            { itemID = 276877 },                    -- Brewmancer Nightcap
             { itemID = 251403 },                    -- Plans: Officer's Gloves
             { itemID = 251404 },                    -- Plans: Sentinel's Gloves
             { itemID = 251405 },                    -- Plans: Warder's Gloves
@@ -351,6 +354,7 @@ ns.Data:Register({
         } },
         { id = "EMPEROR_DAGRAN_THAURISSAN", name = "Emperor Dagran Thaurissan", loot = {
             { itemID = 272019, dropRate = 1 },      -- Bronzebeard Wedding Contract
+            { itemID = 18945, dropRate = 1 },       -- Dark Iron Residue
             { itemID = 226404, dropRate = 1 },      -- Tarnished Undermine Real
             { itemID = 11468, dropRate = 0.8 },     -- Dark Iron Fanny Pack
             { itemID = 11934, dropRate = 0.2 },     -- Emperor's Seal

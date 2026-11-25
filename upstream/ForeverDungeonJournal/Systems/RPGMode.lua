@@ -321,6 +321,7 @@ local FINAL = {
     ["The Deadmines"] = { 639 },               -- Edwin VanCleef
     ["Ruins of Lordaeron"] = { 250657 },       -- Rath'mael
     ["Ragefire Chasm"] = { 11519 },            -- Bazzalan
+    ["Sunken Temple"] = { 5709 },              -- Shade of Eranikus (altarneeded, 2.1.4: the page ends with the Avatar of Hakkar, summoned with the quest's egg)
 }
 
 local finalByNpc, finalNames -- npcID -> dungeon, lower-case boss name -> dungeon
@@ -422,7 +423,7 @@ end
 
 function FDJ.RPGLockedNotice(name)
     -- No dungeon name: the page is meant to stay a mystery until unlocked.
-    print("|cffd8a83cDungeon Journal:|r " .. L("RPG_LOCKED_MSG"))
+    FDJ.ChatLine("|cffd8a83cDungeon Journal:|r " .. L("RPG_LOCKED_MSG"))
 end
 
 local ShowUnlockToast -- defined further down, with the sketches
@@ -435,7 +436,7 @@ local function Unlock(name)
     ShareProgress()
     if FDJ.IsRPGMode() and not open then
         local shown = FDJ.LocalizeDungeonName and FDJ.LocalizeDungeonName(name) or name
-        print("|cffd8a83cDungeon Journal:|r |cff40ff40" .. L("RPG_UNLOCKED_MSG", shown) .. "|r")
+        FDJ.ChatLine("|cffd8a83cDungeon Journal:|r |cff40ff40" .. L("RPG_UNLOCKED_MSG", shown) .. "|r")
         if ShowUnlockToast then pcall(ShowUnlockToast, name) end
     end
     if FDJ.RefreshHomeCards then pcall(FDJ.RefreshHomeCards) end
@@ -2020,7 +2021,7 @@ do
         pick = pick or order[1]
         for _, name in ipairs(order) do
             local n, total = Count(list, name)
-            print("|cffd8a83cDungeon Journal:|r |cff40ff40" .. L("RPG_QUEST_UNLOCKED_MSG", DungeonName(name), n, total) .. "|r")
+            FDJ.ChatLine("|cffd8a83cDungeon Journal:|r |cff40ff40" .. L("RPG_QUEST_UNLOCKED_MSG", DungeonName(name), n, total) .. "|r")
             if name == pick then
                 local mainID = fresh[name][1].id
                 for _, q in ipairs(fresh[name]) do
@@ -2090,7 +2091,7 @@ do
             end
             if pick then n = n + 1 end
             pick = pick or first
-            print("|cffd8a83cDungeon Journal:|r |cff40ff40" .. L("RPG_QUEST_UNLOCKED_MSG", DungeonName(name), n, total)
+            FDJ.ChatLine("|cffd8a83cDungeon Journal:|r |cff40ff40" .. L("RPG_QUEST_UNLOCKED_MSG", DungeonName(name), n, total)
                 .. "|r |cff9d9d9d(dev test, nothing saved)|r")
             Show({ dungeon = name, quests = { pick }, questID = pick.id, n = n, total = total })
         end
@@ -2345,7 +2346,7 @@ do
     -- ------------------------------------------------------- the Map tab
     function FDJ.RPGMapLockedNotice(name)
         local have, need = TrashSoFar(name)
-        print("|cffd8a83cDungeon Journal:|r " .. L("RPG_MAP_LOCKED_MSG", have, need))
+        FDJ.ChatLine("|cffd8a83cDungeon Journal:|r " .. L("RPG_MAP_LOCKED_MSG", have, need))
     end
 
     function FDJ.RPGStyleMapTab(tab, name)
@@ -2416,9 +2417,11 @@ do
 
     -- -------------------------------------------------------------- kills
     local here -- the journal dungeon the character is in (nil outside)
+    local Listen -- (insideonly, below)
     local function Where()
         here = FDJ.CurrentDungeon and FDJ.CurrentDungeon() or nil
         if here and not InOrder(here) then here = nil end
+        if Listen then Listen() end
     end
 
     local byNpc, byName, indexLang
@@ -2483,7 +2486,7 @@ do
                 any = true
                 local final = (b.npcID and finalByNpc and finalByNpc[b.npcID] == name) or nameFinal[name] == b -- kroldok
                 if FDJ.IsRPGMode() and not known and not final and not ViewTable("rpgKills")[name] and QuestOpen(name) then
-                    print("|cffd8a83cDungeon Journal:|r |cff40ff40" .. L("RPG_BOSS_REVEALED_MSG", BossLabel(b.name)) .. "|r")
+                    FDJ.ChatLine("|cffd8a83cDungeon Journal:|r |cff40ff40" .. L("RPG_BOSS_REVEALED_MSG", BossLabel(b.name)) .. "|r")
                 end
                 if final then Unlock(name) end -- the final boss found: the whole page
             end
@@ -2513,7 +2516,7 @@ do
         all[name] = nil
         ShareProgress()
         if FDJ.IsRPGMode() and not open then
-            print("|cffd8a83cDungeon Journal:|r |cff40ff40" .. L("RPG_MAP_UNLOCKED_MSG", DungeonName(name)) .. "|r")
+            FDJ.ChatLine("|cffd8a83cDungeon Journal:|r |cff40ff40" .. L("RPG_MAP_UNLOCKED_MSG", DungeonName(name)) .. "|r")
             if FDJ.RPGToast then
                 FDJ.RPGToast({ kind = "map", dungeon = name, title = L("RPG_MAP_TOAST_TITLE"),
                     count = math.floor(SHARE * 100 + 0.5) .. "%", quests = {} })
@@ -2675,9 +2678,24 @@ do
 
     local watch = CreateFrame("Frame")
     for _, event in ipairs({ "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA", "ZONE_CHANGED", "ZONE_CHANGED_INDOORS",
-        "UNIT_HEALTH", "NAME_PLATE_UNIT_REMOVED", "PLAYER_TARGET_CHANGED", "UPDATE_MOUSEOVER_UNIT", "LOOT_OPENED",
         "ENCOUNTER_END", "BOSS_KILL" }) do
         pcall(watch.RegisterEvent, watch, event)
+    end
+    -- insideonly (2.1.4, M 23 Nov 2026, the performance check: RPG Mode heard
+    -- every unit's health change in the game, in raids and cities too: "we
+    -- should just listen it inside Dungeons"): the events that tell a mob
+    -- died (its health, its nameplate gone, targeted, hovered, looted) are
+    -- only listened to while the character is in one of the journal's
+    -- dungeons (here); outside nothing could count anyway.
+    local KILL_EVENTS = { "UNIT_HEALTH", "NAME_PLATE_UNIT_REMOVED", "PLAYER_TARGET_CHANGED", "UPDATE_MOUSEOVER_UNIT", "LOOT_OPENED" }
+    local listening = false
+    Listen = function()
+        local want = here ~= nil
+        if want == listening then return end
+        listening = want
+        for _, event in ipairs(KILL_EVENTS) do
+            if want then pcall(watch.RegisterEvent, watch, event) else pcall(watch.UnregisterEvent, watch, event) end
+        end
     end
     watch:SetScript("OnEvent", function(_, event, a, b, _, _, e)
         if event == "UNIT_HEALTH" then
@@ -2956,7 +2974,7 @@ do
 
     local function Say(key, list)
         if #list == 0 then return end
-        print("|cffd8a83cDungeon Journal:|r |cff40ff40" .. L(key, table.concat(list, ", ")) .. "|r")
+        FDJ.ChatLine("|cffd8a83cDungeon Journal:|r |cff40ff40" .. L(key, table.concat(list, ", ")) .. "|r")
     end
 
     local function Refresh()
@@ -2990,7 +3008,7 @@ do
         local _, revealed, any = Prove({ id }, true)
         if not any then return end
         for _, b in ipairs(revealed) do
-            print("|cffd8a83cDungeon Journal:|r |cff40ff40" .. L("RPG_BOSS_REVEALED_MSG", Localized(FDJ.LocalizeBossName, b.name)) .. "|r")
+            FDJ.ChatLine("|cffd8a83cDungeon Journal:|r |cff40ff40" .. L("RPG_BOSS_REVEALED_MSG", Localized(FDJ.LocalizeBossName, b.name)) .. "|r")
         end
         Refresh()
     end
@@ -3109,7 +3127,7 @@ do
         db.rpgKills[name] = true
         ShareProgress()
         if not open then
-            print("|cffd8a83cDungeon Journal:|r |cff40ff40" .. L("RPG_UNLOCKED_MSG", DungeonName(name)) .. "|r")
+            FDJ.ChatLine("|cffd8a83cDungeon Journal:|r |cff40ff40" .. L("RPG_UNLOCKED_MSG", DungeonName(name)) .. "|r")
         end
         if FDJ.RPGStateChanged then pcall(FDJ.RPGStateChanged) end
         if FDJ.RefreshHomeCards then pcall(FDJ.RefreshHomeCards) end
@@ -3758,7 +3776,7 @@ do
             end
         end
         if #opened > 0 then
-            print("|cffd8a83cDungeon Journal:|r |cff40ff40" .. L("RPG_LEGACY_OPENED", table.concat(opened, ", ")) .. "|r")
+            FDJ.ChatLine("|cffd8a83cDungeon Journal:|r |cff40ff40" .. L("RPG_LEGACY_OPENED", table.concat(opened, ", ")) .. "|r")
         end
         if changed or #opened > 0 then
             if FDJ.RPGShareProgress then pcall(FDJ.RPGShareProgress) end

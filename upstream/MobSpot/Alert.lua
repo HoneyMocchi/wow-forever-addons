@@ -69,31 +69,176 @@ end
 -- Message and flash
 ---------------------------------------------------------------------------
 
-local message, flash
+local flash
 
-local function buildMessage()
-	message = CreateFrame("Frame", nil, UIParent)
-	message:SetSize(700, 90)
-	message:SetPoint("TOP", 0, -140)
-	message:SetFrameStrata("HIGH")
-	message:EnableMouse(false)
-	message:Hide()
+-- The message is up to MAX_MESSAGES rows under one another, one per mob name, the oldest on top.
+local MAX_MESSAGES = 3
+local MESSAGE_TOP = -140 -- the first row, from the top of the screen
+local MESSAGE_ROW = 58   -- from one row to the next
+local rows = {}          -- every row built so far
+local showing = {}       -- the rows on screen, top to bottom
 
-	message.title = message:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
-	message.title:SetPoint("TOP")
-	message.title:SetTextColor(1, 0.5, 0.25)
-	message.detail = message:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
-	message.detail:SetPoint("TOP", message.title, "BOTTOM", 0, -6)
-
-	local fade = message:CreateAnimationGroup()
-	local alpha = fade:CreateAnimation("Alpha")
-	alpha:SetFromAlpha(1)
-	alpha:SetToAlpha(0)
-	alpha:SetStartDelay(SHOW_FOR)
-	alpha:SetDuration(FADE)
-	fade:SetScript("OnFinished", function() message:Hide() end)
-	message.fade = fade
+-- Where the first row's top middle sits, from the top middle of the screen: where the player
+-- dragged it in Edit Mode, else the usual spot.
+local function messageSpot()
+	local spot = ns.db.messageSpot
+	if type(spot) == "table" and spot.x and spot.y then return spot.x, spot.y end
+	return 0, MESSAGE_TOP
 end
+
+local function layout()
+	local x, y = messageSpot()
+	for i, row in ipairs(showing) do
+		row:ClearAllPoints()
+		row:SetPoint("TOP", UIParent, "TOP", x, y - (i - 1) * MESSAGE_ROW)
+	end
+end
+
+local function hideRow(row)
+	row:Hide()
+	row.id, row.key, row.kept, row.leaving = nil, nil, nil, nil
+	for i, other in ipairs(showing) do
+		if other == row then
+			table.remove(showing, i)
+			break
+		end
+	end
+	layout()
+end
+
+local function buildRow()
+	local row = CreateFrame("Frame", nil, UIParent)
+	row:SetSize(700, MESSAGE_ROW)
+	row:SetFrameStrata("HIGH")
+	row:EnableMouse(false)
+	row:Hide()
+
+	row.title = row:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
+	row.title:SetPoint("TOP")
+	row.title:SetTextColor(1, 0.5, 0.25)
+	row.detail = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
+	row.detail:SetPoint("TOP", row.title, "BOTTOM", 0, -6)
+
+	local function fader(delay)
+		local fade = row:CreateAnimationGroup()
+		local alpha = fade:CreateAnimation("Alpha")
+		alpha:SetFromAlpha(1)
+		alpha:SetToAlpha(0)
+		alpha:SetStartDelay(delay)
+		alpha:SetDuration(FADE)
+		fade:SetScript("OnFinished", function() hideRow(row) end)
+		return fade
+	end
+	row.fade = fader(SHOW_FOR) -- after an alert
+	row.fadeNow = fader(0)     -- when a kept message's mob is gone
+	rows[#rows + 1] = row
+	return row
+end
+
+-- The row for the mob `id`: the one it already has, else a free one, else the oldest one's.
+local function rowFor(id)
+	for _, row in ipairs(showing) do
+		if row.id == id then return row end
+	end
+	local row
+	if #showing >= MAX_MESSAGES then
+		row = table.remove(showing, 1)
+	else
+		for _, other in ipairs(rows) do
+			if not other:IsShown() then
+				row = other
+				break
+			end
+		end
+		row = row or buildRow()
+	end
+	showing[#showing + 1] = row
+	return row
+end
+
+---------------------------------------------------------------------------
+-- Moving the message: a box to drag while the game's Edit Mode is open
+---------------------------------------------------------------------------
+
+local MOVER_WIDTH = 420
+local MOVER_EDGE = 2 -- the box's outline
+local mover
+
+local function placeMover()
+	local x, y = messageSpot()
+	mover:ClearAllPoints()
+	mover:SetPoint("TOP", UIParent, "TOP", x, y)
+end
+
+local function buildMover()
+	mover = CreateFrame("Frame", nil, UIParent)
+	mover:SetSize(MOVER_WIDTH, MAX_MESSAGES * MESSAGE_ROW)
+	mover:SetFrameStrata("HIGH")
+	mover:SetFrameLevel(50)
+	mover:SetClampedToScreen(true)
+	mover:SetMovable(true)
+	mover:EnableMouse(true)
+	mover:RegisterForDrag("LeftButton")
+	mover:Hide()
+
+	local fill = mover:CreateTexture(nil, "BACKGROUND")
+	fill:SetAllPoints()
+	fill:SetColorTexture(0.1, 0.5, 0.9, 0.3)
+	local function edge(point, other, width, height)
+		local line = mover:CreateTexture(nil, "BORDER")
+		line:SetColorTexture(0.4, 0.8, 1, 0.9)
+		line:SetPoint(point)
+		line:SetPoint(other)
+		if width then line:SetWidth(width) else line:SetHeight(height) end
+	end
+	edge("TOPLEFT", "TOPRIGHT", nil, MOVER_EDGE)
+	edge("BOTTOMLEFT", "BOTTOMRIGHT", nil, MOVER_EDGE)
+	edge("TOPLEFT", "BOTTOMLEFT", MOVER_EDGE)
+	edge("TOPRIGHT", "BOTTOMRIGHT", MOVER_EDGE)
+
+	local title = mover:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+	title:SetPoint("CENTER", 0, 12)
+	title:SetText("MobSpot alert")
+	local hint = mover:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+	hint:SetPoint("TOP", title, "BOTTOM", 0, -6)
+	hint:SetText("Drag to move. Right-click to put it back.")
+
+	mover:SetScript("OnDragStart", mover.StartMoving)
+	mover:SetScript("OnDragStop", function(self)
+		self:StopMovingOrSizing()
+		local middle, top = self:GetCenter(), self:GetTop()
+		if middle and top then
+			ns.db.messageSpot = {
+				x = math.floor(middle - UIParent:GetWidth() / 2 + 0.5),
+				y = math.floor(top - UIParent:GetHeight() + 0.5),
+			}
+		end
+		placeMover()
+		layout()
+	end)
+	mover:SetScript("OnMouseUp", function(_, button)
+		if button ~= "RightButton" then return end
+		ns.db.messageSpot = false
+		placeMover()
+		layout()
+	end)
+end
+
+local function showMover()
+	if not mover then buildMover() end
+	placeMover()
+	mover:Show()
+end
+
+local function hideMover()
+	if mover then mover:Hide() end
+end
+
+ns.On("PLAYER_LOGIN", function()
+	if not EditModeManagerFrame then return end
+	EditModeManagerFrame:HookScript("OnShow", showMover)
+	EditModeManagerFrame:HookScript("OnHide", hideMover)
+end)
 
 local function buildFlash()
 	flash = CreateFrame("Frame", nil, UIParent)
@@ -115,21 +260,32 @@ local function buildFlash()
 	flash.pulse = pulse
 end
 
-local function showMessage(title, detail)
-	if not message then buildMessage() end
-	message.title:SetText(title)
-	message.detail:SetText(detail)
-	message.fade:Stop()
-	message:SetAlpha(1)
-	message:Show()
-	message.fade:Play()
+-- Shows the message. With `key` (the mob it's about) and "keep the message" on it stays until
+-- none of that mob is in range; else it fades after a few seconds. `count` is the total it
+-- shows, kept up to date while it's on screen.
+local function showMessage(title, detail, key, count)
+	local id = key or title
+	local row = rowFor(id)
+	row.title:SetText(title)
+	row.detail:SetText(detail)
+	row.fade:Stop()
+	row.fadeNow:Stop()
+	row:SetAlpha(1)
+	row:Show()
+	row.id, row.key, row.count, row.leaving = id, key, count, nil
+	row.kept = key ~= nil and ns.db.keepMessage
+	if not row.kept then row.fade:Play() end
+	layout()
 end
 
+local flashTimer
 local function flashScreen()
 	if not flash then buildFlash() end
 	flash:Show()
 	flash.pulse:Restart()
-	C_Timer.After(FLASH_FOR, function()
+	if flashTimer then flashTimer:Cancel() end
+	flashTimer = C_Timer.NewTimer(FLASH_FOR, function()
+		flashTimer = nil
 		flash.pulse:Stop()
 		flash:Hide()
 	end)
@@ -140,29 +296,66 @@ end
 -- The alert
 ---------------------------------------------------------------------------
 
--- "close by (within 40 yards)" or "32 yards away".
+-- "close by" or "32 yards away".
 local function where(how, yards)
 	if how == "map" and yards then
 		return math.floor(yards + 0.5) .. " yards away"
 	end
-	return "close by (within " .. math.floor(ns.Radius() + 0.5) .. " yards)"
+	return "close by"
 end
 
-local function show(name, how, yards, testing)
-	local detail = where(how, yards)
-	if ns.db.screenText then showMessage(name, "is " .. detail) end
+-- "is close by", or with a total "3 close by".
+local function detailText(how, yards, count)
+	if not count then return "is " .. where(how, yards) end
+	if how == "map" and yards then return count .. " in range, this one " .. where(how, yards) end
+	return count .. " " .. where(how, yards)
+end
+
+local function show(name, how, yards, testing, count, key, sound)
+	local detail = detailText(how, yards, count)
+	if ns.db.screenText then showMessage(name, detail, key, count) end
 	if ns.db.chatLine then
-		ns.Print("|cffff8040" .. name .. "|r is " .. detail .. (testing and " (test)." or "."))
+		ns.Print("|cffff8040" .. name .. "|r" .. (count and ": " or " ") .. detail .. (testing and " (test)." or "."))
 	end
-	ns.PlayAlertSound(ns.db.sound)
+	ns.PlayAlertSound(sound)
 	if ns.db.flash then flashScreen() end
 end
 
--- A listed mob or a rare was found. `how` is "near" or "map" (with `yards`).
-function ns.Alert(mob, how, yards)
-	if mob then show(mob.rare and (mob.name .. " (rare)") or mob.name, how, yards) end
+-- A listed mob, a rare or enemy players (list key `key`) were found. `how` is "near" or "map"
+-- (with `yards`). `count` is how many are in range, for the alerts that show a total.
+function ns.Alert(key, mob, how, yards, count)
+	if not mob then return end
+	local name = mob.rare and (mob.name .. " (rare)") or mob.name
+	show(name, how, yards, false, count, key, mob.players and ns.db.playerSound or ns.db.sound)
 end
 
 function ns.TestAlert()
-	show("Test Mob", "near", nil, true)
+	show("Test Mob", "near", nil, true, nil, nil, ns.db.sound)
 end
+
+-- After each scan: a kept message goes once its mob is out of range, and a message with a total
+-- shows the total as it is now.
+-- A kept message that started to go stays after all when its mob is back in range.
+local function scanned(row)
+	local count = ns.InRange(row.key)
+	if row.kept and (count == 0 or not ns.db.keepMessage) then
+		row.kept, row.leaving = false, true
+		row.fadeNow:Play()
+		return
+	end
+	if row.leaving and count > 0 and ns.db.keepMessage then
+		row.fadeNow:Stop()
+		row:SetAlpha(1)
+		row.kept, row.leaving = true, nil
+	end
+	if row.count and count > 0 and count ~= row.count then
+		row.count = count
+		row.detail:SetText(detailText("near", nil, count))
+	end
+end
+
+ns.Listen("Scanned", function()
+	for _, row in ipairs(showing) do
+		if row.key then scanned(row) end
+	end
+end)

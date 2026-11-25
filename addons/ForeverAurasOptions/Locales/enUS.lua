@@ -981,7 +981,7 @@ L["Hide a member's part of the display while it is too far away for the client t
 L["Static (always full)"] = "Static (always full)"
 L["Draw the whole texture while the aura is active instead of filling it by the aura's remaining time."] = "Draw the whole texture while the aura is active instead of filling it by the aura's remaining time."
 L["Allow External Display Changes"] = "Allow External Display Changes"
-L["Lets another aura or an addon scale this display or set its sizes with ForeverAuras.SetDisplayScale(id, factor) and ForeverAuras.SetDisplayOverrides(id, values). The changes are never saved: the editor always shows the authored values."] = "Lets another aura or an addon scale this display or set its sizes with ForeverAuras.SetDisplayScale(id, factor) and ForeverAuras.SetDisplayOverrides(id, values). The changes are never saved: the editor always shows the authored values."
+L["Lets other auras or addons resize this display. Their changes are temporary and are never saved."] = "Lets other auras or addons resize this display. Their changes are temporary and are never saved."
 L["Pasted onto an Aura (Modern): %d unsupported element(s) removed, %d text(s) switched off (only %%p, %%s, %%n, %%l or plain text, once each)."] = "Pasted onto an Aura (Modern): %d unsupported element(s) removed, %d text(s) switched off (only %%p, %%s, %%n, %%l or plain text, once each)."
 L["Spell Count"] = "Spell Count"
 L["Track Cooldowns"] = "Track Cooldowns"

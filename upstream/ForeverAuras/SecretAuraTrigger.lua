@@ -54,6 +54,12 @@ local function SelectModernTrigger(data)
 end
 
 function Trigger.Add(data)
+  -- ForeverAuras (1.4.7-dev.7): Astra's Group Auras calls in this file are guarded for the module
+  -- being absent, as in BlizzardAuraDisplay.lua (the source-level lifecycle suites run this code
+  -- without CDMGroupAuras.lua; in the addon it is always loaded).
+  if Private.CDMGroupAuras then
+    for _, entry in ipairs(data.triggers or {}) do Private.CDMGroupAuras.Prepare(entry.trigger) end
+  end
   SelectModernTrigger(data)
   Display.MigrateNativeConditions(data)
   Display.MigrateFallback(data)
@@ -61,6 +67,10 @@ function Trigger.Add(data)
   displays[data.id] = nil
   for _, entry in ipairs(data.triggers) do
     if entry.trigger.type == "secretAura" then displays[data.id] = data; break end
+  end
+  if loaded[data.id] and Private.CDMGroupAuras then
+    if Private.CDMGroupAuras.UsesList(Display.GetSavedTrigger(data)) then Private.CDMGroupAuras.Load(data.id, Display.GetSavedTrigger(data)) -- (dev.14) the trigger says which list
+    else Private.CDMGroupAuras.Unload(data.id) end
   end
 end
 
@@ -136,6 +146,7 @@ function Trigger.LoadDisplays(toLoad)
     local data = displays[id]
     if data then
       loaded[id] = true
+      if Private.CDMGroupAuras and Private.CDMGroupAuras.UsesList(Display.GetSavedTrigger(data)) then Private.CDMGroupAuras.Load(id, Display.GetSavedTrigger(data)) end
       drawable[data] = nil
       if Private.regions[id] then Display.Activate(Private.regions[id].region, data) end
       for index, entry in ipairs(data.triggers) do
@@ -211,6 +222,7 @@ end)
 function Trigger.UnloadDisplays(toUnload)
   for id in pairs(toUnload) do
     loaded[id] = nil
+    if Private.CDMGroupAuras then Private.CDMGroupAuras.Unload(id) end
     if displays[id] and Private.regions[id] then Display.Release(Private.regions[id].region) end
   end
 end
@@ -225,6 +237,7 @@ function Trigger.Delete(id)
 end
 
 function Trigger.Rename(oldid, newid)
+  if Private.CDMGroupAuras then Private.CDMGroupAuras.Rename(oldid, newid) end
   displays[newid], loaded[newid] = displays[oldid], loaded[oldid]
   displays[oldid], loaded[oldid] = nil, nil
 end
@@ -242,6 +255,7 @@ function Trigger.GetTriggerConditions() return {} end
 
 function Trigger.GetNameAndIcon(data, triggernum)
   local trigger = data.triggers[triggernum].trigger
+  if Private.CDMGroupAuras and Private.CDMGroupAuras.IsTrigger(trigger) then return L["Group Auras"], 135995 end
   -- Preview metadata follows the configured selections, without expanding ranks.
   local id = Display.GetSpellIDs(trigger, false)[1]
   local info = id and C_Spell.GetSpellInfo(id)

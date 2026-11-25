@@ -74,6 +74,7 @@ ns.Data:Register({
             { itemID = 1076 },                      -- Defias Renegade Ring
             { itemID = 273807 },                    -- Demolition Girdle
             { itemID = 2280 },                      -- Kam's Walking Stick
+            { itemID = 273825 },                    -- Red Wool Cloak
             { itemID = 274092 },                    -- Sharpened Cutlery
             { itemID = 253976 },                    -- Pattern: Filigreed Pristine Circlet
             { itemID = 253978 },                    -- Pattern: Filigreed Silky Circlet

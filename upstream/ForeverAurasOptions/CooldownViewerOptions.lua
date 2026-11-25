@@ -64,12 +64,7 @@ function OptionsPrivate.AddCooldownViewerOptions(options, data, triggernum)
   -- selected by name here.
   if trigger.cdmSource == "buff" then
     Add("alwaysActive", {type = "description", fontSize = "medium", width = "full",
-      name = L["|cffffffffNote:|r in combat this trigger stays active and Blizzard shows or hides the display."]})
-    -- ForeverAuras (Dan's mage test): Blizzard lists a proc under its
-    -- talent's name (Clearcasting is "Arcane Concentration"), so the name
-    -- typed here must be the one the Cooldown Manager shows.
-    Add("cdmNamesNote", {type = "description", fontSize = "medium", width = "full",
-      name = L["Use the name Blizzard's Cooldown Manager shows for the buff: a proc is listed under its talent (Clearcasting is Arcane Concentration)."]})
+      name = L["Note: Trigger Always Active."]})
   end
   -- Blizzard's Cooldown Manager flags some entries as not known although the
   -- spell is (its Bane of Agony entry, 199777): it builds no viewer item for

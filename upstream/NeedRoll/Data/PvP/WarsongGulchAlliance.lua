@@ -13,10 +13,10 @@ ns.Data:Register({
     levelRange = { 10, 60 },
     encounters = {
         { id = "FRIENDLY", name = "Friendly", loot = {
-            { itemID = 21568, cost = 18947 },       -- Rune of Duty
-            { itemID = 21567, cost = 37894 },       -- Rune of Duty
-            { itemID = 21566, cost = 18947 },       -- Rune of Perfection
-            { itemID = 21565, cost = 37894 },       -- Rune of Perfection
+            { itemID = 21568, cost = 18947, classes = "WARRIOR PALADIN HUNTER ROGUE" },-- Rune of Duty
+            { itemID = 21567, cost = 37894, classes = "WARRIOR PALADIN HUNTER ROGUE" },-- Rune of Duty
+            { itemID = 21566, cost = 18947, classes = "PRIEST SHAMAN MAGE WARLOCK DRUID" },-- Rune of Perfection
+            { itemID = 21565, cost = 37894, classes = "PRIEST SHAMAN MAGE WARLOCK DRUID" },-- Rune of Perfection
             { itemID = 17349, cost = 473 },         -- Superior Healing Draught
             { itemID = 17352, cost = 473 },         -- Superior Mana Draught
             { itemID = 19060, cost = 1894 },        -- Warsong Gulch Enriched Ration

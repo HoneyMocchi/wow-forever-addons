@@ -3,7 +3,7 @@
 ## Notes: Modern loot browser for WoW: Forever dungeons, raids, PvP, factions, collections and professions.
 ## Notes-koKR: 던전·공격대 전리품, 퀘스트, 지도, 제작법과 평판 보상을 확인합니다. /nr
 ## Author: mikebvs
-## Version: v1.9.0
+## Version: v2.0.1
 ## Category: Item
 ## IconTexture: Interface\Icons\INV_Misc_Bag_10
 ## SavedVariables: NeedRollDB
@@ -32,6 +32,8 @@ Core\Wishlist.lua
 Core\LibraryBooks.lua
 Core\LootLog.lua
 Core\Drops.lua
+# Each dungeon and raid run's bosses, drops and rolls, for /nr runs (records only in local checkouts)
+Core\Runs.lua
 Core\Trainers.lua
 Core\TrainerShare.lua
 Core\Vendors.lua

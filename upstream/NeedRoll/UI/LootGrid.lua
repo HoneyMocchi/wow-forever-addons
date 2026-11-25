@@ -56,6 +56,10 @@ local ABILITY_BOX_TOP = 52 -- where the description starts, from the card's top
 local FOLD_ROW = 42   -- a fold's clickable row
 local FOLD_HEIGHT = 48 -- the row and the space under it
 local FOLD_SCALE = 0.4 -- its boss portrait, against the header's
+-- A PvP class fold's class badge: as big as the Collections tab's class
+-- folds' (UI/Lists.lua), its centre this far from the row's left, where a
+-- boss fold's portrait ring is.
+local CLASS_FOLD = { BADGE = 26, BADGE_X = 14 }
 
 -- AddDoubleLine with named colors (unpack only spreads the last argument).
 local function AddTipPair(left, right, leftColor, rightColor)
@@ -132,6 +136,8 @@ end
 -- remembered by (ns.SectionMemory's "loot" area; never the name, which
 -- changes with the client's language). `startsShut`: shut until the player
 -- opens it (a boss's recipes interest only its profession's crafters).
+-- A Factions list, whose quartermaster may sell hundreds of recipes, splits
+-- Professions into one section per profession instead (ProfessionSection).
 local SECTIONS = {
     { key = "QUEST_ITEMS", name = L["Quest Items"] },
     { key = "WEAPONS", name = L["Weapons"] },
@@ -146,8 +152,15 @@ local SECTIONS = {
 local SECTION_INDEX = {}
 for index, section in ipairs(SECTIONS) do SECTION_INDEX[section.key] = index end
 
--- Whether loot section `sectionKey` is shut until the player opens it.
+-- A Factions list's section for one profession is keyed by its recipe
+-- subclass ("PROFESSION_8", Enchanting), never its name, which changes with
+-- the client's language.
+local PROFESSION_SECTION_PREFIX = "PROFESSION_"
+
+-- Whether loot section `sectionKey` is shut until the player opens it. Each
+-- profession's own section starts shut, as Professions does.
 local function SectionStartsShut(sectionKey)
+    if sectionKey:find(PROFESSION_SECTION_PREFIX, 1, true) == 1 then return true end
     local section = SECTIONS[SECTION_INDEX[sectionKey]]
     return section ~= nil and section.startsShut == true
 end
@@ -237,25 +250,57 @@ local function Deduped(items)
     return out, waiting
 end
 
-local function Sectioned(items)
+-- The recipe subclass (the profession, Enum.ItemRecipeSubclass) an entry
+-- keyed `key` by LootKey belongs with: a recipe's own, or the profession a
+-- reward that teaches nothing names (forProfession, a "<Profession>
+-- Certification"). Nil for an entry that is no profession's.
+local function ProfessionSubclass(entry, key)
+    if entry.forProfession then return Enum.ItemRecipeSubclass[entry.forProfession] end
+    if key[1] == SECTION_INDEX.PROFESSIONS then return key[2] end
+    return nil
+end
+
+-- One profession's section on a Factions list: its key and the game's own
+-- name for its recipes' subclass ("Enchanting", in the client's language).
+local function ProfessionSection(subClassID)
+    local name = C_Item.GetItemSubClassInfo(Enum.ItemClass.Recipe, subClassID)
+    return { key = PROFESSION_SECTION_PREFIX .. subClassID, name = name or L["Professions"] }
+end
+
+-- Every item's sort key { section, group, order, place in the list } and the
+-- section it is listed under. `byProfession`: each profession's items go in a
+-- section of their own, sorted by its name and kept in the list's order
+-- within it (a faction's are lowest skill first).
+local function SectionKeys(items, byProfession)
     local keyed = {}
     for i, entry in ipairs(items) do
         local key = entry.itemID and { LootKey(entry.itemID) } or { SECTION_INDEX.MISCELLANEOUS, 0, 0, 0 }
         key[4] = i
-        keyed[i] = { entry = entry, key = key }
+        local section = SECTIONS[key[1]]
+        local subClassID = byProfession and ProfessionSubclass(entry, key)
+        if subClassID then
+            section = ProfessionSection(subClassID)
+            -- The subclass keeps two professions apart should the game name them alike.
+            key[1], key[2], key[3] = SECTION_INDEX.PROFESSIONS, section.name, subClassID
+        end
+        keyed[i] = { entry = entry, key = key, section = section }
     end
+    return keyed
+end
+
+local function Sectioned(items, byProfession)
+    local keyed = SectionKeys(items, byProfession)
     table.sort(keyed, function(a, b)
         for keyIndex = 1, 4 do
             if a.key[keyIndex] ~= b.key[keyIndex] then return a.key[keyIndex] < b.key[keyIndex] end
         end
         return false
     end)
-    local out, section = {}, nil
+    local out, sectionKey = {}, nil
     for _, item in ipairs(keyed) do
-        if item.key[1] ~= section then
-            section = item.key[1]
-            local sectionInfo = SECTIONS[section]
-            table.insert(out, { header = sectionInfo.name, sectionKey = sectionInfo.key,
+        if item.section.key ~= sectionKey then
+            sectionKey = item.section.key
+            table.insert(out, { header = item.section.name, sectionKey = sectionKey,
                 box = true, full = true, shuts = true })
         end
         table.insert(out, item.entry)
@@ -269,8 +314,9 @@ end
 -- they stop arriving, and onChange() is called (one redraw per burst, not one
 -- per item).
 -- `keepAll` (vendor lists) keeps same-named items: each level of a
--- multi-level item is listed.
-function ns.UI.LootSections(entries, onChange, out, keepAll)
+-- multi-level item is listed. `byProfession` (Factions lists) gives each
+-- profession a section of its own in place of one Professions section.
+function ns.UI.LootSections(entries, onChange, out, keepAll, byProfession)
     out = out or {}
     for i = #out, 1, -1 do out[i] = nil end
     -- `foldItems`: the entries since the last fold (or the start).
@@ -280,7 +326,7 @@ function ns.UI.LootSections(entries, onChange, out, keepAll)
         if not keepAll then items, namesMissing = Deduped(foldItems) end
         waiting = waiting or namesMissing
         if fold then fold.count = #items end
-        for _, entry in ipairs(Sectioned(items)) do table.insert(out, entry) end
+        for _, entry in ipairs(Sectioned(items, byProfession)) do table.insert(out, entry) end
         foldItems = {}
     end
     for _, entry in ipairs(entries) do
@@ -302,7 +348,7 @@ function ns.UI.LootSections(entries, onChange, out, keepAll)
             queued = true
             C_Timer.After(0.2, function()
                 queued = false
-                ns.UI.LootSections(entries, nil, out, keepAll)
+                ns.UI.LootSections(entries, nil, out, keepAll, byProfession)
                 onChange()
             end)
         end
@@ -344,31 +390,47 @@ local function ShortCost(copper)
     return math.floor(copper / 100) .. SILVER_ICON
 end
 
--- A price paid in another item, such as a reputation's tokens (costItem,
--- costCount): the count and that item's icon, where a gold price goes ("15"
--- and a totem). Numbers and the game's own icon read the same in every locale.
-local function ItemCost(entry)
-    local icon = C_Item.GetItemIconByID(entry.costItem)
-    return BreakUpLargeNumbers(entry.costCount) .. (icon and ("|T" .. icon .. ":0:0:2:0|t") or "")
+-- A price paid in a currency (costCurrency, costCurrencyCount: Honor,
+-- Merchant's Favor) and in another item (costItem, costCount: a
+-- reputation's tokens, a battleground's marks), as a list of parts, the
+-- currency's first: each the count and the game's icon for what it is paid
+-- in ("9,000" and Honor's icon, "15" and a mark's). Numbers and the game's
+-- own icons read the same in every locale. `withNames`: each part followed
+-- by the game's name for it, once the client has it (an item's is asked for
+-- here, so the next hover shows it). Empty for a price in gold or none.
+local function TokenCosts(entry, withNames)
+    local parts = {}
+    local function Add(count, icon, name)
+        local part = BreakUpLargeNumbers(count) .. (icon and ("|T" .. icon .. ":0:0:2:0|t") or "")
+        table.insert(parts, withNames and name and (part .. " " .. name) or part)
+    end
+    if entry.costCurrency then
+        local currency = C_CurrencyInfo.GetCurrencyInfo(entry.costCurrency)
+        local name = currency and currency.name ~= "" and currency.name or nil
+        Add(entry.costCurrencyCount, currency and currency.iconFileID, name)
+    end
+    if entry.costItem then
+        local name = withNames and C_Item.GetItemNameByID(entry.costItem)
+        if withNames and not name then C_Item.RequestLoadItemDataByID(entry.costItem) end
+        Add(entry.costCount, C_Item.GetItemIconByID(entry.costItem), name)
+    end
+    return parts
 end
 
--- The cell's price, or nil for an item nobody sells.
+-- The cell's price ("9,000" and Honor's icon, then "15" and a mark's; else
+-- gold), or nil for an item nobody sells.
 local function PriceText(entry)
-    if entry.costItem then return ItemCost(entry) end
+    local parts = TokenCosts(entry, false)
+    if parts[1] then return table.concat(parts, " ") end
     return entry.cost and ShortCost(entry.cost)
 end
 
--- The tooltip's price: the cell's, and for a price in items that item's name
--- once the client has it (asked for here, so the next hover shows it).
+-- The tooltip's price: the cell's, with the names of the currency and the
+-- item it is paid in ("9,000 Honor  ·  15 Warsong Gulch Mark of Honor").
 local function TooltipPrice(entry)
-    local price = PriceText(entry)
-    if not entry.costItem then return price end
-    local costName = C_Item.GetItemNameByID(entry.costItem)
-    if not costName then
-        C_Item.RequestLoadItemDataByID(entry.costItem)
-        return price
-    end
-    return price .. " " .. costName
+    local parts = TokenCosts(entry, true)
+    if parts[1] then return Theme:JoinDots(unpack(parts)) end
+    return PriceText(entry)
 end
 
 -- Where a search result leads, as a breadcrumb: tab, list, encounter (none
@@ -1031,8 +1093,9 @@ end
 ns.UI.QuestSource = QuestSource  -- the Professions Overview's quests (UI/ProfessionOverview.lua)
 
 -- The quests a recipe comes with (entry.quests: the rogue's first Instant
--- Poison comes with the Poisons skill, which a quest gives) or a pet is
--- the reward of, those of the player's side: the quest's name, then who
+-- Poison comes with the Poisons skill, which a quest gives), a pet or a
+-- searched item is the reward of, or a dungeon or raid loot row's item is
+-- asked for by, those of the player's side: the quest's name, then who
 -- gives it, pinned on the map. A quest NeedRoll has a page for opens it
 -- from its name.
 local function AddQuestLines(lines, quests)
@@ -1098,11 +1161,13 @@ end
 
 -- Where a recipe item or a companion pet (entry.petSources) comes from,
 -- who teaches its recipe (entry.taughtBy, the recipe's spell ID) or which
--- quest it comes with (entry.quests), where to buy a material
--- (entry.soldBy) or a search result's item (entry.buyFrom, the vendors of
--- the player's side, see UI/Search.lua), as the lines shown under it: a
--- heading, then each mob or vendor ({ src, side }), name only: where they
--- stand shows in the tooltip, which keeps the box short. Trainers and the
+-- quest it comes with (entry.quests; a search result's: the quests
+-- rewarding its item), the quests a dungeon or raid loot row's item is for
+-- while the Quests tab is on, where to buy a material (entry.soldBy) or a
+-- search result's item (entry.buyFrom, the vendors of the player's side,
+-- see UI/Search.lua), as the lines shown under it: a heading, then each
+-- mob or vendor ({ src, side }), name only: where they stand shows in the
+-- tooltip, which keeps the box short. Trainers, quest givers and the
 -- nearest vendor show their zone too.
 local function SourceLines(entry)
     local lines = {}
@@ -1110,6 +1175,8 @@ local function SourceLines(entry)
     if entry.petSources then AddPetSources(lines, entry) end
     if entry.taughtBy then AddTrainerLines(lines, entry.taughtBy) end
     if entry.quests then AddQuestLines(lines, entry.quests) end
+    local askedForBy = ns.Modules:IsOn("QUESTS") and ns.Data:QuestsAskingFor(entry)
+    if askedForBy then AddQuestLines(lines, askedForBy) end
     if entry.soldBy then AddVendorLines(lines, entry.itemID) end
     if entry.buyFrom then AddSoldByLines(lines, entry.buyFrom, true) end
     if #lines == 0 then return nil end
@@ -1909,7 +1976,7 @@ function Cell:SetItem(entry, showSource)
     self.icon:SetTexture(C_Item.GetItemIconByID(itemID))
     Theme:CropIcon(self.icon) -- a dungeon's swirl may have used it
     -- Drops show their chance (when ns.SHOW_DROP_RATES); vendor rewards show
-    -- their price, in gold or in another item; recipe products and materials
+    -- their price, in gold, a currency or another item; recipe products and materials
     -- show how many.
     if entry.dropRate then
         self.rate:SetText(ns.SHOW_DROP_RATES and ("%.0f%%"):format(entry.dropRate * 100) or "")
@@ -2165,7 +2232,9 @@ local function CreateRule(parent)
 end
 
 -- A fold's row: the boss's portrait, its name, "Level 54 Elite  ·  4 items",
--- the open/shut arrow at the right and a rule along the bottom.
+-- the open/shut arrow at the right and a rule along the bottom. A PvP class
+-- fold has the class's badge in the portrait's place, the class's name in
+-- its colour and "4 items" under it; "All classes" has no badge and a gold name.
 local function CreateFold(parent)
     local row = Theme:Row(parent, FOLD_ROW)
     row.portrait = CreateBossPortrait(row)
@@ -2185,13 +2254,37 @@ local function CreateFold(parent)
     row.rule:SetPoint("BOTTOMRIGHT")
     row.rule:SetHeight(1)
 
-    function row:Set(fold, open)
-        local boss = fold.boss
-        self.fold = fold
+    function row:ShowBoss(boss, items)
+        if self.badge then self.badge:Hide() end
+        self.portrait:Show()
         self.portrait:SetBoss(boss)
         self.name:SetText(Theme:WithIds(boss[1], BossIds(boss[5])))
-        local items = fold.count == 1 and L["1 item"] or L["%d items"]:format(fold.count)
+        Theme:SetTextColor(self.name, Theme.color.heading)
         self.sub:SetText(Theme:JoinDots(BossLevelText(boss), items))
+    end
+
+    -- `token`: the class's ("MAGE"), or nil for "All classes".
+    function row:ShowClass(token, items)
+        self.portrait:Hide()
+        if not self.badge then
+            self.badge = Theme:ClassBadge(self, CLASS_FOLD.BADGE)
+            self.badge:SetPoint("CENTER", self, "LEFT", CLASS_FOLD.BADGE_X, 0)
+        end
+        self.badge:SetClass(token) -- hidden for no class
+        self.name:SetText(token and ns.UI.ClassName(token) or L["All classes"])
+        Theme:SetTextColor(self.name, Theme.color.heading)
+        ns.UI.SetClassColor(self.name, token)
+        self.sub:SetText(items)
+    end
+
+    function row:Set(fold, open)
+        self.fold = fold
+        local items = fold.count == 1 and L["1 item"] or L["%d items"]:format(fold.count)
+        if fold.classFold then
+            self:ShowClass(fold.token, items)
+        else
+            self:ShowBoss(fold.boss, items)
+        end
         self.arrow:SetOpen(open)
         self.rule:SetColor(Theme.color.rule)
         self.rule:SetHeight((select(2, Theme:LineWidth(self.rule)))) -- one screen pixel
@@ -2298,6 +2391,68 @@ function ns.UI.LootType(itemID)
         if equipLoc == "INVTYPE_CLOAK" then return nil end
         return ARMOR[subclassID]
     end
+end
+
+-- Who wears each armor type, in the game's class order: the classes a
+-- piece goes under in a PvP list's class folds (fewer than CAN_USE, which
+-- lets a warrior wear cloth).
+local WEARERS = {
+    cloth = { "PRIEST", "MAGE", "WARLOCK" }, leather = { "ROGUE", "DRUID" }, mail = { "HUNTER", "SHAMAN" },
+    plate = { "WARRIOR", "PALADIN" }, shield = { "WARRIOR", "PALADIN", "SHAMAN" },
+}
+-- The classes a loot entry is for, in the game's class order: the data's
+-- `classes` ("ROGUE DRUID"), else armor's wearers (WEARERS) or the classes
+-- that can use a weapon (CAN_USE); nil for anything else (cloaks, jewelry,
+-- off-hand tomes, tabards, consumables, mounts). Instant item info, so it
+-- is known before the item loads.
+function ns.UI.ItemClasses(entry)
+    local tokens = {}
+    if entry.classes then
+        for token in entry.classes:gmatch("%S+") do
+            if CAN_USE[token] then table.insert(tokens, token) end
+        end
+        return tokens[1] and tokens or nil
+    end
+    local kind = ns.UI.LootType(entry.itemID)
+    if not kind then return nil end
+    if WEARERS[kind] then return WEARERS[kind] end
+    for _, token in ipairs(CLASSES) do
+        if CAN_USE[token][kind] then table.insert(tokens, token) end
+    end
+    return tokens[1] and tokens or nil
+end
+
+-- A PvP list's loot under a fold per class: { fold = true, classFold =
+-- true, key = "CLASS:MAGE", token = "MAGE" } heading what that class can
+-- use (an item several classes can use sits under each), in the game's
+-- class order, then an "All classes" fold (no token) holding the rest.
+-- nil when no item is for a class: the page lists its loot without folds.
+function ns.UI.ClassFolds(loot)
+    local itemsOf, forEveryone, hasClassItems = {}, {}, false
+    for _, entry in ipairs(loot) do
+        local classes = entry.itemID and ns.UI.ItemClasses(entry)
+        for _, token in ipairs(classes or {}) do
+            itemsOf[token] = itemsOf[token] or {}
+            table.insert(itemsOf[token], entry)
+            hasClassItems = true
+        end
+        if not classes then table.insert(forEveryone, entry) end
+    end
+    if not hasClassItems then return nil end
+    local out = {}
+    local function AddFold(fold, items)
+        table.insert(out, fold)
+        for _, entry in ipairs(items) do table.insert(out, entry) end
+    end
+    for _, token in ipairs(CLASSES) do
+        if itemsOf[token] then
+            AddFold({ fold = true, classFold = true, key = ns.UI.TierSets.ClassFoldKey(token), token = token },
+                itemsOf[token])
+        end
+    end
+    -- "All classes" is keyed like a class ("CLASS:MAGE"), its key its own.
+    if forEveryone[1] then AddFold({ fold = true, classFold = true, key = "CLASS:ALL" }, forEveryone) end
+    return out
 end
 
 -- The character's filter settings: { usable = USABLE_GREY, USABLE_HIDE or
@@ -2803,16 +2958,24 @@ local function CreateFilterBar(pane)
     return bar
 end
 
--- The key a boss fold's open or shut state is remembered by (pane.open):
--- its boss's NPC ID (Data/Bosses.lua's fifth field), not its place in the
--- encounter (`key`, what portraits and search results open it by).
-local function FoldMemoryKey(fold)
-    return fold.boss[5]
+-- Where a fold's open or shut state is remembered, by what key, and
+-- whether it is open before the player opens or shuts it: the arguments of
+-- ns.SectionMemory.IsOpen and Toggle.
+-- A boss fold: in pane.open by its boss's NPC ID (Data/Bosses.lua's fifth
+-- field), not its place in the encounter (`key`, what portraits and search
+-- results open it by); it starts shut.
+-- A PvP class fold: in pane.openClasses by its key ("CLASS:MAGE"), the same
+-- on every PvP page, so a class opened on one page is open on all; the
+-- player's own class and "All classes" start open.
+local function FoldMemory(pane, fold)
+    if not fold.classFold then return pane.open, fold.boss[5], false end
+    local isOpenAtFirst = fold.token == nil or fold.key == ns.UI.TierSets.PlayerFoldKey()
+    return pane.openClasses, fold.key, isOpenAtFirst
 end
 
--- Whether boss fold `fold` shows its items on `pane`.
+-- Whether fold `fold` shows its items on `pane`.
 local function IsFoldOpen(pane, fold)
-    return ns.SectionMemory.IsOpen(pane.open, FoldMemoryKey(fold))
+    return ns.SectionMemory.IsOpen(FoldMemory(pane, fold))
 end
 
 function ns.UI.CreateLootGrid(parent)
@@ -2824,13 +2987,17 @@ function ns.UI.CreateLootGrid(parent)
     pane.toggles = {}
     pane.boxes = {}
     -- Loot sections shut or opened (section key -> true or false, read
-    -- through IsSectionShut), and boss folds opened or shut (FoldMemoryKey
-    -- -> true or false; each starts shut), kept as Settings' "Remember
-    -- sections" says (ns.SectionMemory's "loot" and "bosses" areas).
-    pane.shutSections = ns.SectionMemory.Area("loot")
-    pane.open = ns.SectionMemory.Area("bosses")
+    -- through IsSectionShut), and boss folds and PvP class folds opened or
+    -- shut (see FoldMemory), kept as Settings' "Remember sections" says
+    -- (ns.SectionMemory's "loot", "bosses" and "lootClasses" areas).
+    local function TakeMemory()
+        pane.shutSections = ns.SectionMemory.Area("loot")
+        pane.open = ns.SectionMemory.Area("bosses")
+        pane.openClasses = ns.SectionMemory.Area("lootClasses")
+    end
+    TakeMemory()
     ns.SectionMemory.OnModeChange(function()
-        pane.shutSections, pane.open = ns.SectionMemory.Area("loot"), ns.SectionMemory.Area("bosses")
+        TakeMemory()
         if pane:IsVisible() then pane:Refresh() end
     end)
     pane.entries = {}
@@ -3039,10 +3206,11 @@ function ns.UI.CreateLootGrid(parent)
             table.insert(line, entry)
             if entry.ability then
                 line.extra = math.max(line.extra, AbilityHeight(entry, wide))
-            elseif not pane.showSource or entry.buyFrom then
+            elseif not pane.showSource or entry.buyFrom or entry.quests then
                 -- A page that names each item's source on its own line
                 -- (search, a dungeon's All drops) shows no source lines
-                -- under its items, except a search result's vendors.
+                -- under its items, except a search result's vendors and
+                -- the quests rewarding its item.
                 line.extra = math.max(line.extra, SourcesHeight(entry, pane.rowHeight or Size.itemRow))
             end
             if box then box.columns = math.max(box.columns, wide and COLUMNS or #line) end
@@ -3323,7 +3491,7 @@ function ns.UI.CreateLootGrid(parent)
                     if not (scrolling and cell.stamp == stamp) then
                         cell.stamp = stamp
                         cell:SetEntry(entry, self.showSource)
-                        cell:ShowSources((not self.showSource or entry.buyFrom) and entry or {})
+                        cell:ShowSources((not self.showSource or entry.buyFrom or entry.quests) and entry or {})
                         -- The item a search result led here stands out.
                         cell:SetSelected(self.highlight ~= nil and entry.itemID == self.highlight)
                         cell:SetGreyed(greyed ~= nil and greyed[entry] == true)
@@ -3369,9 +3537,15 @@ function ns.UI.CreateLootGrid(parent)
         return 0
     end
 
+    -- Opens fold `fold` (a header portrait's click, a search's go-to).
+    function pane:OpenFold(fold)
+        local states, key = FoldMemory(self, fold)
+        states[key] = true
+    end
+
     -- Opens or shuts fold `fold`, keeping the scroll inside the new length.
     function pane:ToggleFold(fold)
-        ns.SectionMemory.Toggle(self.open, FoldMemoryKey(fold))
+        ns.SectionMemory.Toggle(FoldMemory(self, fold))
         self.offset = math.min(self.offset or 0, MaxOffset())
         self:Refresh()
     end
@@ -3395,7 +3569,7 @@ function ns.UI.CreateLootGrid(parent)
     function pane:JumpToFold(key)
         for lineIndex, line in ipairs(Lines()) do
             if line.fold and line.fold.key == key then
-                self.open[FoldMemoryKey(line.fold)] = true
+                self:OpenFold(line.fold)
                 self.lines = nil  -- the fold's items need lines before the glide draws them
                 local target = math.min(MaxOffset(), lineIndex - 1)
                 if target == self.offset then self:Refresh() else Theme:GlideTo(self, target) end
@@ -3405,20 +3579,22 @@ function ns.UI.CreateLootGrid(parent)
     end
 
     -- Opens the fold an item sits in, so a search's go-to can show it,
-    -- and the loot section it sits in.
+    -- and the loot section it sits in. An item under several PvP class
+    -- folds opens the player's own class's, else the first.
     local function OpenFoldOf(itemID)
-        local fold, section
+        local ownClassFold = ns.UI.TierSets.PlayerFoldKey()
+        local fold, section, foundFold, foundSection, found
         for _, entry in ipairs(pane.entries) do
             if entry.fold then
                 fold, section = entry, nil
             elseif entry.header then
                 section = entry.shuts and entry.sectionKey or nil
-            elseif entry.itemID == itemID then
-                if fold then pane.open[FoldMemoryKey(fold)] = true end
-                if section then SetSectionShut(pane.shutSections, section, false) end
-                return
+            elseif entry.itemID == itemID and (not found or (fold and fold.key == ownClassFold)) then
+                foundFold, foundSection, found = fold, section, true
             end
         end
+        if foundFold then pane:OpenFold(foundFold) end
+        if foundSection then SetSectionShut(pane.shutSections, foundSection, false) end
     end
 
     -- Shows the standing bar ({ reaction, value, max }) or hides it (nil),
@@ -3549,6 +3725,8 @@ function ns.UI.CreateLootGrid(parent)
     -- pixel off at another).
     function pane:Remeasure()
         ForgetNeeds()
+        -- Loot rows' quest lines come and go with the Quests tab.
+        wipe(sourcesHeights)
         fitNeed = nil
         for _, cell in ipairs(self.cells) do cell.stamp = nil end
     end

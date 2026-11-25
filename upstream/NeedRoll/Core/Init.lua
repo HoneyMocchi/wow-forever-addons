@@ -1,8 +1,9 @@
 -- NeedRoll: addon bootstrap. Owns the event frame, SavedVariables,
 -- slash commands and the addon compartment (minimap menu) entry, and the
--- small helpers every file shares (ns:Print, ns.Plain, ns.ParseGUID,
--- ns.PlayerLevel, ns.HeardNumber, ns.Base36, ns.CutToBytes, ns.CleanName, ns.NpcIDOf, ns.CountKeys,
--- ns.CharacterKey, ns.PlayerFaction), and ns.SectionMemory, where open and shut sections are remembered.
+-- small helpers every file shares (ns:Print, ns.Plain, ns.ParseGUID, ns.PlayerLevel,
+-- ns.HeardNumber, ns.Base36, ns.CutToBytes, ns.CleanName, ns.NpcIDOf, ns.CountKeys, ns.CharacterKey,
+-- ns.PlayerServerID, ns.PlayerFaction), and ns.SectionMemory, where open and shut sections are
+-- remembered.
 local addonName, ns = ...
 local L = ns.L
 
@@ -74,6 +75,17 @@ local defaults = {
     trainerChecks = {},
     -- Recipes the data says a vendor sells that a dev build didn't see in its window (see Core/Vendors.lua).
     vendorMissing = {},
+    -- Each character's dungeon and raid runs: bosses, drops and everyone's rolls (see Core/Runs.lua).
+    runs = {},
+    -- The run tracker on the game's screen (see UI/RunTracker.lua): its line under the minimap and
+    -- its kill cards, each switched in Settings, and whether its first-run card has shown. Where
+    -- the line was dragged is runLinePoint, unset (under the minimap) until it is. Whether the dock
+    -- on the Objectives pane is folded to its header (its minus/plus button) is runDockCollapsed,
+    -- whether the player popped it out to the line (its pop-out button) runDockOff, and whether
+    -- they put it at the pane's left (its move button) runDockSide ("left"; unset: above it).
+    runProgressLine = true,
+    runKillCards = true,
+    runIntroShown = false,
     --@end-debug@]==]
     -- /nr loot fish: the ID range it sweeps, the next ID to look at, whether
     -- it is running (it carries on after logging in), what it found and
@@ -126,6 +138,11 @@ local defaults = {
     -- sectionMemory: where open and shut sections are remembered, picked
     -- in Settings (nil means "character"); sections: what was remembered
     -- (see Remembered sections below).
+    -- movedToGUIDKey: player GUID -> true once that character's data saved
+    -- under its old "Name-Realm" keys was taken over (see Character keys).
+    -- realmOfServer: server ID -> the realm name the game gave a character
+    -- there (GetRealmName(), empty since WoW: Forever's build 71037; see
+    -- Character keys).
 }
 
 -- Fills in what the saved settings lack, at any depth; the player's own stay.
@@ -182,14 +199,17 @@ end)
 -- open or shut. Settings' "Remember sections" (NeedRollDB.sectionMemory)
 -- picks where they are kept:
 --   "character" (the default, also when unset): this character's own,
---       NeedRollDB.sections.characters["Name-Realm"];
+--       NeedRollDB.sections.characters[ns.CharacterKey()];
 --   "account": one set every character shares, NeedRollDB.sections.account;
 --   "off": a set that lasts until the game reloads, saving nothing.
 -- A set holds one table per area, each mapping a stable key (an ID or a
 -- fixed word, never translated text, which changes with the client's
 -- language) to that section's state:
 --   "loot": the loot pane's sections (Quest Items, Weapons ...), by key;
+--       a Factions page's per profession, by "PROFESSION_" and the recipe subclass;
 --   "bosses": the loot pane's boss folds (the Ring of Law), by NPC ID;
+--   "lootClasses": the loot pane's PvP class folds, by "CLASS:<token>"
+--       ("CLASS:ALL" for All classes);
 --   "trainers": "N more trainers" lists opened whole, by recipe spell ID
 --       (a recipe's page) or "CLASS" (the Classes tab's Overview);
 --   "list": per dungeon, raid or profession ID, its middle column groups
@@ -483,6 +503,37 @@ function ns.GameTextPatterns(format)
     return patterns
 end
 
+--[==[@debug@
+-- ns.ReadGameText's patterns and argument order for each format it has read. Only the run
+-- tracker (Core/Runs.lua, local checkouts only) reads the game's lines this way yet, so a release
+-- leaves both out.
+local gameTextReaders = {}
+
+-- The values a line the game wrote from `format` carries, keyed by their argument number in the
+-- format, or nil when the line isn't one of its. A translation can put the values in another
+-- order than English ("%4$s ... %2$d ... %3$s"), so values[2] is the second argument wherever
+-- that client's text puts it. Every value is the text the line has there.
+function ns.ReadGameText(text, format)
+    local reader = gameTextReaders[format]
+    if not reader then
+        local order, nextArgument = {}, 0
+        for position in format:gmatch("%%(%d*)%$?[sd]") do
+            nextArgument = nextArgument + 1
+            table.insert(order, tonumber(position) or nextArgument)
+        end
+        reader = { patterns = ns.GameTextPatterns(format), order = order }
+        gameTextReaders[format] = reader
+    end
+    for _, pattern in ipairs(reader.patterns) do
+        if text:find(pattern) then
+            local captures, values = { text:match(pattern) }, {}
+            for i, argument in ipairs(reader.order) do values[argument] = captures[i] end
+            return values
+        end
+    end
+end
+--@end-debug@]==]
+
 -- The game's IDs, counts and builds fit a 32-bit signed integer.
 local HEARD_NUMBER_MAX = 2147483647
 
@@ -596,10 +647,243 @@ function ns.Money(copper, showZero)
     return table.concat(parts, " ")
 end
 
--- "Name-Realm", the key this character's own saved data is kept under.
-function ns.CharacterKey()
-    return (UnitName("player") or "?") .. "-" .. (GetRealmName() or "?")
+-- Character keys ----------------------------------------------------------------
+-- Each character's own saved data (PER_CHARACTER_TABLES below) is kept under its GUID,
+-- "Player-<server ID>-<character ID>", which names one character on one server for good. Up to
+-- v2.0.0 it was "Name-Realm", with the first name UnitName gives; since WoW: Forever's build 71037
+-- GetRealmName() is empty, so that key became "Name-" and two characters of one first name on
+-- different servers shared it.
+
+-- The last player GUID read: the player can't change within a session, so it stays the key
+-- while the GUID can't be read (a secret value).
+local lastPlayerGUID
+
+-- The old "Name-Realm" key, with "?" for an empty realm: the key until the GUID has been read.
+local function FallbackKey()
+    local name, realm = ns.Plain(UnitName("player")), ns.Plain(GetRealmName())
+    return (name or "?") .. "-" .. ((realm and realm ~= "") and realm or "?")
 end
+
+-- The key this character's own saved data is kept under: its GUID. Until the GUID has been read
+-- (the game may not give it before PLAYER_LOGIN) FallbackKey(); ns.MoveSavedDataToGUIDKey takes
+-- what was saved under that over at login.
+function ns.CharacterKey()
+    local guid = ns.Plain(UnitGUID("player"))
+    if guid then lastPlayerGUID = guid end
+    return lastPlayerGUID or FallbackKey()
+end
+
+-- The ID of the server this character is on, from its GUID; nil until the GUID has been read.
+-- Characters on one server can mail each other.
+function ns.PlayerServerID()
+    return tonumber(ns.CharacterKey():match("^Player%-(%d+)%-%x+$"))
+end
+
+-- NeedRollDB's table at `path`, or nil when there is none (nothing is made).
+local function SavedTable(path)
+    local saved = ns.db
+    for _, key in ipairs(path) do
+        saved = type(saved) == "table" and saved[key] or nil
+    end
+    return type(saved) == "table" and saved or nil
+end
+
+local function IsEmpty(value)
+    return value == nil or (type(value) == "table" and next(value) == nil)
+end
+
+-- How an old key's entry is merged into the GUID key's (`current`). MoveTableEntries goes from the
+-- newest old key to the oldest, so what the GUID key already has wins, then the newest.
+
+-- A live snapshot NeedRoll writes again at once (record, bags, bank): the newest one whole.
+local function TakeNewest(current, older)
+    if IsEmpty(current) and not IsEmpty(older) then return older end
+    return current
+end
+
+-- Settings a player builds up (open and shut sections, the loot filter, the Known box): every key
+-- older has and current lacks, tables within tables too. NeedRoll writes empty shells on first
+-- use (a loot filter of { types = {} }, an area's {}), so the states set before build 71037 and
+-- not touched since stay. Some settings save "off" as no key at all (the loot filter's class and
+-- types, the ticked Known box), so one cleared since comes back from the older key, once, at the
+-- move.
+local function FillIn(current, older)
+    if current == nil then return older end
+    if type(current) ~= "table" or type(older) ~= "table" then return current end
+    for key, value in pairs(older) do current[key] = FillIn(current[key], value) end
+    return current
+end
+
+-- Two lists of saved events joined, by each entry's `timeField`; an entry of `older` with the
+-- same time and `idField` as one in `current` is the same event and is left out.
+local function JoinLists(current, older, timeField, idField)
+    if type(current) ~= "table" then return older end
+    if type(older) ~= "table" then return current end
+    local function EventKey(entry) return tostring(entry[timeField]) .. ":" .. tostring(entry[idField]) end
+    local isListed = {}
+    for _, entry in ipairs(current) do isListed[EventKey(entry)] = true end
+    for _, entry in ipairs(older) do
+        if not isListed[EventKey(entry)] then table.insert(current, entry) end
+    end
+    table.sort(current, function(a, b) return (a[timeField] or 0) < (b[timeField] or 0) end)
+    return current
+end
+
+-- Core/Runs.lua's runs: one list, oldest first (Runs keeps the newest RUNS_KEPT at the next run).
+local function JoinRuns(current, older)
+    return JoinLists(current, older, "startedAt", "mapID")
+end
+
+-- Core/Drops.lua's chain clues: the hand-in histories joined, the NPC snapshots and counts filled in.
+-- FillIn would merge the two history lists index by index (filling one hand-in's fields from an
+-- unrelated one and adding older's past the end), so the history is out of current while it runs.
+local function JoinChainClues(current, older)
+    if type(current) ~= "table" or type(older) ~= "table" then return TakeNewest(current, older) end
+    local history = JoinLists(current.history, older.history, "at", "quest")
+    current.history = nil
+    FillIn(current, older)
+    current.history = history
+    return current
+end
+
+-- The saved tables that keep one entry per character under ns.CharacterKey(): each one's path
+-- in NeedRollDB, and how an old key's entry is merged into the GUID key's.
+local PER_CHARACTER_TABLES = {
+    { path = { "characters" }, Merge = TakeNewest },             -- Core/Shopping.lua: who, money
+    { path = { "bags" }, Merge = TakeNewest },
+    { path = { "bank" }, Merge = TakeNewest },
+    { path = { "sections", "characters" }, Merge = FillIn },     -- remembered sections ("lootClasses" too)
+    { path = { "lootFilter" }, Merge = FillIn },                 -- UI/LootGrid.lua
+    { path = { "hideKnownPoisons" }, Merge = FillIn },           -- UI/Poisons.lua
+    { path = { "questOffers" }, Merge = JoinChainClues },        -- Core/Drops.lua
+    { path = { "runs" }, Merge = JoinRuns },                     -- Core/Runs.lua (local checkouts only)
+}
+
+-- Whether `key` is a character key from before GUID keys for the first name `name`.
+local function IsOldKeyOf(key, name)
+    local prefix = name .. "-"
+    return type(key) == "string" and key:sub(1, #prefix) == prefix and not key:find("^Player%-%d+%-%x+$")
+end
+
+-- Whether an old key's saved record (NeedRollDB.characters) is another character of the same
+-- first name: one of another class or side. Without a record nothing says so.
+local function IsOtherCharacter(record, class, faction)
+    if type(record) ~= "table" then return false end
+    return (record.class ~= nil and record.class ~= class) or (record.faction ~= nil and record.faction ~= faction)
+end
+
+-- The realm part of an old key of the first name `name`: "" for "Name-", "?" for a FallbackKey
+-- written while GetRealmName() was empty, else the realm name the key was saved under.
+local function RealmOfOldKey(key, name)
+    return key:sub(#name + 2)
+end
+
+local function IsRealmName(realm)
+    return realm ~= "" and realm ~= "?"
+end
+
+-- Of `keys` ("Name-<realm>", saved before build 71037), the one of this character on server
+-- `serverID`, or nil. NeedRollDB.realmOfServer[serverID] holds the realm name the game gave for
+-- that server (GetRealmName(), noted by MoveSavedDataToGUIDKey); with it, the key of that realm
+-- is this character's, at any login. Without it, only at the first move (`isFirstMove`): a key
+-- left alone once the realms the game gave for other servers are set aside. That is a guess (a
+-- character made since build 71037 can take the key of one of the same first name, class and
+-- side on another server), so a key taken this way never teaches its realm to realmOfServer.
+-- With two left, which one is this character's can't be told: both wait until the game gives
+-- the realm name of this character's server.
+local function RealmNamedKeyOfMine(keys, name, serverID, isFirstMove)
+    local realmOfServer = TableIn(ns.db, "realmOfServer")
+    local myRealm = realmOfServer[serverID]
+    if myRealm then
+        for _, key in ipairs(keys) do
+            if RealmOfOldKey(key, name) == myRealm then return key end
+        end
+        return nil
+    end
+    if not isFirstMove then return nil end
+    local isOtherServersRealm, possible = {}, {}
+    for _, realm in pairs(realmOfServer) do isOtherServersRealm[realm] = true end
+    for _, key in ipairs(keys) do
+        if not isOtherServersRealm[RealmOfOldKey(key, name)] then table.insert(possible, key) end
+    end
+    if #possible == 1 then return possible[1] end
+end
+
+-- This character's entries under old keys, newest first. What this session saved before the
+-- GUID could be read (FallbackKey) is always taken. At the first move (`isFirstMove`) also
+-- "Name-" (saved since build 71037). Then the "Name-<realm>" key saved before it that is this
+-- character's (RealmNamedKeyOfMine), at any login while one is left.
+local function OldKeysOfMine(name, class, faction, serverID, isFirstMove)
+    local records = SavedTable({ "characters" }) or {}
+    local isCandidate = {}
+    for _, saved in ipairs(PER_CHARACTER_TABLES) do
+        for key in pairs(SavedTable(saved.path) or {}) do
+            if IsOldKeyOf(key, name) and not IsOtherCharacter(records[key], class, faction) then
+                isCandidate[key] = true
+            end
+        end
+    end
+    local mine = {}
+    local function Take(key)
+        if not (key and isCandidate[key]) then return end
+        table.insert(mine, key)
+        isCandidate[key] = nil
+    end
+    Take(FallbackKey())
+    if isFirstMove then Take(name .. "-") end
+    local realmNamed = {}
+    for key in pairs(isCandidate) do
+        if IsRealmName(RealmOfOldKey(key, name)) then table.insert(realmNamed, key) end
+    end
+    Take(RealmNamedKeyOfMine(realmNamed, name, serverID, isFirstMove))
+    return mine
+end
+
+-- Notes for every character of the account the realm name the game gives for server `serverID`
+-- (NeedRollDB.realmOfServer). Only the game's: since build 71037 GetRealmName() is empty, and a
+-- realm named by an old key is a guess (RealmNamedKeyOfMine).
+local function NoteRealmOfServer(serverID)
+    local realm = ns.Plain(GetRealmName())
+    if realm and IsRealmName(realm) then TableIn(ns.db, "realmOfServer")[serverID] = realm end
+end
+
+-- Merges one saved table's entries under `oldKeys` (newest first) into `newKey`'s, its own way
+-- (`saved`, one of PER_CHARACTER_TABLES), and drops the old keys, so nothing (gold on the
+-- Shopping List) counts twice.
+local function MoveTableEntries(saved, oldKeys, newKey)
+    local entries = SavedTable(saved.path)
+    if not entries then return end
+    for _, oldKey in ipairs(oldKeys) do
+        entries[newKey] = saved.Merge(entries[newKey], entries[oldKey])
+        entries[oldKey] = nil
+    end
+end
+
+-- Takes this character's data saved under old keys over to its GUID key: at its first login with
+-- GUID keys (NeedRollDB.movedToGUIDKey[guid] remembers it) all of it; at every login what this
+-- session saved before the GUID could be read, and its "Name-<realm>" key once the realm name of
+-- its server is known (RealmNamedKeyOfMine). Runs as SavedVariables load and again at
+-- PLAYER_LOGIN, the first time the game has the character's GUID, name, class and side. A
+-- character's old keys stay until it logs in, and a realm-named key whose server can't be told
+-- stays (its gold still counted) until the game gives a character there its realm name.
+function ns.MoveSavedDataToGUIDKey()
+    if not ns.db then return end
+    local guid, name = ns.Plain(UnitGUID("player")), ns.Plain(UnitName("player"))
+    local class, faction = select(2, UnitClass("player")), UnitFactionGroup("player")
+    local serverID = guid and tonumber(guid:match("^Player%-(%d+)%-"))
+    if not (serverID and name and class and faction) then return end
+    NoteRealmOfServer(serverID)
+    local moved = TableIn(ns.db, "movedToGUIDKey")
+    local oldKeys = OldKeysOfMine(name, class, faction, serverID, not moved[guid])
+    moved[guid] = true
+    if not oldKeys[1] then return end
+    for _, saved in ipairs(PER_CHARACTER_TABLES) do MoveTableEntries(saved, oldKeys, guid) end
+end
+
+ns:On("ADDON_LOADED", function(loadedAddon)
+    if loadedAddon == addonName then ns.MoveSavedDataToGUIDKey() end
+end)
+ns:On("PLAYER_LOGIN", ns.MoveSavedDataToGUIDKey)
 
 -- The player's side as quests and lists name it: "Horde", else "Alliance".
 -- What NeedRoll shows asks this; what it saves or shares about the
@@ -1010,15 +1294,25 @@ end
 --[==[@debug@
 -- Local checkouts only: the packager leaves this block out of releases, where these words
 -- toggle the window like plain /nr. So does a dev tool whose file is missing.
+-- devCommandHelp[word] = { usage = its arguments, purpose = what it does }: /nr devcommands
+-- lists them. Each sits beside its command so the list can't fall behind, and a smoke scenario
+-- checks every command in this block has one. In English, like the dev commands' own output.
+local devCommandHelp = {}
+
 -- /nr devedit [reset]: dev edit mode (map spots and which quests start
 -- inside), or drops its edits; /nr devexport copies them out (UI/MapEdit.lua).
+devCommandHelp.devedit = { usage = "[reset]",
+    purpose = "dev edit mode: map spots and which quests start inside; reset drops its edits" }
 function commands.devedit(arg)
     if arg == "reset" then ns.MapEdit:Reset() else ns.MapEdit:Toggle() end
 end
+devCommandHelp.devexport = { usage = "", purpose = "copies dev edit mode's edits out" }
 function commands.devexport() ns.MapEdit:Export() end
 
 -- /nr loot [all|clear|scan|leads|fish ...|fished]: recorded drops NeedRoll doesn't list
 -- yet, and the item ID scans and sweep (Core/LootLog.lua, UI/Fished.lua).
+devCommandHelp.loot = { usage = "[all|clear|scan|leads|fish ...|fished]",
+    purpose = "recorded drops NeedRoll doesn't list yet, the item ID scans and the sweep's catches" }
 function commands.loot(arg, rest)
     if arg == "clear" then
         ns.LootLog:Clear()
@@ -1035,10 +1329,39 @@ function commands.loot(arg, rest)
     end
 end
 
+-- /nr runs [new|list|dock|line reset|demo [off|kill|firsttime|raid]]: this dungeon or raid run's
+-- bosses, drops and rolls, and why NeedRoll took it for a new run or the same one; new starts a
+-- new run by hand; list shows the last few runs (Core/Runs.lua); dock says which Objectives pane
+-- the run tracker docked on, or why not; line reset puts its line back under the minimap
+-- (UI/RunTracker.lua); demo shows made-up runs on the run pages and the run tracker, kill shows
+-- its kill card, firsttime its first-run card and raid puts the player in Molten Core
+-- (UI/RunDemo.lua).
+devCommandHelp.runs = { usage = "[new|list|dock|line reset|demo [off|kill|firsttime|raid]]",
+    purpose = "this run's bosses, drops and rolls; new run by hand; past runs; where the progress docked; "
+        .. "the line back under the minimap; made-up runs, cards and line" }
+function commands.runs(arg, rest)
+    if arg == "demo" and ns.RunDemo then
+        ns.RunDemo.Command(rest)
+    elseif arg == "dock" and ns.RunTracker then
+        ns.RunTracker.Refresh()
+        ns:Print(ns.RunTracker.DockStatusText())
+    elseif arg == "line" and rest == "reset" and ns.RunTracker then
+        ns.RunTracker.ResetLine()
+    elseif arg == "new" then
+        ns.Runs:StartNew()
+    elseif arg == "list" then
+        ns.Runs:PrintList()
+    else
+        ns.Runs:PrintCurrent()
+    end
+end
+
 -- /nr droptalk [list|key <name>|outbox|pull [on|off|name <name>]|clear]:
 -- the boss drop and new quest messages sent and heard, and what was saved; pull turns a PROBERS
 -- character's whispered asks on or off, or saves the character's whole name for them
 -- (Core/Drops.lua, Core/DropPull.lua, UI/DropTalk.lua).
+devCommandHelp.droptalk = { usage = "[list|key <name>|outbox|pull [on|off|name <name>]|clear]",
+    purpose = "drop and quest messages sent and heard, what was saved, and whispered asks for finds" }
 function commands.droptalk(arg, rest, restAsTyped)
     if arg == "pull" and ns.DropPull then
         ns.DropPull.Command(rest, restAsTyped)
@@ -1057,14 +1380,19 @@ end
 -- /nr users [history]: how many players share drops (the realm channel's
 -- member count), how many copies in the guild answer a roll call, and past
 -- roll calls (Core/Drops.lua, Roll call).
+devCommandHelp.users = { usage = "[history]",
+    purpose = "how many players share drops, a guild roll call, and past roll calls" }
 function commands.users(arg)
     if arg == "history" then ns.Drops:PrintRollCalls() else ns.Drops:RollCall() end
 end
+devCommandHelp.questlog = { usage = "[clear]", purpose = "new quests heard from other players" }
 function commands.questlog(arg)
     if arg == "clear" then ns.Drops:QuestLogClear() else ns.Drops:QuestLogPrint() end
 end
 -- /nr trainercheck [clear]: what the trainers opened teach that differs from
 -- NeedRoll's data (Core/TrainerCheck.lua).
+devCommandHelp.trainercheck = { usage = "[clear]",
+    purpose = "what the trainers opened teach that differs from NeedRoll's data" }
 function commands.trainercheck(arg)
     if not ns.TrainerCheck then return ns:Toggle() end
     if arg == "clear" then ns.TrainerCheck:Clear() else ns.TrainerCheck:Print() end
@@ -1072,17 +1400,43 @@ end
 
 -- The UI sound tester, the text size editor (fontdebug [reset]) and mock
 -- quest chain lines.
+devCommandHelp.sounds = { usage = "", purpose = "the UI sound tester" }
 function commands.sounds()
     if not ns.SoundTest then return ns:Toggle() end
     ns.SoundTest:Toggle()
 end
+devCommandHelp.fontdebug = { usage = "[reset]", purpose = "the text size editor" }
 function commands.fontdebug(arg)
     if not ns.FontDebug then return ns:Toggle() end
     ns.FontDebug:Toggle(arg)
 end
+devCommandHelp.linedump = { usage = "", purpose = "mock quest chain line looks" }
 function commands.linedump()
     if not ns.LineDump then return ns:Toggle() end
     ns.LineDump:Toggle()
+end
+-- /nr levelup [level]: the window of skills to train that an even level up
+-- shows, for `level` or your own (UI/LevelUp.lua), even with nothing to train.
+devCommandHelp.levelup = { usage = "[level]",
+    purpose = "the window of skills to train an even level up shows, for that level or yours" }
+function commands.levelup(arg)
+    if not ns.LevelUp then return ns:Toggle() end
+    ns.LevelUp:Preview(tonumber(arg))
+end
+
+-- /nr devcommands: every command in this block with its arguments and what it does, sorted.
+-- Chat reads "|" as the start of a code, so each is written doubled.
+devCommandHelp.devcommands = { usage = "", purpose = "lists these dev commands" }
+function commands.devcommands()
+    local words = {}
+    for word in pairs(devCommandHelp) do table.insert(words, word) end
+    table.sort(words)
+    ns:Print("Dev commands (local checkouts only):")
+    for _, word in ipairs(words) do
+        local help = devCommandHelp[word]
+        local usage = help.usage ~= "" and (" " .. help.usage:gsub("|", "||")) or ""
+        print(("  /nr %s%s: %s"):format(word, usage, help.purpose))
+    end
 end
 --@end-debug@]==]
 

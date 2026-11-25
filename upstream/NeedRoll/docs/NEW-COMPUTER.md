@@ -106,7 +106,9 @@ This registers the **NeedRoll Combat Log Watcher** task, which starts at
 logon and scrapes new combat log lines each time WoW closes. On a new PC it
 first restores what it had collected from the `data/watcher` branch. After
 each scrape it pushes its data and your NeedRoll SavedVariables there, and
-GitHub opens a "Data from the combat log watcher" pull request into dev.
+GitHub opens a "Data from the combat log watcher" pull request into dev,
+which starts with what the import changes in the addon (see
+[scraper/README.md](../scraper/README.md#watcher-pull-request)).
 Pass `-LogsPath "<path>\Logs"` if the game lives somewhere else.
 
 - Collected data: `%LOCALAPPDATA%\NeedRoll\CombatLog`.

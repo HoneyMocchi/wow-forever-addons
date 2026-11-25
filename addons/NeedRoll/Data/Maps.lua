@@ -49,11 +49,21 @@ ns.Data:RegisterMaps({
     RUINS_OF_LORDAERON = { { "Ruins of Lordaeron", SR .. "RuinsOfLordaeron_" }, credit = SR_CREDIT },
     EXCAVATION_SITE_WETLANDS = { { "Excavation Site", SR .. "ExcavationSite_" }, credit = SR_CREDIT },
     CITY_OF_DALARAN = { { "City of Dalaran", SR .. "CityOfDalaran_" }, { "Dalaran Sewers", SR .. "DalaranSewers_" }, credit = SR_CREDIT },
-    -- Bonesnout's pin is in the thicket named for him; the other bosses wait
-    -- for a spot placed in game (/nr devedit).
-    BLACKMAW_HOLD = { { "Blackmaw Hold", SR .. "BlackmawHold_", pins = {
-        { "BONESNOUT_THE_UNBROKEN", 0.760, 0.510 },  -- Bonesnout's Thicket
-    } }, credit = SR_CREDIT },
+    -- The grove outside first, then the cave off it and the four levels
+    -- below, as Santiago numbers them. Bonesnout's pin is in the thicket
+    -- named for him; the other bosses wait for a spot placed in game
+    -- (/nr devedit).
+    BLACKMAW_HOLD = {
+        { "Blackmaw Hold", SR .. "BlackmawHold_", pins = {
+            { "BONESNOUT_THE_UNBROKEN", 0.760, 0.510 },  -- Bonesnout's Thicket
+        } },
+        { "Festering Grotto", SR .. "BlackmawHoldGrotto_" },
+        { "Depths of the Fallen Grove", SR .. "BlackmawHold1_" },
+        { "Depths of the Elders", SR .. "BlackmawHold2_" },
+        { "Depths of the Burrow", SR .. "BlackmawHold3_" },
+        { "Depths of Forbidden Magic", SR .. "BlackmawHold4_" },
+        credit = SR_CREDIT,
+    },
     RAGEFIRE = { { "RAGEFIRE1", CLASSIC .. "ragefire\\ragefire1_", 449736 } },
     WAILING_CAVERNS = { { "WAILINGCAVERNS1", CLASSIC .. "wailingcaverns\\wailingcaverns1_", 448454 } },
     DEADMINES = {

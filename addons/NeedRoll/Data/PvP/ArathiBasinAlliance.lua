@@ -29,65 +29,65 @@ ns.Data:Register({
             { itemID = 20071, cost = 41230 },       -- Talisman of Arathor
         } },
         { id = "HONORED", name = "Honored", loot = {
-            { itemID = 20090, cost = 9373 },        -- Highlander's Chain Girdle
-            { itemID = 20089, cost = 26040 },       -- Highlander's Chain Girdle
-            { itemID = 20088, cost = 52478 },       -- Highlander's Chain Girdle
-            { itemID = 20043, cost = 88066 },       -- Highlander's Chain Girdle
-            { itemID = 20099, cost = 7207 },        -- Highlander's Cloth Girdle
-            { itemID = 20098, cost = 16684 },       -- Highlander's Cloth Girdle
-            { itemID = 20097, cost = 33619 },       -- Highlander's Cloth Girdle
-            { itemID = 20047, cost = 59557 },       -- Highlander's Cloth Girdle
-            { itemID = 20108, cost = 10375 },       -- Highlander's Lamellar Girdle
-            { itemID = 20107, cost = 16008 },       -- Highlander's Lamellar Girdle
-            { itemID = 20106, cost = 34732 },       -- Highlander's Lamellar Girdle
-            { itemID = 20042, cost = 56972 },       -- Highlander's Lamellar Girdle
-            { itemID = 20117, cost = 7947 },        -- Highlander's Leather Girdle
-            { itemID = 20116, cost = 18398 },       -- Highlander's Leather Girdle
-            { itemID = 20115, cost = 37073 },       -- Highlander's Leather Girdle
-            { itemID = 20045, cost = 65707 },       -- Highlander's Leather Girdle
-            { itemID = 20105, cost = 8184 },        -- Highlander's Lizardhide Girdle
-            { itemID = 20104, cost = 18945 },       -- Highlander's Lizardhide Girdle
-            { itemID = 20103, cost = 38180 },       -- Highlander's Lizardhide Girdle
-            { itemID = 20046, cost = 65937 },       -- Highlander's Lizardhide Girdle
-            { itemID = 20126, cost = 10294 },       -- Highlander's Plate Girdle
-            { itemID = 20125, cost = 15883 },       -- Highlander's Plate Girdle
-            { itemID = 20124, cost = 35376 },       -- Highlander's Plate Girdle
-            { itemID = 20041, cost = 56764 },       -- Highlander's Plate Girdle
+            { itemID = 20090, cost = 9373, classes = "HUNTER" },-- Highlander's Chain Girdle
+            { itemID = 20089, cost = 26040, classes = "HUNTER" },-- Highlander's Chain Girdle
+            { itemID = 20088, cost = 52478, classes = "HUNTER" },-- Highlander's Chain Girdle
+            { itemID = 20043, cost = 88066, classes = "HUNTER" },-- Highlander's Chain Girdle
+            { itemID = 20099, cost = 7207, classes = "PRIEST MAGE WARLOCK" },-- Highlander's Cloth Girdle
+            { itemID = 20098, cost = 16684, classes = "PRIEST MAGE WARLOCK" },-- Highlander's Cloth Girdle
+            { itemID = 20097, cost = 33619, classes = "PRIEST MAGE WARLOCK" },-- Highlander's Cloth Girdle
+            { itemID = 20047, cost = 59557, classes = "PRIEST MAGE WARLOCK" },-- Highlander's Cloth Girdle
+            { itemID = 20108, cost = 10375, classes = "PALADIN" },-- Highlander's Lamellar Girdle
+            { itemID = 20107, cost = 16008, classes = "PALADIN" },-- Highlander's Lamellar Girdle
+            { itemID = 20106, cost = 34732, classes = "PALADIN" },-- Highlander's Lamellar Girdle
+            { itemID = 20042, cost = 56972, classes = "PALADIN" },-- Highlander's Lamellar Girdle
+            { itemID = 20117, cost = 7947, classes = "ROGUE DRUID" },-- Highlander's Leather Girdle
+            { itemID = 20116, cost = 18398, classes = "ROGUE DRUID" },-- Highlander's Leather Girdle
+            { itemID = 20115, cost = 37073, classes = "ROGUE DRUID" },-- Highlander's Leather Girdle
+            { itemID = 20045, cost = 65707, classes = "ROGUE DRUID" },-- Highlander's Leather Girdle
+            { itemID = 20105, cost = 8184, classes = "ROGUE DRUID" },-- Highlander's Lizardhide Girdle
+            { itemID = 20104, cost = 18945, classes = "ROGUE DRUID" },-- Highlander's Lizardhide Girdle
+            { itemID = 20103, cost = 38180, classes = "ROGUE DRUID" },-- Highlander's Lizardhide Girdle
+            { itemID = 20046, cost = 65937, classes = "ROGUE DRUID" },-- Highlander's Lizardhide Girdle
+            { itemID = 20126, cost = 10294, classes = "WARRIOR PALADIN" },-- Highlander's Plate Girdle
+            { itemID = 20125, cost = 15883, classes = "WARRIOR PALADIN" },-- Highlander's Plate Girdle
+            { itemID = 20124, cost = 35376, classes = "WARRIOR PALADIN" },-- Highlander's Plate Girdle
+            { itemID = 20041, cost = 56764, classes = "WARRIOR PALADIN" },-- Highlander's Plate Girdle
         } },
         { id = "REVERED", name = "Revered", loot = {
-            { itemID = 20093, cost = 13217 },       -- Highlander's Chain Greaves
-            { itemID = 20092, cost = 36875 },       -- Highlander's Chain Greaves
-            { itemID = 20091, cost = 74297 },       -- Highlander's Chain Greaves
-            { itemID = 20050, cost = 136031 },      -- Highlander's Chain Greaves
-            { itemID = 20096, cost = 10692 },       -- Highlander's Cloth Boots
-            { itemID = 20095, cost = 24749 },       -- Highlander's Cloth Boots
-            { itemID = 20094, cost = 49873 },       -- Highlander's Cloth Boots
-            { itemID = 20054, cost = 82910 },       -- Highlander's Cloth Boots
-            { itemID = 20111, cost = 15810 },       -- Highlander's Lamellar Greaves
-            { itemID = 20110, cost = 24287 },       -- Highlander's Lamellar Greaves
-            { itemID = 20109, cost = 48938 },       -- Highlander's Lamellar Greaves
-            { itemID = 20049, cost = 89975 },       -- Highlander's Lamellar Greaves
-            { itemID = 20114, cost = 11790 },       -- Highlander's Leather Boots
-            { itemID = 20113, cost = 27293 },       -- Highlander's Leather Boots
-            { itemID = 20112, cost = 54993 },       -- Highlander's Leather Boots
-            { itemID = 20052, cost = 91421 },       -- Highlander's Leather Boots
-            { itemID = 20102, cost = 12143 },       -- Highlander's Lizardhide Boots
-            { itemID = 20101, cost = 28113 },       -- Highlander's Lizardhide Boots
-            { itemID = 20100, cost = 56651 },       -- Highlander's Lizardhide Boots
-            { itemID = 20053, cost = 91766 },       -- Highlander's Lizardhide Boots
-            { itemID = 20129, cost = 15688 },       -- Highlander's Plate Greaves
-            { itemID = 20128, cost = 24102 },       -- Highlander's Plate Greaves
-            { itemID = 20127, cost = 48558 },       -- Highlander's Plate Greaves
-            { itemID = 20048, cost = 89656 },       -- Highlander's Plate Greaves
+            { itemID = 20093, cost = 13217, classes = "HUNTER" },-- Highlander's Chain Greaves
+            { itemID = 20092, cost = 36875, classes = "HUNTER" },-- Highlander's Chain Greaves
+            { itemID = 20091, cost = 74297, classes = "HUNTER" },-- Highlander's Chain Greaves
+            { itemID = 20050, cost = 136031, classes = "HUNTER" },-- Highlander's Chain Greaves
+            { itemID = 20096, cost = 10692, classes = "PRIEST MAGE WARLOCK" },-- Highlander's Cloth Boots
+            { itemID = 20095, cost = 24749, classes = "PRIEST MAGE WARLOCK" },-- Highlander's Cloth Boots
+            { itemID = 20094, cost = 49873, classes = "PRIEST MAGE WARLOCK" },-- Highlander's Cloth Boots
+            { itemID = 20054, cost = 82910, classes = "PRIEST MAGE WARLOCK" },-- Highlander's Cloth Boots
+            { itemID = 20111, cost = 15810, classes = "PALADIN" },-- Highlander's Lamellar Greaves
+            { itemID = 20110, cost = 24287, classes = "PALADIN" },-- Highlander's Lamellar Greaves
+            { itemID = 20109, cost = 48938, classes = "PALADIN" },-- Highlander's Lamellar Greaves
+            { itemID = 20049, cost = 89975, classes = "PALADIN" },-- Highlander's Lamellar Greaves
+            { itemID = 20114, cost = 11790, classes = "ROGUE DRUID" },-- Highlander's Leather Boots
+            { itemID = 20113, cost = 27293, classes = "ROGUE DRUID" },-- Highlander's Leather Boots
+            { itemID = 20112, cost = 54993, classes = "ROGUE DRUID" },-- Highlander's Leather Boots
+            { itemID = 20052, cost = 91421, classes = "ROGUE DRUID" },-- Highlander's Leather Boots
+            { itemID = 20102, cost = 12143, classes = "ROGUE DRUID" },-- Highlander's Lizardhide Boots
+            { itemID = 20101, cost = 28113, classes = "ROGUE DRUID" },-- Highlander's Lizardhide Boots
+            { itemID = 20100, cost = 56651, classes = "ROGUE DRUID" },-- Highlander's Lizardhide Boots
+            { itemID = 20053, cost = 91766, classes = "ROGUE DRUID" },-- Highlander's Lizardhide Boots
+            { itemID = 20129, cost = 15688, classes = "WARRIOR PALADIN" },-- Highlander's Plate Greaves
+            { itemID = 20128, cost = 24102, classes = "WARRIOR PALADIN" },-- Highlander's Plate Greaves
+            { itemID = 20127, cost = 48558, classes = "WARRIOR PALADIN" },-- Highlander's Plate Greaves
+            { itemID = 20048, cost = 89656, classes = "WARRIOR PALADIN" },-- Highlander's Plate Greaves
         } },
         { id = "EXALTED", name = "Exalted", loot = {
             { itemID = 20073, cost = 121395 },      -- Cloak of the Honor Guard
-            { itemID = 20055, cost = 184337 },      -- Highlander's Chain Pauldrons
-            { itemID = 20061, cost = 128505 },      -- Highlander's Epaulets
-            { itemID = 20058, cost = 123744 },      -- Highlander's Lamellar Spaulders
-            { itemID = 20059, cost = 141753 },      -- Highlander's Leather Shoulders
-            { itemID = 20060, cost = 142276 },      -- Highlander's Lizardhide Shoulders
-            { itemID = 20057, cost = 123274 },      -- Highlander's Plate Spaulders
+            { itemID = 20055, cost = 184337, classes = "HUNTER" },-- Highlander's Chain Pauldrons
+            { itemID = 20061, cost = 128505, classes = "PRIEST MAGE WARLOCK" },-- Highlander's Epaulets
+            { itemID = 20058, cost = 123744, classes = "PALADIN" },-- Highlander's Lamellar Spaulders
+            { itemID = 20059, cost = 141753, classes = "ROGUE DRUID" },-- Highlander's Leather Shoulders
+            { itemID = 20060, cost = 142276, classes = "ROGUE DRUID" },-- Highlander's Lizardhide Shoulders
+            { itemID = 20057, cost = 123274, classes = "WARRIOR PALADIN" },-- Highlander's Plate Spaulders
             { itemID = 20069, cost = 550995 },      -- Ironbark Staff
             { itemID = 20070, cost = 442362 },      -- Sageclaw
         } },

@@ -84,8 +84,12 @@ ns.Data:Register({
             { itemID = 18333, dropRate = 0.0396 },  -- Libram of Focus
             { itemID = 18332, dropRate = 0.0396 },  -- Libram of Rapidity
             { itemID = 18334, dropRate = 0.02 },    -- Libram of Protection
+            { itemID = 18520 },                     -- Barbarous Blade
             { itemID = 18525 },                     -- Bracers of Prosperity
             { itemID = 18523 },                     -- Brightly Glowing Stone
+            { itemID = 18526 },                     -- Crown of the Ogre King
+            { itemID = 18521 },                     -- Grimy Metal Boots
+            { itemID = 18527 },                     -- Harmonious Gauntlets
         } },
         { id = "KING_GORDOK", name = "King Gordok", loot = {
             { itemID = 19258, dropRate = 1 },       -- Ace of Warlords

@@ -443,22 +443,45 @@ function Display.ChainCalibrate(region, data, native, opts)
   end
   local bPx = ExtentPx("")
   if not bPx then return Done(nil, "the empty text could not be measured") end
-  local best, bestExtent
-  -- ForeverAuras (dev.62): the search spans F +- 10 (was +- 3): Dan's dev.61
-  -- cell check rendered a 160 px markup 156.35 px wide on his client (2.3 %
-  -- short); +- 3 only just reached that with the tolerance, a larger client
-  -- difference would have refused the display for nothing.
-  for n = math.max(1, Fpx - 10), Fpx + 10 do
-    local e = ExtentPx(Markup(n, along))
-    if e and e > 0 and (not best or math.abs(e - bPx - Fpx) < math.abs(bestExtent - bPx - Fpx)) then best, bestExtent = n, e end
+  local maxMarkup = 2147483647
+  local function Search(center, radius)
+    local best, bestExtent
+    for offset = -radius, radius do
+      local n = center + offset
+      if n >= 1 and n <= maxMarkup then
+        local e = ExtentPx(Markup(n, along))
+        if e and e > 0 and (not best or math.abs(e - bPx - Fpx) < math.abs(bestExtent - bPx - Fpx)) then best, bestExtent = n, e end
+      end
+    end
+    return best, bestExtent
   end
-  if not best then return Done(nil, "the fill could not be measured") end
-  local rPx = bestExtent - bPx - Fpx
-  if math.abs(rPx) > FILL_TOLERANCE_PX then return Done(nil, ("the fill renders %.1f px off its length"):format(rPx)) end
-  -- The extent must follow the markup length on this axis (a vertical text
-  -- whose height ignores the markup would otherwise pass with a fixed line).
-  local shorter = ExtentPx(Markup(best - 4, along))
-  if not shorter or math.abs((bestExtent - shorter) - 4) > FILL_TOLERANCE_PX then return Done(nil, "the fill's length does not follow the markup on this axis") end
+  local function Verify(best, bestExtent)
+    if not best then return nil, "the fill could not be measured" end
+    local residual = bestExtent - bPx - Fpx
+    if math.abs(residual) > FILL_TOLERANCE_PX then return nil, ("the fill renders %.1f px off its length"):format(residual) end
+    -- Preserve the independent axis check for both search windows.
+    local shorter = ExtentPx(Markup(best - 4, along))
+    if not shorter or math.abs((bestExtent - shorter) - 4) > FILL_TOLERANCE_PX then return nil, "the fill's length does not follow the markup on this axis" end
+    return residual
+  end
+  -- Measure the client's markup scale before choosing the search window.
+  -- Keep integer markup within a conservative signed 32-bit range. Unsafe
+  -- estimates or a failed verification fall back to the original window.
+  local best, bestExtent, rPx, reason
+  local seed = ExtentPx(Markup(Fpx, along))
+  local span = seed and seed - bPx
+  if span and span > 0 and span < math.huge then
+    local estimate = Fpx * (Fpx / span)
+    if estimate > 0 and estimate <= maxMarkup - 3 then
+      best, bestExtent = Search(math.floor(estimate + 0.5), 3)
+      rPx, reason = Verify(best, bestExtent)
+    end
+  end
+  if rPx == nil then
+    best, bestExtent = Search(Fpx, 10)
+    rPx, reason = Verify(best, bestExtent)
+  end
+  if rPx == nil then return Done(nil, reason) end
   return Done({px = px, stepUnits = bound.stepUnits, stepPx = stepPx, alongUnits = bound.alongUnits, alongPx = alongPx,
     crossUnits = bound.crossUnits, q = opts.half and bound.q * 2 or bound.q, Fpx = Fpx, n = best, rPx = rPx, bPx = bPx, marginUnits = bound.marginUnits,
     along = along, g = bound.g, growth = bound.growth, side = bound.side})

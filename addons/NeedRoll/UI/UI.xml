@@ -44,5 +44,10 @@
     <Script file="SoundTest.lua"/>
     <Script file="DropTalk.lua"/>
     <Script file="LineDump.lua"/>
+    <Script file="LevelUp.lua"/>
+    <Script file="RunPage.lua"/>
+    <Script file="RunHistory.lua"/>
+    <Script file="RunTracker.lua"/>
+    <Script file="RunDemo.lua"/>
     @end-debug@-->
 </Ui>

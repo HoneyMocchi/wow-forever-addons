@@ -29,65 +29,65 @@ ns.Data:Register({
             { itemID = 20072, cost = 41230 },       -- Defiler's Talisman
         } },
         { id = "HONORED", name = "Honored", loot = {
-            { itemID = 20152, cost = 8774 },        -- Defiler's Chain Girdle
-            { itemID = 20153, cost = 24557 },       -- Defiler's Chain Girdle
-            { itemID = 20151, cost = 49292 },       -- Defiler's Chain Girdle
-            { itemID = 20150, cost = 83877 },       -- Defiler's Chain Girdle
-            { itemID = 20164, cost = 7526 },        -- Defiler's Cloth Girdle
-            { itemID = 20166, cost = 15939 },       -- Defiler's Cloth Girdle
-            { itemID = 20165, cost = 32116 },       -- Defiler's Cloth Girdle
-            { itemID = 20163, cost = 60191 },       -- Defiler's Cloth Girdle
-            { itemID = 20191, cost = 8977 },        -- Defiler's Leather Girdle
-            { itemID = 20192, cost = 20935 },       -- Defiler's Leather Girdle
-            { itemID = 20193, cost = 42492 },       -- Defiler's Leather Girdle
-            { itemID = 20190, cost = 71783 },       -- Defiler's Leather Girdle
-            { itemID = 20172, cost = 9011 },        -- Defiler's Lizardhide Girdle
-            { itemID = 20173, cost = 21014 },       -- Defiler's Lizardhide Girdle
-            { itemID = 20174, cost = 42652 },       -- Defiler's Lizardhide Girdle
-            { itemID = 20171, cost = 70149 },       -- Defiler's Lizardhide Girdle
-            { itemID = 20197, cost = 9174 },        -- Defiler's Mail Girdle
-            { itemID = 20198, cost = 25672 },       -- Defiler's Mail Girdle
-            { itemID = 20196, cost = 51547 },       -- Defiler's Mail Girdle
-            { itemID = 20195, cost = 87729 },       -- Defiler's Mail Girdle
-            { itemID = 20207, cost = 10613 },       -- Defiler's Plate Girdle
-            { itemID = 20206, cost = 16378 },       -- Defiler's Plate Girdle
-            { itemID = 20205, cost = 32999 },       -- Defiler's Plate Girdle
-            { itemID = 20204, cost = 56148 },       -- Defiler's Plate Girdle
+            { itemID = 20152, cost = 8774, classes = "HUNTER SHAMAN" },-- Defiler's Chain Girdle
+            { itemID = 20153, cost = 24557, classes = "HUNTER SHAMAN" },-- Defiler's Chain Girdle
+            { itemID = 20151, cost = 49292, classes = "HUNTER SHAMAN" },-- Defiler's Chain Girdle
+            { itemID = 20150, cost = 83877, classes = "HUNTER SHAMAN" },-- Defiler's Chain Girdle
+            { itemID = 20164, cost = 7526, classes = "PRIEST MAGE WARLOCK" },-- Defiler's Cloth Girdle
+            { itemID = 20166, cost = 15939, classes = "PRIEST MAGE WARLOCK" },-- Defiler's Cloth Girdle
+            { itemID = 20165, cost = 32116, classes = "PRIEST MAGE WARLOCK" },-- Defiler's Cloth Girdle
+            { itemID = 20163, cost = 60191, classes = "PRIEST MAGE WARLOCK" },-- Defiler's Cloth Girdle
+            { itemID = 20191, cost = 8977, classes = "ROGUE DRUID" },-- Defiler's Leather Girdle
+            { itemID = 20192, cost = 20935, classes = "ROGUE DRUID" },-- Defiler's Leather Girdle
+            { itemID = 20193, cost = 42492, classes = "ROGUE DRUID" },-- Defiler's Leather Girdle
+            { itemID = 20190, cost = 71783, classes = "ROGUE DRUID" },-- Defiler's Leather Girdle
+            { itemID = 20172, cost = 9011, classes = "ROGUE DRUID" },-- Defiler's Lizardhide Girdle
+            { itemID = 20173, cost = 21014, classes = "ROGUE DRUID" },-- Defiler's Lizardhide Girdle
+            { itemID = 20174, cost = 42652, classes = "ROGUE DRUID" },-- Defiler's Lizardhide Girdle
+            { itemID = 20171, cost = 70149, classes = "ROGUE DRUID" },-- Defiler's Lizardhide Girdle
+            { itemID = 20197, cost = 9174, classes = "HUNTER SHAMAN" },-- Defiler's Mail Girdle
+            { itemID = 20198, cost = 25672, classes = "HUNTER SHAMAN" },-- Defiler's Mail Girdle
+            { itemID = 20196, cost = 51547, classes = "HUNTER SHAMAN" },-- Defiler's Mail Girdle
+            { itemID = 20195, cost = 87729, classes = "HUNTER SHAMAN" },-- Defiler's Mail Girdle
+            { itemID = 20207, cost = 10613, classes = "WARRIOR" },-- Defiler's Plate Girdle
+            { itemID = 20206, cost = 16378, classes = "WARRIOR" },-- Defiler's Plate Girdle
+            { itemID = 20205, cost = 32999, classes = "WARRIOR" },-- Defiler's Plate Girdle
+            { itemID = 20204, cost = 56148, classes = "WARRIOR" },-- Defiler's Plate Girdle
         } },
         { id = "REVERED", name = "Revered", loot = {
-            { itemID = 20157, cost = 13766 },       -- Defiler's Chain Greaves
-            { itemID = 20156, cost = 38412 },       -- Defiler's Chain Greaves
-            { itemID = 20155, cost = 75386 },       -- Defiler's Chain Greaves
-            { itemID = 20154, cost = 128288 },      -- Defiler's Chain Greaves
-            { itemID = 20162, cost = 11211 },       -- Defiler's Cloth Boots
-            { itemID = 20161, cost = 25955 },       -- Defiler's Cloth Boots
-            { itemID = 20160, cost = 52306 },       -- Defiler's Cloth Boots
-            { itemID = 20159, cost = 89016 },       -- Defiler's Cloth Boots
-            { itemID = 20188, cost = 13318 },       -- Defiler's Leather Boots
-            { itemID = 20187, cost = 29999 },       -- Defiler's Leather Boots
-            { itemID = 20189, cost = 62809 },       -- Defiler's Leather Boots
-            { itemID = 20186, cost = 103227 },      -- Defiler's Leather Boots
-            { itemID = 20169, cost = 13013 },       -- Defiler's Lizardhide Boots
-            { itemID = 20168, cost = 30118 },       -- Defiler's Lizardhide Boots
-            { itemID = 20170, cost = 61374 },       -- Defiler's Lizardhide Boots
-            { itemID = 20167, cost = 103637 },      -- Defiler's Lizardhide Boots
-            { itemID = 20201, cost = 13960 },       -- Defiler's Mail Greaves
-            { itemID = 20200, cost = 38954 },       -- Defiler's Mail Greaves
-            { itemID = 20202, cost = 79348 },       -- Defiler's Mail Greaves
-            { itemID = 20199, cost = 134092 },      -- Defiler's Mail Greaves
-            { itemID = 20210, cost = 16170 },       -- Defiler's Plate Greaves
-            { itemID = 20209, cost = 24842 },       -- Defiler's Plate Greaves
-            { itemID = 20211, cost = 50612 },       -- Defiler's Plate Greaves
-            { itemID = 20208, cost = 85492 },       -- Defiler's Plate Greaves
+            { itemID = 20157, cost = 13766, classes = "HUNTER SHAMAN" },-- Defiler's Chain Greaves
+            { itemID = 20156, cost = 38412, classes = "HUNTER SHAMAN" },-- Defiler's Chain Greaves
+            { itemID = 20155, cost = 75386, classes = "HUNTER SHAMAN" },-- Defiler's Chain Greaves
+            { itemID = 20154, cost = 128288, classes = "HUNTER SHAMAN" },-- Defiler's Chain Greaves
+            { itemID = 20162, cost = 11211, classes = "PRIEST MAGE WARLOCK" },-- Defiler's Cloth Boots
+            { itemID = 20161, cost = 25955, classes = "PRIEST MAGE WARLOCK" },-- Defiler's Cloth Boots
+            { itemID = 20160, cost = 52306, classes = "PRIEST MAGE WARLOCK" },-- Defiler's Cloth Boots
+            { itemID = 20159, cost = 89016, classes = "PRIEST MAGE WARLOCK" },-- Defiler's Cloth Boots
+            { itemID = 20188, cost = 13318, classes = "ROGUE DRUID" },-- Defiler's Leather Boots
+            { itemID = 20187, cost = 29999, classes = "ROGUE DRUID" },-- Defiler's Leather Boots
+            { itemID = 20189, cost = 62809, classes = "ROGUE DRUID" },-- Defiler's Leather Boots
+            { itemID = 20186, cost = 103227, classes = "ROGUE DRUID" },-- Defiler's Leather Boots
+            { itemID = 20169, cost = 13013, classes = "ROGUE DRUID" },-- Defiler's Lizardhide Boots
+            { itemID = 20168, cost = 30118, classes = "ROGUE DRUID" },-- Defiler's Lizardhide Boots
+            { itemID = 20170, cost = 61374, classes = "ROGUE DRUID" },-- Defiler's Lizardhide Boots
+            { itemID = 20167, cost = 103637, classes = "ROGUE DRUID" },-- Defiler's Lizardhide Boots
+            { itemID = 20201, cost = 13960, classes = "HUNTER SHAMAN" },-- Defiler's Mail Greaves
+            { itemID = 20200, cost = 38954, classes = "HUNTER SHAMAN" },-- Defiler's Mail Greaves
+            { itemID = 20202, cost = 79348, classes = "HUNTER SHAMAN" },-- Defiler's Mail Greaves
+            { itemID = 20199, cost = 134092, classes = "HUNTER SHAMAN" },-- Defiler's Mail Greaves
+            { itemID = 20210, cost = 16170, classes = "WARRIOR" },-- Defiler's Plate Greaves
+            { itemID = 20209, cost = 24842, classes = "WARRIOR" },-- Defiler's Plate Greaves
+            { itemID = 20211, cost = 50612, classes = "WARRIOR" },-- Defiler's Plate Greaves
+            { itemID = 20208, cost = 85492, classes = "WARRIOR" },-- Defiler's Plate Greaves
         } },
         { id = "EXALTED", name = "Exalted", loot = {
             { itemID = 20068, cost = 131769 },      -- Deathguard's Cloak
-            { itemID = 20158, cost = 196466 },      -- Defiler's Chain Pauldrons
-            { itemID = 20176, cost = 129445 },      -- Defiler's Epaulets
-            { itemID = 20194, cost = 160616 },      -- Defiler's Leather Shoulders
-            { itemID = 20175, cost = 161219 },      -- Defiler's Lizardhide Shoulders
-            { itemID = 20203, cost = 199928 },      -- Defiler's Mail Pauldrons
-            { itemID = 20212, cost = 127540 },      -- Defiler's Plate Spaulders
+            { itemID = 20158, cost = 196466, classes = "HUNTER SHAMAN" },-- Defiler's Chain Pauldrons
+            { itemID = 20176, cost = 129445, classes = "PRIEST MAGE WARLOCK" },-- Defiler's Epaulets
+            { itemID = 20194, cost = 160616, classes = "ROGUE DRUID" },-- Defiler's Leather Shoulders
+            { itemID = 20175, cost = 161219, classes = "ROGUE DRUID" },-- Defiler's Lizardhide Shoulders
+            { itemID = 20203, cost = 199928, classes = "HUNTER SHAMAN" },-- Defiler's Mail Pauldrons
+            { itemID = 20212, cost = 127540, classes = "WARRIOR" },-- Defiler's Plate Spaulders
             { itemID = 20220, cost = 504598 },      -- Ironbark Staff
             { itemID = 20214, cost = 428268 },      -- Mindfang
         } },

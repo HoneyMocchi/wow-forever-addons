@@ -244,6 +244,25 @@ local function AnchorSubRegion(self, subRegion, anchorType, anchorPoint, selfPoi
   end
 end
 
+-- ForeverAuras (1.4.7-dev.7, Astra's dev.5/dev.6 review, Inverse 3): the one rule for which way an
+-- icon's swipe runs, used by the Icon display (UpdateEffectiveInverse) and by every Aura (Modern)
+-- drawing of an icon, so the Inverse box cannot mean different things on different paths.
+--   inverseDirection: the display's Inverse setting (or a condition's value for it)
+--   sourceInverse:    whether the progress it draws is itself inverted (a state's `inverse`)
+--   progressState:    the state drawn, when there is one
+-- With a source that is not inverted (an aura), Inverse off gives reverse = true, the usual aura
+-- swipe; an inverted source turns that over. A Cooldown Manager spell cooldown is Blizzard's own
+-- timer, whose default swipe is not reversed: there Inverse on is reverse = true (the generic
+-- inversion would turn a brief GCD into a filling wedge).
+function Private.IconEffectiveReverse(inverseDirection, sourceInverse, progressState)
+  if type(progressState) == "table" and progressState.cooldownID and not progressState.cdmBuff then
+    return inverseDirection == true
+  end
+  if issecretvalue(sourceInverse) then sourceInverse = false end
+  -- If the source is not inverted then reverse = not inverse; if it is, reverse = inverse.
+  return (not inverseDirection) == (not sourceInverse)
+end
+
 local function create(parent, data)
   local font = "GameFontHighlight";
 
@@ -476,15 +495,8 @@ local function modify(parent, region, data)
   end
 
   function region:UpdateEffectiveInverse()
-    -- If cooldown.inverse == false then effectiveReverse = not inverse
-    -- If cooldown.inverse == true then effectiveReverse = inverse
-    local effectiveReverse = not region.inverseDirection == not cooldown.inverse
-    local progressState = region.cdmProgressState
-    if progressState and progressState.cooldownID and not progressState.cdmBuff then
-      -- CDM supplies Blizzard's cooldown timer. Its default swipe is not reversed;
-      -- the generic progress inversion would turn a brief GCD into a filling wedge.
-      effectiveReverse = region.inverseDirection == true
-    end
+    -- (1.4.7-dev.7) the rule itself is Private.IconEffectiveReverse, above, shared with the Modern drawing.
+    local effectiveReverse = Private.IconEffectiveReverse(region.inverseDirection, cooldown.inverse, region.cdmProgressState)
     -- Set only when it differs: every update of a cooldown icon came here, and
     -- a row of icons updates on every global cooldown; the client re-lays a
     -- swipe out on each set. The timed re-set below only matters on a change.

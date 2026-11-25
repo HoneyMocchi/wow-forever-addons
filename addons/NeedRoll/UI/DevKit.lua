@@ -3,7 +3,8 @@
 -- ns.DevKit: a movable window (and a plain one in the game's own style for
 -- /nr devedit and /nr linedump), a scroll area over a modern or native pane
 -- background with a switch between them, text recolored with the switch,
--- clickable cells in a grid, and (local checkouts only) a list window. The rest
+-- clickable cells in a grid, and (local checkouts only) a list window and a card that fades
+-- in at the upper middle of the screen in the style of NeedRoll's window. The rest
 -- keep the modern skin's look (C, F) whichever style the player picked.
 local _, ns = ...
 local Theme = ns.Theme
@@ -250,6 +251,7 @@ local LIST_TOP = 100   -- the list pane's top, under the title, status line and 
 local LIST_ROW_H = 36
 local LIST_INSET = 4   -- the list's space inside the pane, top and bottom
 local BAR_ROOM = 10    -- kept clear on the right for the scroll bar
+local LOAD_BURST_SECONDS = 0.2 -- items asked for that arrive this close together get one refresh
 
 local List = {}
 List.__index = List
@@ -290,12 +292,25 @@ function List:Draw()
 end
 
 -- Asks the server for an item the client hasn't loaded yet, once while it
--- is on its way; the window refreshes when it arrives.
+-- is on its way; the window refreshes when it arrives (RefreshSoon). An item
+-- the client already has is left alone: refreshing for it would only ask again.
 function List:LoadItem(itemID)
-    if self.loading[itemID] then return end
+    if self.loading[itemID] or C_Item.IsItemDataCachedByID(itemID) then return end
     self.loading[itemID] = true
     ns.Items:Load(itemID, function()
         self.loading[itemID] = nil
+        self:RefreshSoon()
+    end)
+end
+
+-- Refreshes the window LOAD_BURST_SECONDS from now, once however many items
+-- arrive meanwhile: a page of items the client hadn't cached comes in a
+-- burst, and a refresh each would re-read the window's data hundreds of times.
+function List:RefreshSoon()
+    if self.refreshDue then return end
+    self.refreshDue = true
+    C_Timer.After(LOAD_BURST_SECONDS, function()
+        self.refreshDue = false
         self.refresh()
     end)
 end
@@ -303,8 +318,8 @@ end
 -- spec: name (the frame's global name), title, width, height, tabs (their
 -- names), createRow(parent) -> row, fillRow(row, entry), onTab(name), and
 -- refresh(), which rereads the window's data and calls list:SetEntries.
--- The list re-reads on show, on a tab switch (from the top) and when an
--- item it asked for arrives.
+-- The list re-reads on show, on a tab switch (from the top) and shortly
+-- after items it asked for arrive (List:RefreshSoon).
 local function ListWindow(spec)
     local f = Window(spec.name, spec.title, spec.width, spec.height)
     local list = setmetatable({ frame = f, entries = {}, rows = {}, loading = {},
@@ -349,4 +364,174 @@ end
 
 ns.DevKit.ListWindow = ListWindow
 ns.DevKit.LIST_ROW_H = LIST_ROW_H
+
+-- A card at the upper middle of the screen in the style picked for NeedRoll's window (local
+-- checkouts only): the level-up window (UI/LevelUp.lua) and the run tracker's cards
+-- (UI/RunTracker.lua). The game's own window frame in Native, a rounded (square in ElvUI's)
+-- panel as NeedRoll's dialogs draw in the flat styles (StyledCard); or nothing behind what it
+-- shows, straight on the game world (PlainCard, the kill card). It fades in; with `showSeconds`
+-- it fades out that long after it has fully faded in, the mouse over it holding it. A right-click
+-- on it closes it. A frame keeps the colors and fonts it was made with, so each style gets a card
+-- of its own (CardsBySkin).
+local CARD = {
+    SCREEN_TOP = 140,          -- the card's top, down from the screen's: upper middle, clear of the action bars
+    SUBTITLE_GAP = 3,          -- the flat styles: between the title and the line under it
+    NATIVE_SUBTITLE_TOP = 36,  -- Native: the line under the title bar, where the flat styles' falls
+    NATIVE_TITLE_MIDDLE = 12,  -- Native: the title bar's middle, down from the card's top
+    CLOSE_SIZE = 20,           -- the flat styles' close cross, square
+    CLOSE_INSET = 8,           -- the flat styles' close cross, in from the card's top right corner
+    FADE_IN_SECONDS = 0.4,
+    FADE_OUT_SECONDS = 0.8,
+}
+
+-- Native: the game's window frame (ButtonFrameTemplate without its portrait or inset, as
+-- NeedRoll's own window), the title in its title bar, its own close button (hidden without
+-- `hasClose`), and the line under the title below the bar.
+local function CreateNativeCard(hasClose)
+    local card = CreateFrame("Frame", nil, UIParent, "ButtonFrameTemplate")
+    ButtonFrameTemplate_HidePortrait(card)
+    card.Inset:Hide()
+    -- TitleContainer comes from PortraitFrameBaseTemplate; older clients had TitleText.
+    card.title = card.TitleContainer and card.TitleContainer.TitleText or card.TitleText
+    card.titleMiddle = CARD.NATIVE_TITLE_MIDDLE
+    card.subtitle = Theme:Text(card, Theme.font.small)
+    card.subtitle:SetPoint("TOPLEFT", PAD, -CARD.NATIVE_SUBTITLE_TOP)
+    card.CloseButton:SetShown(hasClose == true)
+    card.close = hasClose and card.CloseButton or nil
+    return card
+end
+
+-- The flat styles: a panel as NeedRoll's dialogs draw it (`popup` inside the thick `accent`
+-- outline, in the style's corners), the title and the line under it at the top left and, with
+-- `hasClose`, the close cross at the top right.
+local function CreateFlatCard(hasClose)
+    local card = CreateFrame("Frame", nil, UIParent)
+    Theme:Rounded(card, Theme.color.popup, Theme.color.accent, true)
+    card.title = Theme:Text(card, Theme.font.heading)
+    card.title:SetPoint("TOPLEFT", PAD, -PAD)
+    card.titleMiddle = PAD + Theme:LineHeight(card.title) / 2
+    card.subtitle = Theme:Text(card, Theme.font.small)
+    card.subtitle:SetPoint("TOPLEFT", card.title, "BOTTOMLEFT", 0, -CARD.SUBTITLE_GAP)
+    if not hasClose then return card end
+    card.close = Theme:CloseButton(card, CARD.CLOSE_SIZE)
+    card.close:SetPoint("TOPRIGHT", -CARD.CLOSE_INSET, -CARD.CLOSE_INSET)
+    return card
+end
+
+-- An animation taking the card's alpha from `fromAlpha` to `toAlpha` over `seconds`, then
+-- running `onFinished`.
+local function Fade(card, fromAlpha, toAlpha, seconds, onFinished)
+    local group = card:CreateAnimationGroup()
+    local alpha = group:CreateAnimation("Alpha")
+    alpha:SetFromAlpha(fromAlpha)
+    alpha:SetToAlpha(toAlpha)
+    alpha:SetDuration(seconds)
+    group:SetToFinalAlpha(true)
+    group:SetScript("OnFinished", onFinished)
+    return group
+end
+
+-- Each frame while the card shows: once it has fully faded in (secondsLeft set), counts down to
+-- its fade-out. The mouse over it holds the count at its showSeconds, so it stays while the
+-- player reads it, and brings it back if it was already fading.
+local function CountDown(card, elapsed)
+    if not card.secondsLeft then return end
+    if card:IsMouseOver() then
+        if card.fadeOut:IsPlaying() then
+            card.fadeOut:Stop()
+            card:SetAlpha(1)
+        end
+        card.secondsLeft = card.showSeconds
+        return
+    end
+    if card.fadeOut:IsPlaying() then return end
+    card.secondsLeft = card.secondsLeft - elapsed
+    if card.secondsLeft <= 0 then card.fadeOut:Play() end
+end
+
+-- What every card does, whatever it looks like: `card` takes the style in use (card.skin,
+-- Theme.name) and keeps its colors and fonts (card.colors, card.fonts) for what it adds later,
+-- whatever style NeedRoll's window has by then. `width` wide, hidden. `showSeconds`: how long it
+-- stays once faded in (nil: until closed). A right-click on it closes it.
+local function SetUpCard(card, width, showSeconds)
+    card.skin, card.colors, card.fonts = Theme.name, Theme.color, Theme.font
+    card.showSeconds = showSeconds
+    card:SetWidth(width)
+    card:SetFrameStrata("DIALOG")
+    card:SetClampedToScreen(true)
+    card:EnableMouse(true)
+    card:Hide()
+    card.fadeIn = Fade(card, 0, 1, CARD.FADE_IN_SECONDS, function()
+        card:SetAlpha(1)
+        card.secondsLeft = card.showSeconds
+    end)
+    card.fadeOut = Fade(card, 1, 0, CARD.FADE_OUT_SECONDS, function() card:Hide() end)
+    card:SetScript("OnUpdate", CountDown)
+    card:SetScript("OnMouseUp", function(self, button)
+        if button == "RightButton" then self:Hide() end
+    end)
+    -- Hooked, so the game's frame template keeps any OnHide of its own.
+    card:HookScript("OnHide", function(self)
+        self.fadeIn:Stop()
+        self.fadeOut:Stop()
+        self.secondsLeft = nil
+    end)
+end
+
+-- A card in the style in use (SetUpCard), drawn as that style's window: `hasClose` puts a close
+-- button at its top right. card.titleMiddle is how far down from its top the title's middle is,
+-- for a word at the title's right.
+local function StyledCard(width, showSeconds, hasClose)
+    local card = Theme.native and CreateNativeCard(hasClose) or CreateFlatCard(hasClose)
+    SetUpCard(card, width, showSeconds)
+    Theme:SetTextColor(card.subtitle, card.colors.muted)
+    card.subtitle:SetWidth(width - PAD * 2)
+    card.subtitle:SetJustifyH("LEFT")
+    if card.close then card.close:SetScript("OnClick", function() card:Hide() end) end
+    return card
+end
+
+-- A card in the style in use (SetUpCard) with nothing drawn behind it: no frame, no title. What
+-- it shows sits on the game world, so it is the caller's to give a shadow.
+local function PlainCard(width, showSeconds)
+    local card = CreateFrame("Frame", nil, UIParent)
+    SetUpCard(card, width, showSeconds)
+    return card
+end
+
+-- Places the card at the upper middle of the screen, as big as the text size asks (Large
+-- draws it 4/3 as big, as it does NeedRoll's window), and fades it in from clear.
+local function FadeInCard(card)
+    local scale = Theme.textScale[ns.db.textSize] or 1
+    card:SetScale(scale)
+    card:ClearAllPoints()
+    card:SetPoint("TOP", UIParent, "TOP", 0, -CARD.SCREEN_TOP / scale)
+    card.fadeIn:Stop()
+    card.fadeOut:Stop()
+    card.secondsLeft = nil
+    card:SetAlpha(0)
+    card:Show()
+    card.fadeIn:Play()
+end
+
+-- A function giving `create()`'s card in the style NeedRoll's window uses: built the first time
+-- it shows in that style, with the style saved in Settings in place even if NeedRoll's window
+-- hasn't opened yet, and kept. Another style's card still on show (the style changed since) is
+-- hidden.
+local function CardsBySkin(create)
+    local cardsBySkin, lastCard = {}, nil
+    return function()
+        ns.UI:UseSavedSkin()
+        local card = cardsBySkin[Theme.name] or create()
+        cardsBySkin[Theme.name] = card
+        if lastCard and lastCard ~= card then lastCard:Hide() end
+        lastCard = card
+        return card
+    end
+end
+
+ns.DevKit.StyledCard = StyledCard
+ns.DevKit.PlainCard = PlainCard
+ns.DevKit.FadeInCard = FadeInCard
+ns.DevKit.CardsBySkin = CardsBySkin
 --@end-debug@]==]

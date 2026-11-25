@@ -29,6 +29,15 @@ local Display = Private.BlizzardAuraDisplay
 -- Display.BeginFlowLoad), declared here so the preview arrangement above
 -- them can honour the hold as the rechain does (issue #136).
 local afterCombat, queued, loadScan = {}, {}, 0
+-- Session-only development A/B. A request during restrictions keeps the old graph until release.
+-- ForeverAuras (1.4.8): on by default. Compared in game on 1.4.8-dev.14, same
+-- session, same rows: with it off the old layout's zero-spacing rows showed
+-- a one pixel gap after two or three joins at every scale but 1 (and a
+-- single separator at 1.5); with it on, all eighteen old-layout rows of the
+-- two test packs had touching borders at every join. Every path that
+-- cannot use the helper (restrictions, mixed scales, the editor open, a
+-- refused anchor) still falls back to the original join, as before.
+local legacyJoinEnabled, pendingLegacyJoinMode = true, nil
 local function Locked(frame) return Display.Locked ~= nil and Display.Locked(frame) end
 local function Busy(frame)
   if Locked(frame) then return true end
@@ -815,7 +824,7 @@ end
 
 Display.TranslatePoint = Translate   -- ForeverAuras (dev.79): a measurement chain's end translated into the row (SecretAuraChain.lua)
 -- The padding a member's boxes and end use: computed once per member per
--- layout (TranslateEnd) and kept on the flow, so a button's placement does
+-- layout (SetFlowEnd) and kept on the flow, so a button's placement does
 -- not scan the membership again.
 local function CarrierM(flow, data)
   if not flow.carrierM then flow.carrierM = Display.CarrierPadding(Display.FlowGroup(data)) end
@@ -824,7 +833,7 @@ end
 
 -- A list button's artwork box in an independent-carrier row: made with the
 -- button (BuildButton, withBox) and placed here, inside the client's
--- initializeFrame and again by every layout (TranslateEnd), at the member's
+-- initializeFrame and again by every layout (SetFlowEnd), at the member's
 -- content corner plus the button's own corner offset inside its carrier.
 -- The placement is recorded as complete only when every write succeeded,
 -- with the references it was made for (content frame, pin, corner, padding,
@@ -941,17 +950,13 @@ function Display.PublishCarrierWarnings(region, data, pending)
 end
 
 -- The translated end of an independent carrier: where the next member starts,
--- from the member's start frame and the carrier's list end. Places the
--- member's boxes first (a failed or stale one is placed again; a failure is
--- reported in the editor and queues the display's paced re-apply, the same
--- path a refused style takes). Returns the end frame (its TOPLEFT is the
+-- from the member's start frame and the carrier's list end.
+-- SetFlowEnd has already refreshed the member's boxes.
+-- Returns the end frame (its TOPLEFT is the
 -- point) or nil and why when the client refused.
 local function TranslateEnd(region, flow, container, g, data)
   local pin = Display.CarrierPin(data)
   if not pin then return nil, "no group frame" end
-  -- The padding for this layout, from the current membership.
-  flow.carrierM = Display.CarrierPadding(Display.FlowGroup(data))
-  PlaceCarrierBoxes(region, data)
   if not flow.carrierEnd or Locked(flow.carrierEnd.h) or Locked(flow.carrierEnd.p) or Locked(flow.carrierEnd.out) then
     flow.carrierEnd = CarrierFrames(region)
     flow.carrierEnd.out = CreateFrame("Frame", nil, region, "DisableUntrustedLayoutScriptsTemplate")
@@ -1235,6 +1240,56 @@ local function Pin(mark, point, frame, relPoint)
   local ok = pcall(mark.SetPoint, mark, point, frame, relPoint)
   if not ok then markFailures = markFailures + 1 end
 end
+-- ForeverAuras (development, 1.4.8-dev.5): "/fa rowpixels <group>" prints
+-- where a Modern Aura Group's row sits in SCREEN PIXELS: per member, its
+-- start frame, each aura container and each visible aura button (and its
+-- artwork box, where it has one) on the row's axis. A value that is not a
+-- whole number is a frame off the pixel grid. Every read is guarded: a
+-- refused or secret answer prints as "?". Changes nothing.
+function Display.PrintRowPixels(id)
+  local choice = type(id) == "string" and id:lower():match("^seams%s+(%a+)$")
+  if choice == "on" or choice == "off" then
+    Display.SetLegacyJoinMode(choice == "on")
+    return
+  end
+  local group = WeakAuras.GetData(id)
+  if not group or not group.blizzardFlow then print(L["FA carriers: %s is not a Modern Aura Group."]:format(tostring(id))); return end
+  local g = GROWTH[GrowthKey(group)]
+  local along = g and g.sign[1] ~= 0
+  local function Edges(frame)
+    if not frame then return "none" end
+    local px = PixelsPerUnit(frame)
+    local okA, a = pcall(along and frame.GetLeft or frame.GetBottom, frame)
+    local okB, b = pcall(along and frame.GetRight or frame.GetTop, frame)
+    if not px or not okA or not okB or not Readable(a) or not Readable(b) then return "?" end
+    return ("%.2f to %.2f"):format(a * px, b * px)
+  end
+  local function Visible(frame)
+    if not frame then return false end
+    local ok, shown = pcall(frame.IsVisible, frame)
+    return ok and Readable(shown) and shown and true or false
+  end
+  local first = Private.regions[Display.FlowOrder(group)[1] or ""]
+  print(("FA row pixels: %s, growth %s, %s pixels per unit, spacing %s, combat %s"):format(tostring(id), tostring(GrowthKey(group)),
+    Num(first and first.region and PixelsPerUnit(first.region)), Num(tonumber(group.blizzardFlowSpacing)), tostring(InCombatLockdown())))
+  for _, childID in ipairs(Display.FlowOrder(group)) do
+    local entry = Private.regions[childID]
+    local native = entry and entry.region and entry.region.blizzardAuraDisplay
+    local flow = native and native.flow
+    if flow then
+      local parts = {("  %s: start %s"):format(childID, Edges(flow.start))}
+      for index, instance in ipairs(native.instances or {}) do
+        parts[#parts + 1] = ("list%d %s"):format(index, Edges(instance.container))
+        for i, button in ipairs(instance.buttons or {}) do
+          if Visible(button.button) then parts[#parts + 1] = ("button%d %s"):format(i, Edges(button.button)) end
+          if Visible(button.box) then parts[#parts + 1] = ("box%d %s"):format(i, Edges(button.box)) end
+        end
+      end
+      print(table.concat(parts, "; "))
+    end
+  end
+end
+
 function Display.MarkCarriers(id)
   Display.UnmarkCarriers()
   local group = WeakAuras.GetData(id)
@@ -1332,7 +1387,16 @@ function Display.EnsureFlowStart(region, data)
   local native = region.blizzardAuraDisplay
   if not Display.FlowGroup(data) then
     ClearMeasureOutputWarning(data)
-    if native.flow then SetShown(native.flow.start, false); native.flow = nil end
+    if native.flow then
+      SetShown(native.flow.start, false)
+      -- A released row no longer publishes a join. Keep its drawing-free
+      -- helper available for reuse and detach a readable obsolete anchor.
+      local join = native.flow.legacyJoin
+      if join and join.frame and not RestrictedNow() and not Locked(join.frame) then
+        pcall(join.frame.ClearAllPoints, join.frame)
+      end
+      native.flow = nil
+    end
     return
   end
   Display.WatchFlowVisibility(region)
@@ -1395,12 +1459,19 @@ function Display.SetFlowEnd(region, data, presence)
   -- only where it is (RechainFlow); taken off a presence end, a Missing
   -- display's offset moved every member after it the other way.
   flow.endInContent = false
+  -- Only the ordinary Found-list fallback publishes the native one-unit
+  -- allowance. Presence, gated, remaining-time and measured ends differ.
+  flow.legacyListEnd = nil
   -- ForeverAuras (independent carriers): decided here for the whole display,
   -- so a display that left the experiment by any route (flag off, or its
   -- trigger changed to Missing or Remaining Time) drops the experiment's
   -- state and warnings whatever branch below it takes (dev.19 review).
   local independent = Display.FlowIndependent ~= nil and Display.FlowIndependent(data)
-  if not independent then
+  if independent then
+    -- A measured end still needs the artwork's placement refreshed.
+    flow.carrierM = Display.CarrierPadding(Display.FlowGroup(data))
+    PlaceCarrierBoxes(region, data)
+  else
     flow.carrierProblem, flow.carrierBoxProblem, flow.carrierM = nil, nil, nil
     if flow.carrierEnd then for _, key in ipairs({"h", "p", "out"}) do pcall(flow.carrierEnd[key].Hide, flow.carrierEnd[key]) end end
   end
@@ -1469,6 +1540,7 @@ function Display.SetFlowEnd(region, data, presence)
       flow.endFrame, flow.endPoint = last, g.listEnd
       flow.x, flow.y = g.pixel[1], g.pixel[2]
       flow.endInContent = true
+      if not independent then flow.legacyListEnd = last end
       if independent then
         -- A refused pin or end: the wrong end is in use until the paced
         -- re-apply; counted against the build like a refused box.
@@ -3650,12 +3722,73 @@ function Display.UpdateFlowClip(group, flows, g)
   SetWindow(clip, g, point, origin, length, width, height, spacing)
 end
 
+-- Changing the development switch visits only constructed OLD, zero-gap
+-- screen rows with at least one active Modern member. An unchanged mode
+-- makes no requests; individual aura settings and native filters are untouched.
+local function HasActiveLegacyMember(data)
+  for _, child in ipairs(data.controlledChildren or {}) do
+    local item = Private.regions[child]
+    local native = item and item.region and item.region.blizzardAuraDisplay
+    if native and native.active and native.flow then return true end
+    for _, clone in pairs(Private.clones and Private.clones[child] or {}) do
+      native = clone.blizzardAuraDisplay
+      if native and native.active and native.flow then return true end
+    end
+  end
+  return false
+end
+
+local function QueueLegacyJoinMode(enabled, rows)
+  pendingLegacyJoinMode = nil
+  if legacyJoinEnabled == enabled then return end
+  legacyJoinEnabled = enabled
+  for id, entry in pairs(Private.regions) do
+    local data = WeakAuras.GetData(id)
+    if entry.region and data and data.regionType == "group" and data.blizzardFlow
+      and not Display.FlowGroupOwned(data) and not Display.FlowGrid(data)
+      and data.blizzardFlowFrames ~= "UNITFRAME" and data.blizzardFlowFrames ~= "NAMEPLATE"
+      and tonumber(data.blizzardFlowSpacing) == 0 then
+      local ok, active = pcall(HasActiveLegacyMember, data)
+      if not ok or active then rows[data] = true end
+    end
+  end
+end
+
+function Display.SetLegacyJoinMode(enabled)
+  local value = enabled and "on" or "off"
+  if RestrictedNow() then
+    pendingLegacyJoinMode = nil
+    if enabled ~= legacyJoinEnabled then pendingLegacyJoinMode = enabled end
+    print("FA rowpixels old-layout seam test " .. value .. (pendingLegacyJoinMode ~= nil and " requested for after restrictions" or ""))
+    return
+  end
+  local rows = {}
+  QueueLegacyJoinMode(enabled, rows)
+  for row in pairs(rows) do
+    local ok, result = xpcall(Display.RechainFlow, geterrorhandler(), row)
+    if not ok or result == false then afterCombat[row] = true end
+  end
+  print("FA rowpixels old-layout seam test " .. value)
+end
+
 local combatWatcher = CreateFrame("Frame")
 combatWatcher:RegisterEvent("PLAYER_REGEN_ENABLED")
-combatWatcher:SetScript("OnEvent", function()
+combatWatcher:RegisterEvent("ADDON_RESTRICTION_STATE_CHANGED")
+combatWatcher:SetScript("OnEvent", function(_, event)
+  if InCombatLockdown() or (event == "ADDON_RESTRICTION_STATE_CHANGED" and RestrictedNow()) then return end
+  if pendingLegacyJoinMode ~= nil and not RestrictedNow() then QueueLegacyJoinMode(pendingLegacyJoinMode, afterCombat) end
   local groups = afterCombat
   afterCombat = {}
-  for group in pairs(groups) do Display.RechainFlow(group) end
+  local attempted = {}
+  for group in pairs(groups) do
+    local current = WeakAuras.GetData(group.id)
+    if current and current.regionType == "group" and current.blizzardFlow and not attempted[current] then
+      attempted[current] = true
+      local ok, result = xpcall(Display.RechainFlow, geterrorhandler(), current)
+      -- A held pass belongs to the normal queue; failed work stays owed.
+      if not ok or result == false then afterCombat[current] = true end
+    end
+  end
 end)
 
 local flushing = false
@@ -3930,6 +4063,79 @@ local function LocalOutputFailure(region, data, kind, why)
   end
   return false
 end
+-- A native Found list reserves one UI unit even when it is empty. Cancel
+-- it on a drawing-free frame before the follower rounds its own offset.
+-- The helper lives in the follower's units. Its fixed CENTER anchor is
+-- always replaced by the same point when growth or the previous list changes.
+local function SetLegacyJoinAnchor(join, owner, previous)
+  local frame = join.frame or owner.faLegacyJoinFrame
+  if not frame or Locked(frame) then
+    frame = CreateFrame("Frame", nil, owner, "DisableUntrustedLayoutScriptsTemplate")
+    owner.faLegacyJoinFrame = frame
+    join.prepared = nil
+  end
+  join.frame, join.target = frame, nil
+  if not join.prepared then
+    frame:EnableMouse(false)
+    frame:SetSize(1, 1)
+    frame:SetRoundLayoutToNearestPixel(false)
+    join.prepared = true
+  end
+  frame:SetPoint("CENTER", previous.endFrame, previous.endPoint, previous.x, previous.y)
+  -- Publish only once the anchor is accepted. The rounded follower keeps
+  -- its existing start frame, explicit size and child offset difference.
+  join.target, join.point, join.x, join.y = previous.endFrame, previous.endPoint, previous.x, previous.y
+end
+
+local function OriginalLegacyJoin(flow, previous, ox, oy, px, py)
+  return Place(flow.start, flow.growth.start, previous.endFrame, previous.endPoint, previous.x + ox - px, previous.y + oy - py)
+end
+
+local function PlaceLegacyJoin(flow, previous, ox, oy, px, py, group, clear)
+  local point = flow.growth.start
+  if not legacyJoinEnabled or not (flow.legacyListEnd and previous.legacyListEnd and previous.legacyListEnd == previous.endFrame)
+    or flow.home or previous.home or not flow.start.SetRoundLayoutToNearestPixel or tonumber(group.blizzardFlowSpacing) ~= 0
+    or Display.FlowGroupOwned(group) or WeakAuras.IsOptionsOpen() then
+    if clear then flow.start:ClearAllPoints() end
+    return OriginalLegacyJoin(flow, previous, ox, oy, px, py)
+  end
+
+  local owner = flow.region
+  local join = flow.legacyJoin
+  local matches = join and join.target == previous.endFrame and join.point == previous.endPoint
+    and join.x == previous.x and join.y == previous.y
+  if RestrictedNow() then
+    -- No new helper frames or points under either kind of restriction. Only
+    -- reuse the actual follower placement already accepted out of combat.
+    local placed = flow.start.faPlace
+    if matches and placed and placed[1] == point and placed[2] == join.frame
+      and placed[3] == "CENTER" and placed[4] == ox - px and placed[5] == oy - py then return true end
+    afterCombat[group] = true
+    if clear then flow.start:ClearAllPoints() end
+    return OriginalLegacyJoin(flow, previous, ox, oy, px, py)
+  end
+  if clear then flow.start:ClearAllPoints() end
+  -- Compare ordinary display scales only. Mixed-scale or unavailable values
+  -- keep the original join; never query the native list's dimensions.
+  local okA, a = pcall(PixelsPerUnit, owner)
+  local okB, b = pcall(PixelsPerUnit, previous.region)
+  if not okA or not okB or not a or not b or a ~= b then return OriginalLegacyJoin(flow, previous, ox, oy, px, py) end
+  if not join then join = {}; flow.legacyJoin = join end
+  if not matches then
+    local ok = pcall(SetLegacyJoinAnchor, join, owner, previous)
+    if not ok then
+      afterCombat[group] = true
+      return OriginalLegacyJoin(flow, previous, ox, oy, px, py)
+    end
+  end
+  if Place(flow.start, point, join.frame, "CENTER", ox - px, oy - py) then return true end
+  join.target = nil
+  -- The native endpoint remains published, giving this pass its original
+  -- fallback. A normal rechain, including restriction end, retries it.
+  afterCombat[group] = true
+  return OriginalLegacyJoin(flow, previous, ox, oy, px, py)
+end
+
 local committingChains = false -- ForeverAuras (cell chain): a commit's own re-chain does not commit again
 function Display.RechainFlow(group)
   if not group then return end
@@ -4059,6 +4265,26 @@ function Display.RechainFlow(group)
     local firstRegion = flows[1].region
     local spacing = Display.FlowSpacing(group, firstRegion, 0) - 0
     local halfSpacing = Display.FlowHalf(firstRegion, spacing)
+    -- ForeverAuras (1.4.8-dev.13, Dan's test rows on dev.12): a Centered row
+    -- starts half its length back from the centre. An icon is often an odd
+    -- number of pixels wide (29 units is 35 pixels at 1.2 a unit), so an odd
+    -- number of icons puts the row's start on a half pixel. Every edge in
+    -- the row is then a rounding tie and they do not all go the same way:
+    -- measured, Centered rows with three icons showing drew the first two a
+    -- pixel narrow with a one pixel gap between them, and rows with two or
+    -- four were clean, at scale 1 and at 1.2 alike. The shadows are started
+    -- a quarter pixel along the row, on their own start frame, which is not
+    -- rounded (an offset on a rounded frame would be rounded away). The
+    -- row's start is then a quarter or three quarters of a pixel past a
+    -- whole one, never a half, whatever the count, and every edge rounds
+    -- alike. The row sits a quarter pixel off true centre.
+    local shadowX, shadowY = snapX, snapY
+    do
+      local px = PixelsPerUnit(firstRegion)
+      if px and px > 0 then
+        shadowX, shadowY = snapX + g.sign[1] * 0.25 / px, snapY + g.sign[2] * 0.25 / px
+      end
+    end
     for _, flow in ipairs(flows) do
       if flow.shadowStart and flow.shadowKind then
         if not combat then FreshFrame(flow, "shadowStart", "shadowSize", flow.region) end
@@ -4066,7 +4292,7 @@ function Display.RechainFlow(group)
         if combat then
           local placed
           if shadowEnd then placed = Repoint(start, g.shadow.start, shadowEnd[1], shadowEnd[2], shadowEnd[3], shadowEnd[4])
-          else placed = Repoint(start, g.shadow.start, rowFrame, rowPoint, snapX, snapY) end
+          else placed = Repoint(start, g.shadow.start, rowFrame, rowPoint, shadowX, shadowY) end
           -- ForeverAuras (dev.82, Astra's dev.81 review): a refused shadow placement is said (with
           -- "/fa cells debug on") instead of passing in silence; the row comes right when
           -- restrictions end (afterCombat), as every refused placement does
@@ -4079,7 +4305,7 @@ function Display.RechainFlow(group)
           -- (1.2.9) the start's one point is replaced through Place, never cleared first (Astra's
           -- 1.2.7 review: a clear followed by a record-satisfied Place left the live layout anchorless)
           if not (shadowEnd and Repoint(start, g.shadow.start, shadowEnd[1], shadowEnd[2], shadowEnd[3], shadowEnd[4])) then
-            local placed = Repoint(start, g.shadow.start, rowFrame, rowPoint, snapX, snapY)
+            local placed = Repoint(start, g.shadow.start, rowFrame, rowPoint, shadowX, shadowY)
             if not placed and Display.BuildReport then
               Display.BuildReport(("%s's shadow start could not be placed: %s"):format(tostring(FlowData(flow) and FlowData(flow).id), tostring(start.faPlaceError)))
             end
@@ -4111,12 +4337,13 @@ function Display.RechainFlow(group)
   -- translated again here, before the chain hangs the next member from it.
   -- Out of combat only, like the rest of this pass; a refused translation
   -- falls back and reports as in SetFlowEnd.
+  -- Refresh boxes when a measurement owns the end too.
   if owned and not combat and Display.FlowIndependentGroup(group) then
     local padding = Display.CarrierPadding(group)
     for _, flow in ipairs(flows) do
-      if flow.carrierEnd and flow.endFrame == flow.carrierEnd.out and flow.carrierM ~= padding then
+      if flow.carrierM ~= padding then
         local data = FlowData(flow)
-        if data then Display.SetFlowEnd(flow.region, data, nil) end
+        if data and Display.FlowIndependent(data) then Display.SetFlowEnd(flow.region, data, nil) end
       end
     end
   end
@@ -4254,7 +4481,7 @@ function Display.RechainFlow(group)
       local ox, oy = RowOffset(flow, rowFlow)
       local px, py = RowOffset(previous, rowFlow)
       if previous then
-        Place(flow.start, flow.growth.start, previous.endFrame, previous.endPoint, previous.x + ox - px, previous.y + oy - py)
+        PlaceLegacyJoin(flow, previous, ox, oy, px, py, group)
       else
         -- ForeverAuras: at the reference display's frame (rowFlow), not
         -- necessarily this display's own.
@@ -4262,12 +4489,13 @@ function Display.RechainFlow(group)
       end
       previous = flow
     else
-      flow.start:ClearAllPoints()
+      -- A matching helper may already be bound after combat drops while
+      -- aura restrictions are still active; let the join preserve it.
+      if not previous then flow.start:ClearAllPoints() end
       -- As in combat above: this display's own offset on, the previous one's off.
       local ox, oy = RowOffset(flow, rowFlow)
       local px, py = RowOffset(previous, rowFlow)
-      local chained = previous and Place(flow.start, flow.growth.start,
-        previous.endFrame, previous.endPoint, previous.x + ox - px, previous.y + oy - py)
+      local chained = previous and PlaceLegacyJoin(flow, previous, ox, oy, px, py, group, true)
       if previous then previous.followerPlaced = chained and true or false end
       if not chained then
         -- First display: start at the reference display's frame (rowFlow,

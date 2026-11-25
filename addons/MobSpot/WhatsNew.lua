@@ -1,17 +1,15 @@
--- koKR 전용 표시 문구. 다른 언어에서는 원문을 반환하며 저장 데이터와 명령어는 바꾸지 않습니다.
 local KO = setmetatable({}, { __index = function(_, key) return key end })
 if GetLocale() == "koKR" then
+    KO[" addons"] = "개 애드온"
+    KO["/whatsnew to see the latest changes, or to turn it back on."] = "/whatsnew로 최신 변경 사항을 확인하거나 다시 켤 수 있습니다."
+    KO[": What's New"] = ": 업데이트 내용"
     KO["Close"] = "닫기"
     KO["Don't show this after updates"] = "업데이트 후 이 창 표시 안 함"
-    KO["What's New is off. Type /whatsnew to see it, or to turn it back on."] = "업데이트 알림 창을 껐습니다. /whatsnew로 다시 열거나 켤 수 있습니다."
-    KO["Stops this window opening after an update, for all the addons that use it. Type "] = "이 창을 사용하는 모든 애드온의 업데이트 알림 창을 숨깁니다. "
-    KO["/whatsnew to see the latest changes, or to turn it back on."] = "/whatsnew로 최신 변경 사항을 확인하거나 다시 켤 수 있습니다."
     KO["Here's what changed since the version you had."] = "이전 버전 이후의 변경 사항입니다."
-    KO[": What's New"] = ": 업데이트 내용"
+    KO["Stops this window opening after an update, for all the addons that use it. Type "] = "이 창을 사용하는 모든 애드온의 업데이트 알림 창을 숨깁니다. "
     KO["What's New in "] = "업데이트 내용: "
-    KO[" addons"] = "개 애드온"
+    KO["What's New is off. Type /whatsnew to see it, or to turn it back on."] = "업데이트 알림 창을 껐습니다. /whatsnew로 다시 열거나 켤 수 있습니다."
 end
-
 -- What's New window, shared by all of Archdude's addons. After an addon updates, it shows the
 -- changelog of every version the player hasn't seen yet; addons updated at the same time share
 -- one window. A new install shows nothing.

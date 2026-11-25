@@ -1,0 +1,22 @@
+## Interface: 16001
+## Title: SolaLFG
+## Title-koKR: SolaLFG
+## Notes: Filtering party channel and LFG helper for WoW Forever.
+## Notes-koKR: 파티찾기 채널을 필터링하고 기본 파티 탐색기를 지원합니다. (SolaLFG)
+## Author: Sola-아즈샤라 (Forever) / FindParty: 엘나르핌 (Inven Classic) / thenotfound (Original)
+## Version: 1.39
+## IconTexture: Interface\AddOns\SolaLFG\SIM-Icon.tga
+## OptionalDeps: MessageQueue
+## SavedVariables: FP_Version, FP_Options, FP_Filter_Dungeon, FP_Minimap_Save, FP_Position_Save
+## SavedVariablesPerCharacter: FP_UserDefinedWhMsg, FP_UserDefinedAdMsg, FP_UserDefineIgnoreMsg, FP_WhPresets, FP_WhAutoLevel
+
+Lib\LibStub.lua
+Lib\CallbackHandler-1.0.lua
+Lib\LibDataBroker-1.1.lua
+
+localization.lua
+localization.kr.lua
+keywords.kr.lua
+SolaLFG.lua
+SolaLFG.xml
+SolaLFG_LFG.lua

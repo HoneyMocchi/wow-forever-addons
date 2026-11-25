@@ -1823,11 +1823,25 @@ for _, field in ipairs({{"itemId", L["Item ID"], "number"}, {"cdmCategory", L["C
 end
 
 if EventRegistry and EventRegistry.RegisterCallback then
+  -- ForeverAuras (1.4.8-dev.1, Astra's CDM cleanup recommendation 1): the viewer can send several
+  -- settings notifications before the next frame, and each one used to queue its own layout
+  -- dispatch, so FA_CDM_LAYOUT_CHANGED ran once per notification on that frame. One dispatch is
+  -- now queued per burst. The catalog is still invalidated at once on every notification, so
+  -- anything that reads it before the dispatch sees fresh data. The flag is cleared before the
+  -- dispatch, so a notification that arrives during it queues the next pass and an error in a
+  -- trigger cannot leave it set; it is set only after the timer was accepted. No delay is added:
+  -- the dispatch still runs on the next frame, as before. Spellbook, cooldown, aura and
+  -- restriction events are not merged into this.
+  local layoutDispatchQueued = false
+  local function DispatchLayoutChanged()
+    layoutDispatchQueued = false
+    if Private.ScanEvents then Private.ScanEvents("FA_CDM_LAYOUT_CHANGED") end
+  end
   EventRegistry:RegisterCallback("CooldownViewerSettings.OnDataChanged", function()
     Private.InvalidateCDMCatalog()
-    C_Timer.After(0, function()
-      if Private.ScanEvents then Private.ScanEvents("FA_CDM_LAYOUT_CHANGED") end
-    end)
+    if layoutDispatchQueued then return end
+    C_Timer.After(0, DispatchLayoutChanged)
+    layoutDispatchQueued = true
   end, Private.CooldownViewerPrototype)
 end
 

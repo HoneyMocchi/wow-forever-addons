@@ -16,6 +16,7 @@ ns.Data:Register({
             { itemID = 17744, dropRate = 0.4 },     -- Heart of Noxxion
             { itemID = 17746, dropRate = 0.4 },     -- Noxxion's Shackles
             { itemID = 17745, dropRate = 0.1807 },  -- Noxious Shooter
+            { itemID = 254102 },                    -- Pattern: Black Gloves
             { itemID = 251403 },                    -- Plans: Officer's Gloves
             { itemID = 251404 },                    -- Plans: Sentinel's Gloves
             { itemID = 251405 },                    -- Plans: Warder's Gloves

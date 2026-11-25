@@ -54,14 +54,17 @@ ns.Data:Register({
             { itemID = 12753 },                     -- Skin of Shadow
         } },
         { id = "MARDUK_BLACKPOOL", name = "Marduk Blackpool", loot = {
+            { itemID = 12843, dropRate = 1 },       -- Corruptor's Scourgestone
             { itemID = 226404, dropRate = 1 },      -- Tarnished Undermine Real
             { itemID = 18692, dropRate = 0.07 },    -- Death Knight Sabatons
             { itemID = 14576, dropRate = 0.07 },    -- Ebon Hilt of Marduk
         } },
         { id = "VECTUS", name = "Vectus", loot = {
+            { itemID = 12843, dropRate = 1 },       -- Corruptor's Scourgestone
             { itemID = 226404, dropRate = 1 },      -- Tarnished Undermine Real
             { itemID = 18691, dropRate = 0.07 },    -- Dark Advisor's Pendant
             { itemID = 14577, dropRate = 0.07 },    -- Skullsmoke Pants
+            { itemID = 276073 },                    -- Band of the Damned
             { itemID = 276072 },                    -- Soulwoven Drape
             { itemID = 273130 },                    -- Undeath Engine
         } },
@@ -153,6 +156,7 @@ ns.Data:Register({
             { itemID = 273118 },                    -- Blueprint: Plague Doctor's Laboratory
         } },
         { id = "LOREKEEPER_POLKELT", name = "Lorekeeper Polkelt", loot = {
+            { itemID = 12841, dropRate = 1 },       -- Invader's Scourgestone
             { itemID = 226404, dropRate = 1 },      -- Tarnished Undermine Real
             { itemID = 12753, dropRate = 0.17 },    -- Skin of Shadow
             { itemID = 16705, dropRate = 0.0767 },  -- Dreadmist Wraps

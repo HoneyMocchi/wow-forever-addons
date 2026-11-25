@@ -23,6 +23,7 @@ ns.Data:Register({
             { itemID = 16672, dropRate = 0.1843 },  -- Gauntlets of Elements
             { itemID = 16250, dropRate = 0.02 },    -- Formula: Enchant Weapon - Superior Striking
             { itemID = 23320, dropRate = 0.0022 },  -- Tablet of Flame Shock VI
+            { itemID = 249520 },                    -- Formula: Molten Heart of the Mountain
             { itemID = 13498 },                     -- Handcrafted Mastersmith Leggings
             { itemID = 18048 },                     -- Mastersmith's Hammer
         } },
@@ -97,6 +98,7 @@ ns.Data:Register({
             { itemID = 16729, dropRate = 0.1837 },  -- Lightforge Spaulders
             { itemID = 24101, dropRate = 0.0562 },  -- Book of Ferocious Bite V
             { itemID = 16250, dropRate = 0.02 },    -- Formula: Enchant Weapon - Superior Striking
+            { itemID = 273109 },                    -- Blueprint: Trapper's Workbench
         } },
         { id = "GENERAL_DRAKKISATH", name = "General Drakkisath", loot = {
             { itemID = 16663, dropRate = 1 },       -- Blood of the Black Dragon Champion

@@ -29,6 +29,56 @@ end
 -- ForeverAuras: the paced drain of `pending` (defined below; ApplyDisplay queues to it).
 local draining, drainingNow, DrainPending = false, false, nil
 local drainCursor = 0   -- ForeverAuras (dev.74): where the paced drain's walk of the queue resumes (DrainPending)
+-- Build dispatch observations for /fa modern. A timer call can return before
+-- its callback runs. A scale change can also enter the drain directly.
+local buildTrace = { attempted = 0, posted = 0, entered = 0, passes = 0, budgetYields = 0, applies = 0, lastStep = "idle" }
+-- ForeverAuras (1.4.8-dev.12, Dan's capture on dev.11: "attempted=60 posted=60
+-- entered=59 ... lastStep=timer call returned age=1.4s" with 31 builds
+-- pending): the timer call returned and its callback had not run 1.4 seconds
+-- later. The queue was then marked running with nothing coming, and every
+-- place that starts it looks at that mark first, so nothing started it again
+-- (the rows that never came back). Two things follow.
+--   Tickets: each scheduled pass carries the number it was posted with, and
+--   only the latest number may enter the drain. A pass posted earlier that
+--   turns up late does nothing, so a replacement can never double the work.
+--   Overdue: a posted pass that has not entered within BUILD_PASS_OVERDUE
+--   seconds counts as not coming (a callback is due on the next frame). The
+--   places that start the queue then start it as if it were idle, and the
+--   display events (below, the "events" frame) do the same when they find
+--   work waiting. Nothing polls: this is looked at only when something
+--   already asks for the queue, or on an event the addon already handles.
+buildTrace.ticket, buildTrace.superseded, buildTrace.restarts = 0, 0, 0
+local BUILD_PASS_OVERDUE = 1
+local function ScheduleBuildPass()
+  buildTrace.attempted = buildTrace.attempted + 1
+  buildTrace.at = GetTime()
+  buildTrace.lastStep = "requesting timer"
+  local ticket = buildTrace.ticket + 1
+  buildTrace.ticket = ticket
+  buildTrace.dueSince = buildTrace.at
+  C_Timer.After(0, function()
+    if buildTrace.ticket ~= ticket then
+      buildTrace.superseded = buildTrace.superseded + 1
+      return
+    end
+    buildTrace.dueSince = nil
+    buildTrace.entered = buildTrace.entered + 1
+    DrainPending()
+  end)
+  buildTrace.posted = buildTrace.posted + 1
+  buildTrace.lastStep = "timer call returned"
+end
+-- Whether the queue may be started: it is not marked running, or it is and
+-- its posted pass is overdue (counted as a restart when that is why).
+function buildTrace.Idle()
+  if not draining then return true end
+  local due = buildTrace.dueSince
+  if due and GetTime() - due > BUILD_PASS_OVERDUE then
+    buildTrace.restarts = buildTrace.restarts + 1
+    return true
+  end
+  return false
+end
 -- ForeverAuras (combat-reload probe): displays whose first build under
 -- restrictions failed; built again, as new, when the restrictions end (the
 -- restriction-end handler moves them to pending). Not tried again before.
@@ -197,13 +247,37 @@ local function CleanFrame(frame)
   end)
 end
 -- Cleans what it can; returns true when nothing is left in the ledger.
+-- ForeverAuras (1.4.8-dev.8, Astra's dev.7 recovery review): a stopped build's
+-- retirement steps that were refused when it was stopped (AbandonProbeBuild
+-- keeps them on region.faRetireOwed) are tried again here first, and count
+-- as part of the ledger: while any is still owed this returns false and the
+-- ledger stays, so nothing is built in the display's place meanwhile (every
+-- caller that builds asks this function or the ledger first). A refusal
+-- that raises is a step not done yet, never an error out of the cleanup.
 local function CleanAbandoned(region)
+  local owed = region.faRetireOwed
+  if owed then
+    if owed.spine and (not Display.ReleaseChainSpine or pcall(Display.ReleaseChainSpine, owed.spine)) then owed.spine = nil end
+    for _, key in ipairs({"alpha", "bindings"}) do
+      local left = {}
+      for _, instance in ipairs(owed[key] or {}) do
+        local done
+        if key == "alpha" then done = not Display.CancelPendingListAlpha or pcall(Display.CancelPendingListAlpha, instance)
+        else done = pcall(RetireInstanceGlowBindings, region, instance) end
+        if not done then left[#left + 1] = instance end
+      end
+      owed[key] = #left > 0 and left or nil
+    end
+    if owed.allocations and pcall(RetainAllocations, region) then owed.allocations = nil end
+    if next(owed) == nil then region.faRetireOwed, owed = nil, nil end
+  end
   local list = abandonedFrames[region]
   local bindings = abandonedGlowBindings[region]
-  if not list and not bindings then return true end
+  if not list and not bindings and not owed then return true end
   if bindings then
     for owner, entry in pairs(bindings) do
-      if Display.DisableGlowBinding(entry) then bindings[owner] = nil end
+      local ok, disabled = pcall(Display.DisableGlowBinding, entry)
+      if ok and disabled then bindings[owner] = nil end
     end
     if not next(bindings) then abandonedGlowBindings[region], bindings = nil, nil end
   end
@@ -211,8 +285,8 @@ local function CleanAbandoned(region)
   for _, frame in ipairs(list or {}) do
     if not CleanFrame(frame) then kept[#kept + 1] = frame end
   end
-  abandonedFrames[region] = (#kept > 0 or bindings) and kept or nil
-  return #kept == 0 and bindings == nil
+  abandonedFrames[region] = (#kept > 0 or bindings or owed) and kept or nil
+  return #kept == 0 and bindings == nil and owed == nil
 end
 -- Containers locked in combat: hidden, or given their units, once it ends.
 local lockedHide = setmetatable({}, {__mode = "k"})
@@ -1831,25 +1905,13 @@ local function StyleFlash(native, data)
     out:SetFromAlpha(1); out:SetToAlpha(0); out:SetDuration(FLASH_OUT); out:SetOrder(3)
     flash = {group = group, hold = hold}
     native.flash = flash
-    -- ForeverAuras (1.3.10-dev.7/dev.9, diagnostics only; Astra's dev.8 review):
-    -- the client plays this group whenever it assigns an aura to the button, new
-    -- or already there (a rebuilt or re-enabled display, a unit change, a plate
-    -- back), and stops it before every assignment as well as when it clears the
-    -- button. So "played" is not "newly gained" and "stopped" is not "removed";
-    -- the counts and prints say only what the animation did. Whether these
-    -- scripts run at all under restrictions is what the probe is for.
-    group:SetScript("OnPlay", function()
-      Private.HitchCount("gained: flash animation played")
-      if Private.gainedDebug then print("|cff88ccffFA gained|r", tostring(data.id), "flash animation played at", string.format("%.2f", GetTime())) end
-    end)
-    group:SetScript("OnStop", function()
-      Private.HitchCount("gained: flash animation stopped")
-      if Private.gainedDebug then print("|cff88ccffFA gained|r", tostring(data.id), "flash animation stopped at", string.format("%.2f", GetTime())) end
-    end)
-    group:SetScript("OnFinished", function()
-      Private.HitchCount("gained: flash animation finished")
-      if Private.gainedDebug then print("|cff88ccffFA gained|r", tostring(data.id), "flash animation finished at", string.format("%.2f", GetTime())) end
-    end)
+    -- ForeverAuras (1.4.8-dev.2, diagnostic cleanup; Astra's review of the Gained capture): the
+    -- OnPlay / OnStop / OnFinished prints and counters that stood here are removed. The client's
+    -- aura button blocks addon script execution and that passes to its child objects, this group
+    -- included, so those scripts never ran (seen in game, 23 November 2026: the flash played and
+    -- nothing printed, out of combat). The client still plays the group on every assignment of an
+    -- aura to the button, new or already there; the settling hide in RefreshUnits covers the
+    -- already-there case. The animation itself and that settling are unchanged.
   end
   flash.hold:SetDuration(seconds)
   if not flash.registered then
@@ -2234,7 +2296,7 @@ local function Layout(native, region, data)
   container:SetAuraGroupMaxFrameCount("Auras", Display.MaxAuras(data))
 end
 
-local function BuildButton(container, button, withBox)
+local function BuildButton(container, button, withBox, carrierFlow)
   local native = {container = container}
   native.button = button
   button:EnableMouse(false)
@@ -2250,7 +2312,15 @@ local function BuildButton(container, button, withBox)
     -- like the clip and the chain's frames (a Centered row hangs it, through
     -- the chain, from the shadows' end: a secret-sized container)
     native.box = CreateFrame("Frame", nil, button, "DisableUntrustedLayoutScriptsTemplate")
-    native.box:SetAllPoints(button)
+    if carrierFlow and carrierFlow.growth and carrierFlow.startSize then
+      -- A restricted carrier placement can replace this same corner in place.
+      -- Keep the artwork at the button's configured size and position until it succeeds.
+      local corner = carrierFlow.growth.start
+      native.box:SetSize(carrierFlow.startSize[1], carrierFlow.startSize[2])
+      native.box:SetPoint(corner, button, corner, 0, 0)
+    else
+      native.box:SetAllPoints(button)
+    end
     native.box:EnableMouse(false)
   end
   local box = native.box or button
@@ -2434,6 +2504,7 @@ function CreateBody(display, container, inFlow, region, data)
   end
   local function initializeFrame(button)
     local native
+    local carrierFlow = independent and region.blizzardAuraDisplay and region.blizzardAuraDisplay.flow
     local phase = display.creating and "initial" or "later"
     local counter = display.callbacks[phase]
     local restricted = phase == "later" and Restricted()
@@ -2456,7 +2527,7 @@ function CreateBody(display, container, inFlow, region, data)
     if display.styleEarly then
       -- A button that could not be built is counted; the failure stops the
       -- build (Apply). Other builds raise as before.
-      local okBuild, built = pcall(BuildButton, container, button, withBox)
+      local okBuild, built = pcall(BuildButton, container, button, withBox, carrierFlow)
       if not okBuild then
         display.earlyFailed = display.earlyFailed + 1
         display.styleError = display.styleError or tostring(built)
@@ -2472,7 +2543,7 @@ function CreateBody(display, container, inFlow, region, data)
       -- BuildButton, ten times over). It is left as the client made it and
       -- the display is applied again when the restrictions end, which
       -- builds and styles it (SecretAuraSingle.lua, TakePendingRelayout).
-      local okBuild, built = pcall(BuildButton, container, button, withBox)
+      local okBuild, built = pcall(BuildButton, container, button, withBox, carrierFlow)
       if not okBuild then
         -- The client never offers this frame again, so the re-apply must
         -- make new containers (ApplyDisplay, rebuildFresh): applied in
@@ -3354,27 +3425,38 @@ local instanceQueues = {}
 -- is set aside until the restrictions end, when it is built again as new.
 -- Nothing of it is counted as finished meanwhile.
 local function AbandonProbeBuild(region, data, why)
+  -- ForeverAuras (1.4.8-dev.8, Astra's dev.7 recovery review): the retirement
+  -- contract. Before, the retry was recorded last, after steps the client
+  -- can refuse: a refusal there threw away the retry and replaced the error
+  -- that stopped the build. Now:
+  --   1. Ownership is settled first, in plain Lua that cannot be refused:
+  --      the build is no longer a display, and its retry is recorded with
+  --      the settings rule below.
+  --   2. Every frame the build owned goes on the abandoned-frame ledger
+  --      (plain Lua again where the usual call was refused), so the ledger,
+  --      which every rebuild waits for, knows all of them.
+  --   3. Each step the client can refuse runs guarded. One that is refused
+  --      stays owed on region.faRetireOwed; CleanAbandoned tries it again
+  --      and holds the rebuild until it is done. No replacement is built
+  --      while an old container is not retired.
+  --   4. A refusal here is reported through the error handler and never
+  --      raised, so the caller's own error is the one that is seen.
   local native = region.blizzardAuraDisplay
+  local instances = native and native.instances or {}
   if native then
     native.applying = nil -- ForeverAuras (cell chain): no longer being applied (RequestReapply)
-    for _, instance in ipairs(native.instances) do
+    for _, instance in ipairs(instances) do
       local missing = instance.single and instance.single.missing
       if missing then missing.active = false end
-      RetainInstanceFrames(region, instance)
-      if Display.CancelPendingListAlpha then Display.CancelPendingListAlpha(instance) end
     end
     native.instances = {}
     -- (A probe build keeps its own allocation list, RetainAllocations below;
     -- the ordinary-reserve ledger does not exist for it.)
     native.instanceQueue, instanceQueues[region] = nil, nil
     native.active = false
+    native.probeBuild = nil
   end
   pendingTokens[region] = nil -- (1.3.6-dev.12) a stopped build owes no token work
-  if native then native.probeBuild = nil end
-  -- ForeverAuras (dev.68): the stopped build's spine is let go (the retry prepares it again).
-  if native and Display.ReleaseChainSpine then Display.ReleaseChainSpine(native) end
-  RetainAllocations(region)
-  CleanAbandoned(region)
   activeRegions[region] = nil
   -- ForeverAuras (cell chain, dev.48 review): the settings the retry builds
   -- are the display's CURRENT ones. A newer saved table already queued for
@@ -3386,12 +3468,45 @@ local function AbandonProbeBuild(region, data, why)
   pending[region] = nil
   if queued and queued ~= data and WeakAuras.GetData(data.id) == queued then data = queued end
   retryAfterRestrictions[region] = data
+  local firstError
+  local function Step(fn, ...)
+    local ok, err = pcall(fn, ...)
+    if not ok and firstError == nil then firstError = err end
+    return ok
+  end
+  local owed = {}
+  local function Owe(key, value)
+    if value == true then owed[key] = true return end
+    owed[key] = owed[key] or {}
+    owed[key][#owed[key] + 1] = value
+  end
+  for _, instance in ipairs(instances) do
+    if not Step(RetainInstanceFrames, region, instance) then
+      -- Its glow bindings were refused: the frames are noted by name all the
+      -- same, and the bindings are retired when CleanAbandoned next runs.
+      Step(function() for frame in pairs(InstanceFrames(instance)) do RetainFrame(region, frame) end end)
+      Owe("bindings", instance)
+    end
+    if Display.CancelPendingListAlpha and not Step(Display.CancelPendingListAlpha, instance) then Owe("alpha", instance) end
+  end
+  -- ForeverAuras (dev.68): the stopped build's spine is let go (the retry prepares it again).
+  if native and Display.ReleaseChainSpine and not Step(Display.ReleaseChainSpine, native) then owed.spine = native end
+  if not Step(RetainAllocations, region) then Owe("allocations", true) end
+  if next(owed) ~= nil then
+    region.faRetireOwed = owed
+    abandonedFrames[region] = abandonedFrames[region] or {}
+  end
+  Step(CleanAbandoned, region)
   -- ForeverAuras: shown on the aura (cleared by Finish when the display is
   -- built), so a display missing during a fight is explained in the editor.
   -- Seen in game: Remaining Time (slot) displays, whose slot buttons the
   -- client locks together with every frame under them once made in combat.
-  Warn(data, L["This display will be built when aura restrictions end."])
-  CombatBuildReport(("%s stopped (%s); built again when restrictions end."):format(tostring(data.id), tostring(why)))
+  Step(Warn, data, L["This display will be built when aura restrictions end."])
+  Step(CombatBuildReport, ("%s stopped (%s); built again when restrictions end."):format(tostring(data.id), tostring(why)))
+  if firstError ~= nil then
+    local handler = geterrorhandler and geterrorhandler()
+    if handler then pcall(handler, "ForeverAuras: retiring a stopped build of " .. tostring(data.id) .. ": " .. tostring(firstError)) end
+  end
 end
 -- Whether a display set aside must still wait (Apply, Activate).
 local function WaitingForRetry(region)
@@ -3533,9 +3648,9 @@ function Display.HandOverStoppedBuild(region)
     pending[region] = retry
     if MarkRequest then MarkRequest(region) end
     -- the drain runs a frame later (never a rebuild inside the reserve loop); one already scheduled sees it
-    if not draining then
+    if buildTrace.Idle() then
       draining = true
-      C_Timer.After(0, DrainPending)
+      ScheduleBuildPass()
     end
   end
 end
@@ -3573,9 +3688,9 @@ local function FinishProbeBuild(region, data)
     retryAfterRestrictions[region] = nil
     pending[region] = retry
     if MarkRequest then MarkRequest(region) end
-    if not draining then
+    if buildTrace.Idle() then
       draining = true
-      C_Timer.After(0, DrainPending)
+      ScheduleBuildPass()
     end
   end
   return false
@@ -3613,9 +3728,9 @@ function Display.SettleProbeCommit(region)
     retryAfterRestrictions[region] = nil
     pending[region] = retry
     if MarkRequest then MarkRequest(region) end
-    if not draining then
+    if buildTrace.Idle() then
       draining = true
-      C_Timer.After(0, DrainPending)
+      ScheduleBuildPass()
     end
   end
 end
@@ -3698,9 +3813,9 @@ local function FailReserveAttempt(region, queue, failed, why)
   CleanAbandoned(region)
   pending[region] = data
   if MarkRequest then MarkRequest(region) end
-  if not draining then
+  if buildTrace.Idle() then
     draining = true
-    C_Timer.After(0, DrainPending)
+    ScheduleBuildPass()
   end
 end
 
@@ -3743,9 +3858,9 @@ function Display.RequestReapply(region, why)
   end
   pending[region] = data
   record.stamp = MarkRequest and MarkRequest(region) or nil -- (guarded: review harnesses run this function alone)
-  if not draining then
+  if buildTrace.Idle() then
     draining = true
-    C_Timer.After(0, DrainPending)
+    ScheduleBuildPass()
   end
 end
 -- ForeverAuras (cell chain, dev.43 review): a chain completed outside an
@@ -3957,6 +4072,29 @@ function Display.FlushInstanceQueue(region)
   end
 end
 
+-- ForeverAuras (1.4.8-dev.8, Astra's dev.7 recovery review): an apply that
+-- raises before its own guarded stages (EnsureFlowStart writes the start
+-- and content geometry ahead of them) used to clear "applying" and nothing
+-- else. Its request had already been taken off the paced queue, so a
+-- restricted first build left nothing for the end of the restrictions to
+-- build. A restricted probe build that had ENTERED construction (applying
+-- was set; an older healthy probe whose reserve is still finishing is not
+-- this apply's to retire) now goes through the usual retirement and retry.
+-- Nothing raised here replaces the apply's own error, which the caller
+-- raises again.
+local function RetireFailedProbeApply(region, data, why)
+  local native = region.blizzardAuraDisplay
+  if not native then return end
+  local applying = native.applying
+  native.applying = nil
+  if not applying or not native.probeBuild then return end
+  local handler = geterrorhandler and geterrorhandler()
+  local ok, err = pcall(AbandonProbeBuild, region, data, "apply failed: " .. tostring(why))
+  if not ok and handler then pcall(handler, err) end
+  ok, err = pcall(Display.HandOverStoppedBuild, region)
+  if not ok and handler then pcall(handler, err) end
+end
+
 local ApplyDisplay
 function Display.Apply(region, data)
   -- ForeverAuras (combat-reload probe): a build set aside is not tried
@@ -3978,7 +4116,7 @@ function Display.Apply(region, data)
     -- the frames below this one are not in the handler's stack any more).
     local okApply, errApply = pcall(ApplyDisplay, region, data)
     if not okApply then
-      if region.blizzardAuraDisplay then region.blizzardAuraDisplay.applying = nil end
+      RetireFailedProbeApply(region, data, errApply)
       error(errApply, 0)
     end
     local tookBuild = debugprofilestop() - startedBuild
@@ -3999,7 +4137,7 @@ function Display.Apply(region, data)
   local started = debugprofilestop()
   local okApply, errApply = pcall(ApplyDisplay, region, data) -- ForeverAuras (cell chain): as above
   if not okApply then
-    if region.blizzardAuraDisplay then region.blizzardAuraDisplay.applying = nil end
+    RetireFailedProbeApply(region, data, errApply)
     error(errApply, 0)
   end
   profile.modern[data.id] = (profile.modern[data.id] or 0) + debugprofilestop() - started
@@ -4054,9 +4192,9 @@ function ApplyDisplay(region, data)
   if Restricted() and not (existing and #existing.instances > 0) and not drainingNow then
     pending[region] = data
     if MarkRequest then MarkRequest(region) end
-    if not draining then
+    if buildTrace.Idle() then
       draining = true
-      C_Timer.After(0, DrainPending)
+      ScheduleBuildPass()
     end
     return
   end
@@ -4359,7 +4497,7 @@ function Display.Activate(region, data)
       if not pending[region] then
         pending[region] = data
         if MarkRequest then MarkRequest(region) end
-        if not draining then draining = true; C_Timer.After(0, DrainPending) end
+        if buildTrace.Idle() then draining = true; ScheduleBuildPass() end
       end
       repack = pending[region] == data   -- the kept one-spot instance is reused meanwhile
     end
@@ -4776,8 +4914,16 @@ local gridPending = {}
 -- ForeverAuras: true while DrainPending applies its batch (see ApplyDisplay).
 drainingNow = false
 DrainPending = function()
+  buildTrace.dueSince = nil   -- (dev.12) a pass is running: nothing is overdue (a direct entry too)
+  buildTrace.passes = buildTrace.passes + 1
+  buildTrace.at = GetTime()
+  buildTrace.lastStep = "entered pass"
   -- Before login completes, the login callback starts the drain.
-  if not WeakAuras.IsLoginFinished() then draining = false; return end
+  if not WeakAuras.IsLoginFinished() then
+    buildTrace.lastStep = "waiting for login"
+    draining = false
+    return
+  end
   -- ForeverAuras (combat-reload probe): under restrictions (a reload in
   -- combat) only a display that already has buttons waits, as Apply itself
   -- decides; a first build goes ahead, its buttons styled in the client's
@@ -4787,7 +4933,11 @@ DrainPending = function()
   local started = debugprofilestop()
   -- The frame's shared budget (FrameBudgetLeft): none left, the next frame.
   local budget = math.min(PENDING_BUDGET, FrameBudgetLeft())
-  if budget <= 0 then C_Timer.After(0, DrainPending); return end
+  if budget <= 0 then
+    buildTrace.budgetYields = buildTrace.budgetYields + 1
+    ScheduleBuildPass()
+    return
+  end
   -- Modern Aura Groups re-anchor once per group after this batch, not once
   -- per rebuilt display (the same batching a load scan uses).
   if Display.BeginFlowLoad then Display.BeginFlowLoad() end
@@ -4807,7 +4957,20 @@ DrainPending = function()
     -- the count is per queued request (cleared when the wait ends)
     local waited = (chainOrderWaits[region] or 0)
     if waited >= 180 then chainOrderWaits[region] = nil; return false end
-    local blocker = Display.ChainOrderBlocker(region, data, pending)
+    local ok, blocker = pcall(Display.ChainOrderBlocker, region, data, pending)
+    if not ok then
+      -- A restricted row can refuse a read on its next member. Keep this
+      -- request for the unrestricted pass and let the other rows finish.
+      chainOrderWaits[region] = nil
+      if pending[region] == data then
+        pending[region] = nil
+        if WeakAuras.GetData(data.id) == data and Private.regions[data.id] and Private.regions[data.id].region == region then
+          retryAfterRestrictions[region] = data
+        end
+      end
+      pcall(geterrorhandler(), blocker)
+      return true
+    end
     if blocker then
       chainOrderWaits[region] = waited + 1
       if waited == 0 then CombatBuildReport(("%s waits for %s (built from the row's last member back)"):format(tostring(data.id), tostring(blocker))) end
@@ -4827,6 +4990,7 @@ DrainPending = function()
   for region, data in pairs(pending) do count = count + 1; queue[count] = region end
   -- (dev.79, Astra's dev.77 review: the cursor advanced inside the walk AND
   -- indexed by the step, a stride of two that starved every other entry)
+  buildTrace.lastStep = "walking displays"
   local base, visited = drainCursor, 0
   for step = 1, count do
     local region = queue[((base + step - 1) % count) + 1]
@@ -4841,6 +5005,8 @@ DrainPending = function()
       if not (restricted and (not ProbeEligible(data) or (existing and #existing.instances > 0))) and not ChainOrderWaits(region, data) then
         pending[region] = nil
         if WeakAuras.GetData(data.id) == data and Private.regions[data.id] and Private.regions[data.id].region == region then
+          buildTrace.applies = buildTrace.applies + 1
+          buildTrace.lastApplyAt = buildTrace.at
           xpcall(Display.Apply, geterrorhandler(), region, data)
           if debugprofilestop() - started > budget then break end
         end
@@ -4852,7 +5018,9 @@ DrainPending = function()
   -- ForeverAuras: the groups' re-chains run here, so they are charged to the
   -- frame's budget with the builds (rc.50 review: charged before them, the
   -- reserve drain could start more work in a frame already past its budget).
+  buildTrace.lastStep = "finishing row layout"
   if Display.EndFlowLoad then Display.EndFlowLoad() end
+  buildTrace.lastStep = "checking remaining work"
   -- ForeverAuras: Grid rebuilds set aside under restrictions, one group per
   -- job within the same budget (dev.4 review: they ran all at once inside
   -- the combat-end event, and one error there lost the rest). After the
@@ -4888,14 +5056,19 @@ DrainPending = function()
     if not (restricted and (not ProbeEligible(data) or (existing and #existing.instances > 0))) then again = true; break end
   end
   if not restricted and not held and next(gridPending) then again = true end
-  if again then C_Timer.After(0, DrainPending) else draining = false end
+  if again then
+    ScheduleBuildPass()
+  else
+    draining = false
+    buildTrace.lastStep = "pass ended without another timer"
+  end
 end
 -- ForeverAuras: called when an outer flow hold ends (EndFlowLoad): Grid
 -- rebuilds that waited for it are drained from the next frame on.
 function Display.ResumeGridDrain()
-  if next(gridPending) and not draining and WeakAuras.IsLoginFinished() and not Restricted() then
+  if next(gridPending) and WeakAuras.IsLoginFinished() and not Restricted() and buildTrace.Idle() then
     draining = true
-    C_Timer.After(0, DrainPending)
+    ScheduleBuildPass()
   end
 end
 
@@ -4905,9 +5078,9 @@ end
 function Display.QueueGridRebuild(id)
   if not id then return end
   gridPending[id] = true
-  if not draining and WeakAuras.IsLoginFinished() and not Restricted() then
+  if WeakAuras.IsLoginFinished() and not Restricted() and buildTrace.Idle() then
     draining = true
-    C_Timer.After(0, DrainPending)
+    ScheduleBuildPass()
   end
 end
 -- Drops a group's queued Grid rebuild (the group was deleted or turned into a row).
@@ -4916,9 +5089,9 @@ function Display.CancelGridRebuild(id)
 end
 
 Private.callbacks:RegisterCallback("WEAKAURAS_LOGIN_COMPLETE", function()
-  if next(pending) and not draining then
+  if next(pending) and buildTrace.Idle() then
     draining = true
-    C_Timer.After(0, DrainPending)
+    ScheduleBuildPass()
   end
 end)
 
@@ -5006,12 +5179,14 @@ end
 events:SetScript("OnEvent", function(_, event, unit)
   if event == "UI_SCALE_CHANGED" or event == "DISPLAY_SIZE_CHANGED" then
     for region in pairs(activeRegions) do pending[region] = region.blizzardAuraDisplay.data; if MarkRequest then MarkRequest(region) end end
-    if not draining then
+    if buildTrace.Idle() then
       draining = true
       DrainPending()
     end
     return
   end
+  -- (1.4.8-dev.12) builds waiting on a pass that never arrived are started again here.
+  if draining and (next(pending) or next(gridPending)) and buildTrace.Idle() then ScheduleBuildPass() end
   -- Only the target's, focus's and pet's targets are watched. (The pet was
   -- dropped here, so a Pet Target display kept the previous target's auras.)
   if event == "UNIT_TARGET" and unit ~= "target" and unit ~= "focus" and unit ~= "pet" then return end
@@ -5195,9 +5370,9 @@ events:SetScript("OnEvent", function(_, event, unit)
   -- the restriction-end event already carries the game's own work and the
   -- condition refresh above (seen in game: a 19 ms frame with the queued
   -- rebuilds applied here).
-  if (next(pending) or next(gridPending)) and not draining then
+  if (next(pending) or next(gridPending)) and buildTrace.Idle() then
     draining = true
-    C_Timer.After(0, DrainPending)
+    ScheduleBuildPass()
   end
   if next(instanceQueues) and not instanceDraining then
     instanceDraining = true
@@ -5286,6 +5461,40 @@ end
 -- shows as rising numbers between entries. Recorded only at those events.
 Display.summaryCounts = {freshBuilds = {}}
 local function CountKeys(t) local n = 0 for _ in pairs(t or {}) do n = n + 1 end return n end
+
+function Display.DescribeBuildDispatch()
+  local now = GetTime()
+  local function Age(at)
+    return at and ("%.1fs"):format(now - at) or "never"
+  end
+  local ok, restricted = pcall(Restricted)
+  local status = "unknown"
+  if ok and not issecretvalue(restricted) then status = tostring(not not restricted) end
+  return ("attempted=%d posted=%d entered=%d passes=%d budgetYields=%d applies=%d lastApplyAge=%s lastStep=%s age=%s restricted=%s superseded=%d restarts=%d"):format(
+    buildTrace.attempted, buildTrace.posted, buildTrace.entered, buildTrace.passes, buildTrace.budgetYields, buildTrace.applies,
+    Age(buildTrace.lastApplyAt), buildTrace.lastStep, Age(buildTrace.at), status, buildTrace.superseded, buildTrace.restarts)
+end
+
+-- Only the named /fa modern report calls this. The queue keys are addon-owned
+-- region identities. A matching name on an old frame does not own the current frame.
+function Display.DescribeMissingBuild(region, data)
+  local function Ownership(queue)
+    if queue[region] then return queue[region] == data and "current" or "older settings" end
+    for _, request in pairs(queue) do
+      if request.id == data.id then return "other region" end
+    end
+    return "none"
+  end
+  local requested = ("pending=%s retry=%s deferred=%s requestStamp=%d restrictedOrderWaits=%d cleanup=%s"):format(
+    Ownership(pending), Ownership(retryAfterRestrictions), Ownership(chainDeferredRetry),
+    requestStamp[region] or 0, chainOrderWaits[region] or 0,
+    tostring(abandonedFrames[region] ~= nil or abandonedGlowBindings[region] ~= nil))
+  -- The drain flag can survive an error. It describes the addon's flag only.
+  local drain = ("totalPending=%d drainFlag=%s insideDrainFlag=%s cursor=%d loginFinished=%s flowLoadHeld=%s"):format(
+    CountKeys(pending), tostring(draining), tostring(drainingNow), drainCursor,
+    tostring(WeakAuras.IsLoginFinished()), tostring(Display.FlowLoadHeld and Display.FlowLoadHeld() or false))
+  return requested, drain
+end
 -- The counts are of the addon's own Lua structures (a subset: main instances and their addon-owned
 -- button lists, the secondary containers each instance owns, the queues and ledgers); not native
 -- record pools, not frames the client owns, and taken at the event, before paced repairs settle.
@@ -5368,6 +5577,7 @@ function Display.PrintSummary()
   local parts = {}
   for _, key in ipairs(summaryOrder) do parts[#parts + 1] = key .. " " .. tostring(now[key]) end
   WeakAuras.prettyPrint(("Modern displays now (heap %.0f MB; the addon's own structures, a subset, at this moment): %s"):format(now.heapMB, table.concat(parts, ", ")))
+  print("  build dispatch", Display.DescribeBuildDispatch())
   local reasons = {}
   for why, n in pairs(Display.summaryCounts.freshBuilds) do reasons[#reasons + 1] = why .. " x" .. n end
   table.sort(reasons)

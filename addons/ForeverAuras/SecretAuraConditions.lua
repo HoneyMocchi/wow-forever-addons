@@ -771,7 +771,17 @@ local function ApplyProperty(button, data, property, value, overrides, setup)
   elseif property == 'zoom' then
     -- Preserve the configured aspect ratio and texture offsets on condition edits.
     Display.StyleIconTexCoords(button, data, value)
-  elseif property == 'inverse' then button.cooldown:SetReverse(value)
+  elseif property == 'inverse' then
+    -- ForeverAuras (1.4.7-dev.5/7): the Icon display's rule. (dev.8, Astra's dev.7 review) A live aura
+    -- button draws an aura, a source that is not inverted. The Missing sample can be drawing another
+    -- trigger's state instead (SecretAuraSingle.lua, ApplyIconSource, which leaves that state on it as
+    -- faInverseSource): then the rule is asked with that state, as the Icon display would ask it.
+    local source = button.faInverseSource
+    if type(source) == "table" then
+      button.cooldown:SetReverse(Private.IconEffectiveReverse(value == true, source.inverse, source))
+    else
+      button.cooldown:SetReverse(Private.IconEffectiveReverse(value == true, false))
+    end
   elseif property == 'cooldownSwipe' then button.cooldown:SetDrawSwipe(value)
   elseif property == 'cooldownEdge' then button.cooldown:SetDrawEdge(value)
   elseif property == 'cooldownTextDisabled' then

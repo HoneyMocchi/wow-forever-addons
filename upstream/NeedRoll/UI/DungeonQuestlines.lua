@@ -287,11 +287,29 @@ local function PlaceWords(npc, questID, inside)
     return npc and ns.UI.ZoneArea(ns.Data:NpcSpot(npc, questID))
 end
 
+-- What the Next step box tells the player to do with quest `quest`
+-- (`questID`): "Turn in [quest] to [NPC]" once its objectives are done,
+-- "Finish [quest], then hand it in to [NPC]" while it is in the quest log,
+-- else "Pick up [quest] from [NPC]"; each without the NPC when no source
+-- names them.
+local function NextStepText(quest, questID, npcName)
+    local questWords, npcWords = QuestWords(quest.name), npcName and NpcWords(npcName)
+    if ns.UI.IsReadyForTurnIn(questID) then
+        return npcWords and L["Turn in %s to %s"]:format(questWords, npcWords) or L["Turn in %s"]:format(questWords)
+    end
+    if C_QuestLog.IsOnQuest(questID) then
+        return npcWords and L["Finish %s, then hand it in to %s"]:format(questWords, npcWords)
+            or L["Finish %s"]:format(questWords)
+    end
+    return npcWords and L["Pick up %s from %s"]:format(questWords, npcWords) or L["Pick up %s"]:format(questWords)
+end
+
 -- The Next step box on `fold`'s page (Questlines' PlaceGuide): for a
 -- quest of the next step (NextStepIDs) in the quest log, "Finish [quest],
--- then hand it in to [NPC]" and its objectives; else "Pick up [quest] from
--- [NPC]". Then where that NPC stands, and their spot and name for Show on
--- map. Nil once every step is done.
+-- then hand it in to [NPC]" (or "Turn in [quest] to [NPC]" once ready) and
+-- its objectives; else "Pick up [quest] from [NPC]". Then where that NPC
+-- stands, and their spot and name for Show on map. Nil once every step is
+-- done.
 local function NextStep(fold)
     local ids = NextStepIDs(fold)
     if not ids then return nil end
@@ -305,14 +323,7 @@ local function NextStep(fold)
     local isInLog = C_QuestLog.IsOnQuest(questID)
     local npcName, npc, inside = quest.giver, quest.giverNpc, quest.giverInside
     if isInLog then npcName, npc, inside = quest.turnIn, quest.turnInNpc, quest.turnInInside end
-    local text
-    if isInLog then
-        text = npcName and L["Finish %s, then hand it in to %s"]:format(QuestWords(quest.name), NpcWords(npcName))
-            or L["Finish %s"]:format(QuestWords(quest.name))
-    else
-        text = npcName and L["Pick up %s from %s"]:format(QuestWords(quest.name), NpcWords(npcName))
-            or L["Pick up %s"]:format(QuestWords(quest.name))
-    end
+    local text = NextStepText(quest, questID, npcName)
     local detail = Theme:JoinDots(isInLog and ObjectivesText(questID) or nil, PlaceWords(npc, questID, inside))
     local spot = npc and not inside and ns.Data:NpcSpot(npc, questID) or nil
     return { text = text, detail = detail ~= "" and detail or nil, spot = spot, spotName = npcName }
@@ -344,10 +355,14 @@ local function CurrentNumber(fold, numbering)
 end
 
 -- How far goal `quest` (step `number`) is from the step to do now
--- (`currentNumber`): "Done" once it is, "Next step" when it is the step to
--- do now, else "2 steps away"; nil when neither is known.
+-- (`currentNumber`): "Done" once it is, "Ready to turn in" (green) or
+-- "Accepted" (yellow) while it is in the quest log, coloured to stand out
+-- in the line around it, "Next step" when it is the step to do now, else
+-- "2 steps away"; nil when none is known.
 local function DistanceText(quest, number, currentNumber)
-    if ns.UI.QuestStatus(quest) == "Completed" then return L["Done"] end
+    local status, color = ns.UI.QuestStatus(quest)
+    if status == "Completed" then return L["Done"] end
+    if ns.UI.IsInLogStatus(status) then return Theme:ColorCode(color) .. ns.UI.QuestStatusText[status] .. "|r" end
     if not currentNumber then return nil end
     local away = number - currentNumber
     if away <= 0 then return L["Next step"] end
@@ -451,8 +466,13 @@ function ns.UI.CreateDungeonQuestlinePage(parent)
             ns.UI:SelectQuest(quest)
         end,
     })
+    -- Objectives move on in bursts (every quest mob of a pull): one redraw for the burst.
+    local isRecheckQueued = false
     local function Recheck()
+        if isRecheckQueued then return end
+        isRecheckQueued = true
         C_Timer.After(QUEST_LOG_DELAY, function()
+            isRecheckQueued = false
             if not page:IsVisible() then return end
             ns.UI.ForgetQuestStatus()
             page:Refresh()
@@ -461,5 +481,6 @@ function ns.UI.CreateDungeonQuestlinePage(parent)
     ns:On("QUEST_TURNED_IN", Recheck)
     ns:On("QUEST_ACCEPTED", Recheck)
     ns:On("QUEST_REMOVED", Recheck)
+    ns:On("QUEST_WATCH_UPDATE", Recheck) -- an objective moved on: the step may be Ready to turn in
     return page
 end

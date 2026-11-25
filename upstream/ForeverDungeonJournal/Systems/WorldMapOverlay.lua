@@ -16,9 +16,55 @@ local saved
 local wantWorld = false   -- the player switched to the world map this session
 local toggle, backdrop
 local RaiseOverlay -- mappriority (below)
+-- mapover (2.1.4, M 22 Nov 2026, Alexaroth's OpenMap report on the Discord:
+-- "no dungeon map when pressing M"): the dungeon map's layer was capped at
+-- 8000, and OpenMap draws above that: its own dungeon map at about 8800 (in
+-- Stratholme, where its name for the dungeon matches none of the journal's
+-- pages) and, in a fight, its whole map at 9200 (OpenMap v0.8.12). The map
+-- now sits at 9300 at least (also over a layer that only comes up later, a
+-- fight starting with the map open) and 9600 at most, room for its own
+-- buttons above it within the game's limit of 10000.
+local LEVEL_FLOOR, LEVEL_CAP = 9300, 9600
 -- True while the journal is open on a boss page that was opened from a boss
 -- pin on the world map: the world map keeps showing the dungeon map.
 local keepWithJournal = false
+-- dmwings (2.1.6, indigo on the Discord, 24 Nov 2026: "my map randomly
+-- stopped showing the dungeon map button ... in all 3 wings" of Dire Maul;
+-- M: "you should put the button and then ... He can choose the wing"): the
+-- three wings share one instance (429) and the game names none of them in
+-- the corridors ("Dire Maul" only), so no dungeon was found and the map
+-- stayed the world map. Inside Dire Maul the map now always shows a wing:
+-- the one the game names, else the one picked last (kept), else East; the
+-- East / West / North buttons switch it, with "Pick your wing" beside them
+-- while the game hasn't said which wing this is.
+local DM_WINGS = { "Dire Maul: East", "Dire Maul: West", "Dire Maul: North" }
+local dmView          -- the wing picked on the map this visit
+local dmGuess = false -- the wing shown is a pick or a guess, not the game's
+local wingHint
+do
+    local strings = {
+        enUS = "Pick your wing", deDE = "Wähle deinen Flügel", frFR = "Choisissez votre aile",
+        esES = "Elige tu ala", esMX = "Elige tu ala", itIT = "Scegli la tua ala", ptBR = "Escolha sua ala",
+        ruRU = "Выберите своё крыло", koKR = "현재 구역을 선택하세요", zhCN = "选择你所在的区域", zhTW = "選擇你所在的區域",
+    }
+    for locale, text in pairs(strings) do
+        local t = FDJ.Locales and FDJ.Locales[locale]
+        if t and t.WM_PICK_WING == nil then t.WM_PICK_WING = text end
+    end
+end
+local function InDireMaul()
+    if type(IsInInstance) == "function" then
+        local ok, inside = pcall(IsInInstance)
+        if ok and not inside then return false end
+    end
+    if type(GetInstanceInfo) ~= "function" then return false end
+    local ok, id = pcall(function() return select(8, GetInstanceInfo()) end)
+    return ok and tonumber(id) == 429
+end
+local function IsDireMaulWing(name)
+    for _, w in ipairs(DM_WINGS) do if w == name then return true end end
+    return false
+end
 
 local function Enabled()
     ForeverDungeonJournalDB = ForeverDungeonJournalDB or {}
@@ -87,7 +133,7 @@ local function Attach(dungeonName)
         end
     end
     pcall(Scan, host, 1)
-    backdrop:SetFrameLevel(math.min(top + 20, 8000))
+    backdrop:SetFrameLevel(math.max(LEVEL_FLOOR, math.min(top + 20, LEVEL_CAP)))
     backdrop:Show()
 
     panel:SetParent(backdrop)
@@ -157,11 +203,14 @@ local function UpdateWingButtons(dungeonName)
         local ok, value = pcall(FDJ.InScarletMonastery)
         inScarlet = ok and value or false
     end
+    local inDM = not inScarlet and InDireMaul() -- dmwings
     local journal = Journal()
     local panel = journal and journal.dungeonMapPanel
-    local show = inScarlet and dungeonName and Enabled() and not wantWorld and attached and panel
+    local show = (inScarlet or inDM) and dungeonName and Enabled() and not wantWorld and attached and panel
     local shown = {}
-    for i, wing in ipairs(FDJ.SCARLET_WINGS or {}) do
+    local wings = inDM and DM_WINGS or FDJ.SCARLET_WINGS or {}
+    for i = #wings + 1, #wingButtons do wingButtons[i]:Hide() end
+    for i, wing in ipairs(wings) do
         local button = wingButtons[i]
         if show and not button then
             button = CreateFrame("Button", nil, WorldMapFrame, "UIPanelButtonTemplate")
@@ -169,7 +218,12 @@ local function UpdateWingButtons(dungeonName)
             button:SetSize(110, 22)
             button:SetFrameStrata("HIGH")
             button:SetScript("OnClick", function(self)
-                if FDJ.PickScarletMapWing then FDJ.PickScarletMapWing(self.fdjWing)
+                if IsDireMaulWing(self.fdjWing) then -- dmwings: shown, and kept for next time
+                    dmView = self.fdjWing
+                    ForeverDungeonJournalDB = ForeverDungeonJournalDB or {}
+                    ForeverDungeonJournalDB.dmMapWing = self.fdjWing
+                    pcall(FDJ.RefreshWorldMapOverlay)
+                elseif FDJ.PickScarletMapWing then FDJ.PickScarletMapWing(self.fdjWing)
                 elseif FDJ.SetScarletWing then FDJ.SetScarletWing(self.fdjWing) end
             end)
             wingButtons[i] = button
@@ -198,6 +252,22 @@ local function UpdateWingButtons(dungeonName)
         PlaceWingButtons(shown, panel)
         -- (other addons put their map buttons a moment after the map opens)
         if C_Timer and C_Timer.After then C_Timer.After(0.2, function() pcall(PlaceWingButtons, shown, panel) end) end
+    end
+    -- dmwings: "Pick your wing" beside the first button while it's a guess
+    if inDM and dmGuess and show and shown[1] then
+        if not wingHint then
+            wingHint = WorldMapFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            wingHint:SetShadowOffset(1, -1)
+        end
+        local holder = shown[1]
+        wingHint:SetParent(holder)
+        wingHint:SetDrawLayer("OVERLAY")
+        wingHint:ClearAllPoints()
+        wingHint:SetPoint("LEFT", holder, "RIGHT", 8, 0)
+        wingHint:SetText(L("WM_PICK_WING"))
+        wingHint:Show()
+    elseif wingHint then
+        wingHint:Hide()
     end
 end
 
@@ -278,7 +348,7 @@ RaiseOverlay = function()
     end
     local strata = STRATA[rank] or WorldMapFrame:GetFrameStrata()
     backdrop:SetFrameStrata(strata)
-    backdrop:SetFrameLevel(math.min(top + 20, 8000))
+    backdrop:SetFrameLevel(math.max(LEVEL_FLOOR, math.min(top + 20, LEVEL_CAP)))
     if panel and panel:GetParent() == backdrop then
         panel:SetFrameStrata(strata)
         panel:SetFrameLevel(backdrop:GetFrameLevel() + 1)
@@ -496,6 +566,18 @@ function FDJ.RefreshWorldMapOverlay()
         local view = FDJ.ScarletMapView and FDJ.ScarletMapView()
         if view and FDJ.DUNGEON_MAPS and FDJ.DUNGEON_MAPS[view] then dungeonName = view end
     end
+    -- dmwings: in Dire Maul, a wing always (picked, named by the game, kept, or East)
+    dmGuess = false
+    if InDireMaul() then
+        if dmView then
+            dmGuess = not IsDireMaulWing(dungeonName)
+            dungeonName = dmView
+        elseif not IsDireMaulWing(dungeonName) then
+            local kept = ForeverDungeonJournalDB and ForeverDungeonJournalDB.dmMapWing
+            dungeonName = IsDireMaulWing(kept) and kept or DM_WINGS[1]
+            dmGuess = true
+        end
+    end
     -- rpgpartial: RPG Mode keeps the dungeon map locked until 20% of the trash.
     if not dungeonName or not (FDJ.DUNGEON_MAPS and FDJ.DUNGEON_MAPS[dungeonName]) or not Enabled()
         or (FDJ.IsDungeonMapLocked and FDJ.IsDungeonMapLocked(dungeonName)) then
@@ -519,7 +601,7 @@ local function Safe()
         -- Say so once instead of silently leaving the world map up.
         if not reportedError then
             reportedError = true
-            print("|cffffd100Dungeon Journal|r map error: " .. tostring(err))
+            FDJ.ChatLine("|cffffd100Dungeon Journal|r map error: " .. tostring(err))
         end
     end
 end
@@ -530,6 +612,7 @@ watcher:RegisterEvent("PLAYER_ENTERING_WORLD")
 watcher:SetScript("OnEvent", function(_, event)
     if event == "PLAYER_ENTERING_WORLD" then
         wantWorld = false -- each dungeon visit starts on the dungeon map
+        dmView = nil -- dmwings: the game's wing again, else the kept pick
         if WorldMapFrame and WorldMapFrame:IsShown() then Safe() end
         return
     end

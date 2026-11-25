@@ -616,6 +616,19 @@ local function RaidOrder(a, b)
     return a.name < b.name
 end
 
+-- Dungeons run by level: the lowest first level first, then the lowest top
+-- level, then by name, so dungeons with the same levels read alphabetically.
+local function DungeonOrder(a, b)
+    local levelsA, levelsB = a.levelRange, b.levelRange
+    if levelsA[1] ~= levelsB[1] then return levelsA[1] < levelsB[1] end
+    if levelsA[2] ~= levelsB[2] then return levelsA[2] < levelsB[2] end
+    return a.name < b.name
+end
+
+-- How the Dungeons and Raids tabs sort their rows, by category. Other lists
+-- keep the order their tab hands over.
+local ORDER_BY_CATEGORY = { DUNGEON = DungeonOrder, RAID = RaidOrder }
+
 -- Professions the character has learned lead the Professions list: their
 -- primary professions (block 1), then their secondary ones (block 2), then
 -- the rest (block 3) as the data files list them. Keyed by the list's ID,
@@ -1122,10 +1135,11 @@ function ns.UI.CreateInstanceList(parent)
     function pane:SetData(entries)
         self.given = entries or {}
         self.all = self.given
-        if self.all[1] and self.all[1].category == "RAID" then
+        local order = self.all[1] and ORDER_BY_CATEGORY[self.all[1].category]
+        if order then
             local sorted = {}
             for i, instance in ipairs(self.all) do sorted[i] = instance end
-            table.sort(sorted, RaidOrder)
+            table.sort(sorted, order)
             self.all = sorted
         elseif IsProfessionList(self.all) then
             self.all = KnownProfessionsFirst(self.all)
@@ -1838,7 +1852,7 @@ end
 -- outline crisp only across the top. Drawn on the list's canvas, so the rows
 -- (and their hover and selection) lie over it and the list's edges clip it.
 -- The Overview has no rows under it, so its card is closed: the outline runs
--- all the way round, unfaded.
+-- all the way round, unfaded. So has the This run section (UI/RunPage.lua).
 --
 -- After each redraw of grouped list `pane`: the card spans `active` (its
 -- header entry) and the rows under it, as far as a sliding group's strip
@@ -1892,7 +1906,7 @@ local function UpdateSectionCard(pane, card, active, isHeaderLike)
         return
     end
     card:Draw(pane, CARD_INSET, pane.listTop + top, pane:GetWidth() - CARD_INSET * 2, Span(first, last),
-        active.overview == true)
+        active.overview == true or active.runPage == true)
 end
 
 -- A profession's Overview row, at the top of the filter sidebar left of the
@@ -2327,9 +2341,10 @@ function ns.UI.CreateEncounterList(parent)
         return NO_ROWS
     end
 
-    -- In a dungeon the Overview row is drawn like a group header.
+    -- In a dungeon the Overview row is drawn like a group header, and so is
+    -- This run (UI/RunPage.lua, local checkouts only), which opens a page too.
     local function HeaderLike(entry)
-        return entry.header or (pane.grouped and entry.overview)
+        return entry.header or (pane.grouped and (entry.overview or entry.runPage))
     end
 
     -- The header whose page the content pane shows: the Overview (a raid's
@@ -2349,6 +2364,8 @@ function ns.UI.CreateEncounterList(parent)
             key = state.quest.profession and "PROFQUESTS" or "QUESTS"
         elseif state.questline ~= nil and instance.category == "DUNGEON" then
             key = state.questline.groupKey
+        elseif state.encounter ~= nil and state.encounter.runPage then
+            return state.encounter
         elseif state.encounter ~= nil and not state.encounter.overview then
             key = "ENCOUNTERS"
         elseif state.quest ~= nil or (state.encounter and state.encounter.overview) then
@@ -2516,7 +2533,7 @@ function ns.UI.CreateEncounterList(parent)
         row.indent = DISC + 6
         row.right:SetPoint("RIGHT", row.arrow, "LEFT", -6, 0)
         local sides = ShowSideToggle(row, header)
-        local kids = header.overview and NO_ROWS or Kids(header.key)
+        local kids = (header.overview or header.runPage) and NO_ROWS or Kids(header.key)
         row.arrow:SetOpen(open[header.key])
         row.arrow:SetShown(#kids > 0)
         -- Included In counts its rows at the right; the quest groups count
@@ -2524,6 +2541,8 @@ function ns.UI.CreateEncounterList(parent)
         if header.key == "INCLUDED" then row.right:SetText(#kids) end
         if header.key == "QUESTS" or header.key == "PROFQUESTS" then ShowQuestCount(row, header, sides) end
         Theme:SetTextColor(row.right, Theme.color.muted)
+        -- This run's figure: its bosses down and how long it took.
+        if header.runPage then ns.RunPage.ShowHeaderFigure(row, pane.instance) end
     end
 
     -- A boss on the floor the map shows carries a small copy of its map pin
@@ -2569,6 +2588,8 @@ function ns.UI.CreateEncounterList(parent)
         row.right:SetText(not InColourSet(encounter) and encounter.skill and encounter.skill[1] or "")
         -- In the character's skill colour while they have the profession.
         Theme:SetTextColor(row.right, ns.RecipeBand:SkillColor(encounter, pane.instance) or Theme.color.muted)
+        -- A boss killed in the run This run shows: a tick and the time (UI/RunPage.lua, local checkouts only).
+        if ns.RunPage then ns.RunPage.ShowKillTime(row, pane.instance, encounter) end
     end
 
     -- A dot on a series row's variant picker (UI/RecipeBand.lua): the
@@ -2852,7 +2873,10 @@ function ns.UI.CreateEncounterList(parent)
             if encounter.overview then table.insert(list, encounter) end
         end
         local add = Adder(list, RowHeight)
+        -- This run sits just above Encounters (UI/RunPage.lua, local checkouts only).
+        local runEntry = ns.RunPage and ns.RunPage.ListEntry(instance)
         for _, header in ipairs(headers) do
+            if runEntry and header.key == "ENCOUNTERS" then table.insert(list, runEntry) end
             if ShowsHeader(header, instance) then
                 table.insert(list, header)
                 AddIfOpen(header.key, function()
@@ -3098,10 +3122,17 @@ function ns.UI.CreateEncounterList(parent)
         self:SetData(self.instance)
     end
 
-    -- Quest states change when one is taken, handed in or abandoned.
+    -- Quest states change when one is taken, handed in or abandoned, and
+    -- when an objective moves on (QUEST_WATCH_UPDATE: Ready to turn in).
+    -- Objectives move on in bursts (every quest mob of a pull), so the list
+    -- redraws once a second after the first of them, not once for each.
     -- With the window shut, the list redraws when it next shows instead.
+    local isRecheckQueued = false
     local function Recheck()
+        if isRecheckQueued then return end
+        isRecheckQueued = true
         C_Timer.After(1, function()
+            isRecheckQueued = false
             ns.UI.ForgetQuestStatus()
             if not pane:IsVisible() then
                 pane.questsStale = true
@@ -3118,6 +3149,7 @@ function ns.UI.CreateEncounterList(parent)
     ns:On("QUEST_TURNED_IN", Recheck)
     ns:On("QUEST_ACCEPTED", Recheck)
     ns:On("QUEST_REMOVED", Recheck)
+    ns:On("QUEST_WATCH_UPDATE", Recheck)
     -- A new level recolors the bosses' levels.
     ns:On("PLAYER_LEVEL_UP", function()
         C_Timer.After(1, function()

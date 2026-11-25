@@ -3,6 +3,8 @@ local QuestieCompat = QuestieLoader:ImportModule("QuestieCompat")
 
 ---@class QuestieTracker
 local QuestieTracker = QuestieLoader:CreateModule("QuestieTracker")
+---@type TaintWatch
+local TaintWatch = QuestieLoader:ImportModule("TaintWatch")
 -------------------------
 --Import QuestieTracker modules.
 -------------------------
@@ -275,18 +277,6 @@ function QuestieTracker.Initialize()
         if TrackerUtils:IsVoiceOverLoaded() then VoiceOverFrame:Hide() end
     end
 
-    -- Flip some Dugi Guides options to prevent weird behavior
-    if IsAddOnLoaded("DugisGuideViewerZ") then
-        -- Turns off "Show Quest Objectives - Display quest objectives in small/anchored frame instead of the watch frame"
-        DugisGuideViewer:SetDB(false, 39) -- DGV_OBJECTIVECOUNTER
-
-        -- Turns off "Auto Quest Tracking - Automatically add quest to the Objective Tracker on accept or objective update"
-        DugisGuideViewer:SetDB(false, 78) -- DGV_AUTO_QUEST_TRACK
-
-        -- Turns on "Clear Final Waypoint - Always clear the last waypoint on reach"
-        DugisGuideViewer:SetDB(true, 1006) -- DGV_CLEAR_FINAL_WAYPOINT
-    end
-
     -- Restore saved focus. Update keeps retrying until the timeout while the focused quest is still loading.
     focusRestoreDeadline = GetTime() + FOCUS_RESTORE_TIMEOUT
     if _RestoreSavedFocus(true) then
@@ -430,6 +420,7 @@ function QuestieTracker:UpdateDurabilityFrame()
                 -- middle of the frame, first return is x value, second return is the y value
                 local trackerFrameX = trackerBaseFrame:GetCenter()
 
+                TaintWatch.Note("DurabilityFrame layout")
                 DurabilityFrame:ClearAllPoints()
                 DurabilityFrame:SetClampedToScreen(true)
                 DurabilityFrame:SetFrameStrata("MEDIUM")
@@ -1378,6 +1369,7 @@ function QuestieTracker:UntrackQuestId(questId)
 
     if Questie.IsForever and C_QuestLog.GetQuestWatchType(questId) ~= nil then
         -- Keep the modern quest log's track checkbox consistent when untracking from Questie's menu.
+        TaintWatch.Note("RemoveQuestWatch", questId)
         C_QuestLog.RemoveQuestWatch(questId)
     end
 

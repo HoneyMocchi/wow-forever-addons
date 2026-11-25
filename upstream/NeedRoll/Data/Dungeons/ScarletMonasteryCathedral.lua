@@ -35,6 +35,8 @@ ns.Data:Register({
             { itemID = 7724, dropRate = 0.1976 },   -- Gauntlets of Divinity
             { itemID = 7723, dropRate = 0.1902 },   -- Mograine's Might
             { itemID = 10330, dropRate = 0.1418 },  -- Scarlet Leggings
+            { itemID = 254040 },                    -- Pattern: Frothing Cord
+            { itemID = 254048 },                    -- Pattern: Radiant Cord
             { itemID = 251398 },                    -- Plans: Officer's Boots
             { itemID = 251399 },                    -- Plans: Sentinel's Boots
             { itemID = 251400 },                    -- Plans: Warder's Boots

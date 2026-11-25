@@ -113,7 +113,7 @@ local LABELS = {
     ["Idols, Librams and Totems"] = L["Idols, Librams and Totems"],
     -- PvP
     ["Honor Ranks"] = L["Honor Ranks"], ["Any rank"] = L["Any rank"], ["Any standing"] = L["Any standing"],
-    ["New in Forever"] = L["New in Forever"],
+    ["New in Forever"] = L["New in Forever"], ["Premier"] = L["Premier"],
     ["Private"] = L["Private"], ["Corporal"] = L["Corporal"], ["Sergeant"] = L["Sergeant"],
     ["Master Sergeant"] = L["Master Sergeant"], ["Sergeant Major"] = L["Sergeant Major"],
     ["Knight"] = L["Knight"], ["Knight-Lieutenant"] = L["Knight-Lieutenant"],
@@ -187,7 +187,7 @@ local PARTS = {
     ["Recipe"] = L["Recipe"], ["Trainer"] = L["Trainer"], ["Vendor"] = L["Vendor"], ["Drop"] = L["Drop"],
     ["Quest"] = L["Quest"], ["Starting recipe"] = L["Starting recipe"],
     ["Rare"] = L["Rare"], ["Zone-wide"] = L["Zone-wide"], ["Requirement unknown"] = L["Requirement unknown"],
-    ["Tribute run chest"] = L["Tribute run chest"],
+    ["Tribute run chest"] = L["Tribute run chest"], ["Honor and marks"] = L["Honor and marks"],
     ["Armorsmith"] = L["Armorsmith"], ["Weaponsmith"] = L["Weaponsmith"], ["Axesmith"] = L["Axesmith"],
     ["Hammersmith"] = L["Hammersmith"], ["Swordsmith"] = L["Swordsmith"],
     ["Dragonscale"] = L["Dragonscale"], ["Elemental"] = L["Elemental"], ["Tribal"] = L["Tribal"],
